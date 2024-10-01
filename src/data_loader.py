@@ -11,20 +11,21 @@ def load_data():
     Loads and preprocesses the RadioML 2016.10a dataset.
 
     The function loads the dataset from a .pkl file, normalizes the signals,
+    converts the string modulation types to integers,
     and splits the data into training, validation, and test sets.
 
     Returns:
         X_train (ndarray): Training set of signals.
         X_val (ndarray): Validation set of signals.
         X_test (ndarray): Test set of signals.
-        y_train (ndarray): Training set labels.
-        y_val (ndarray): Validation set labels.
-        y_test (ndarray): Test set labels.
+        y_train (ndarray): Training set labels (integers).
+        y_val (ndarray): Validation set labels (integers).
+        y_test (ndarray): Test set labels (integers).
+        mod2int (dict): Dictionary mapping modulation types (strings) to integers.
     """
     # Use relative path to the dataset from the current script
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_path = os.path.join(
-        base_dir, 'data', 'RML2016.10a', 'RML2016.10a_dict.pkl')
+    dataset_path = os.path.join(base_dir, 'data', 'RML2016.10a', 'RML2016.10a_dict.pkl')
 
     print(f"Loading data file: {dataset_path}")
 
@@ -50,21 +51,27 @@ def load_data():
     # Normalize the input signals
     X = X / np.max(np.abs(X), axis=1, keepdims=True)
 
-    # Split data into train, validation, and test sets
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.3, random_state=42)
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=42)
+    # Map modulation types (string labels) to integers
+    modulations = sorted(list(set(y)))  # Get unique modulation types
+    mod2int = {mod: i for i, mod in enumerate(modulations)}  # Create mapping
 
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    # Convert string labels to integers
+    y = np.array([mod2int[mod] for mod in y])
+
+    # Split data into train, validation, and test sets
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+
+    return X_train, X_val, X_test, y_train, y_val, y_test, mod2int
 
 
 # Example of how to use the function if run as a script
 if __name__ == '__main__':
     print("Loading RadioML 2016.10a dataset...")
-    X_train, X_val, X_test, y_train, y_val, y_test = load_data()
+    X_train, X_val, X_test, y_train, y_val, y_test, mod2int = load_data()
     print(
         f"Training set: {X_train.shape}, "
         f"Validation set: {X_val.shape}, "
         f"Test set: {X_test.shape}"
     )
+    print(f"Modulation to Integer Mapping: {mod2int}")
