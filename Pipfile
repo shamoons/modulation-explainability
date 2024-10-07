@@ -13,6 +13,7 @@ captum = "*"
 wandb = "*"
 scikit-learn = "*"
 tqdm = "*"
+h5py = "*"
 
 [dev-packages]
 

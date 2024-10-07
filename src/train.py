@@ -1,40 +1,21 @@
 # src/train.py
 import torch.nn as nn
 import torch.optim as optim
-import torch
 from models.cnn_model import LightweightCNN
-from data_loader import load_data
-from visualization import save_all_visualizations
+from data_loader import get_dataloaders  # Updated function for batched loading
 from utils import get_device
-from training import train
-
+from training import train, validate  # Add validate function for evaluation
 
 if __name__ == "__main__":
     # Load data
     print("Loading data...")
 
-    # Load dataset with modulation mapping if needed
-    X_train, X_val, X_test, y_train, y_val, y_test, mod2int = load_data()
-
-    # Reshape the input data to include 1 channel for CNN input
-    X_train = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1)  # (batch_size, 1, height, width)
-    X_val = torch.tensor(X_val, dtype=torch.float32).unsqueeze(1)
-    X_test = torch.tensor(X_test, dtype=torch.float32).unsqueeze(1)
-
-    # Save visualizations for the first 10 samples
-    save_all_visualizations(X_train, num_samples=10, output_dir="output")
-
-    # Convert numpy arrays to PyTorch datasets
-    train_data = torch.utils.data.TensorDataset(X_train, torch.tensor(y_train, dtype=torch.long))
-    val_data = torch.utils.data.TensorDataset(X_val, torch.tensor(y_val, dtype=torch.long))
-
-    # DataLoader
+    # Get the DataLoaders for training, validation, and testing
     batch_size = 64
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=batch_size)
 
     # Initialize model, loss function, and optimizer
-    model = LightweightCNN(num_classes=11)
+    model = LightweightCNN(num_classes=24)  # Updated for 24 modulation classes
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
@@ -42,4 +23,14 @@ if __name__ == "__main__":
     device = get_device()
 
     # Train the model
-    train(model, device, criterion, optimizer, train_loader, val_loader, epochs=50)
+    epochs = 50
+    train(model, device, criterion, optimizer, train_loader, val_loader, epochs=epochs)
+
+    # Evaluate the model on validation set after training
+    val_loss, val_accuracy = validate(model, device, criterion, val_loader)
+
+    print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
+
+    # Optionally: Add evaluation on the test set
+    test_loss, test_accuracy = validate(model, device, criterion, test_loader)
+    print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%")

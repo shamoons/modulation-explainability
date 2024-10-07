@@ -28,16 +28,11 @@ class DSCBlock(nn.Module):
 
 
 class LightweightCNN(nn.Module):
-    """
-    Lightweight CNN with Depthwise Separable Convolutions for Modulation Classification.
-    Designed to be computationally efficient while maintaining high accuracy.
-    """
-
     def __init__(self, num_classes=11):
         super(LightweightCNN, self).__init__()
 
-        # First convolution block
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
+        # First convolution block (change in_channels to 2 for I/Q channels)
+        self.conv1 = nn.Conv2d(2, 32, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(32)
 
         # Depthwise separable convolution blocks
