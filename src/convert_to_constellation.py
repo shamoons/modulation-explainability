@@ -2,73 +2,94 @@
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import torch
+from torch.utils.data import DataLoader
+from typing import Dict, Tuple, Any, List
 from data_loader import get_dataloader
 from utils import get_device
 
 
-def save_constellation_batch(iq_batch, mod_batch, snr_batch, batch_idx, output_dir):
+def save_constellation_diagram(iq_data: torch.Tensor, modulation_type: str, snr: float, sample_idx: int, output_dir: str) -> None:
     """
-    Save a batch of constellation diagrams to the disk.
+    Save a single constellation diagram to the disk.
     Args:
-        iq_batch (Tensor): Batch of I/Q data.
-        mod_batch (list): List of modulation types corresponding to each sample in the batch.
-        snr_batch (Tensor): List of SNR values corresponding to each sample in the batch.
-        batch_idx (int): The index of the batch (for naming the files).
+        iq_data (ndarray): I/Q data for a single sample.
+        modulation_type (str): Modulation type for the sample.
+        snr (float): SNR value for the sample.
+        sample_idx (int): Index of the sample (for naming files).
         output_dir (str): Directory to save the plots.
     """
-    for i, (iq_data, modulation_type, snr) in enumerate(zip(iq_batch, mod_batch, snr_batch)):
-        # Convert I/Q data to CPU for processing if using GPU
-        iq_data = iq_data.cpu().numpy()
+    in_phase = iq_data[:, 0]  # I component
+    quadrature = iq_data[:, 1]  # Q component
 
-        # Reshape I/Q data if needed
-        if len(iq_data.shape) == 1:
-            iq_data = iq_data.reshape(-1, 2)
+    plt.figure(figsize=(6, 6))
+    plt.scatter(in_phase, quadrature, s=5, color='blue')
+    plt.axis('off')
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
 
-        in_phase = iq_data[:, 0]  # I component
-        quadrature = iq_data[:, 1]  # Q component
+    # Ensure snr is properly formatted
+    snr = snr.item() if isinstance(snr, torch.Tensor) else snr
+    snr_str = f"SNR_{int(snr) if float(snr).is_integer() else snr}"
 
-        # Reuse the same figure object for faster plotting
-        plt.clf()  # Clear the figure for reuse
-        plt.scatter(in_phase, quadrature, s=5, color='blue')
-        plt.axis('off')
-        plt.xlim(-1, 1)
-        plt.ylim(-1, 1)
+    # Create directory for modulation and SNR if it doesn't exist
+    modulation_dir = os.path.join(output_dir, modulation_type, snr_str)
+    os.makedirs(modulation_dir, exist_ok=True)
 
-        # Ensure snr is properly formatted
-        snr = snr.item()
-        snr_str = f"SNR_{int(snr) if float(snr).is_integer() else snr}"
-
-        # Create directory for modulation and SNR if it doesn't exist
-        modulation_dir = os.path.join(output_dir, modulation_type, snr_str)
-        os.makedirs(modulation_dir, exist_ok=True)
-
-        # Save the figure without padding and axis
-        save_path = os.path.join(modulation_dir, f'batch_{batch_idx}_sample_{i}.png')
-        plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+    # Save the figure without padding and axis
+    save_path = os.path.join(modulation_dir, f'sample_{sample_idx}.png')
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+    plt.close()
 
 
-def process_batches(dataloader, mod2int, device, output_dir='constellation'):
+def group_by_modulation_snr(dataloader: DataLoader, mod2int: Dict[str, int]) -> Tuple[Dict[str, Dict[float, List[torch.Tensor]]], Dict[int, str]]:
     """
-    Process batches of I/Q data from the dataloader and save constellation diagrams in batch.
+    Group the dataset by modulation type and SNR.
     Args:
         dataloader (DataLoader): DataLoader providing batches of I/Q data.
         mod2int (dict): Dictionary mapping modulation types to integers.
-        device (torch.device): The device to use for processing (CPU, CUDA, or MPS).
-        output_dir (str): Directory to save the constellation diagrams.
+
+    Returns:
+        modulation_snr_samples (dict): Grouped data by modulation and SNR.
+        int2mod (dict): Reverse mapping of integers to modulation types.
     """
     int2mod = {v: k for k, v in mod2int.items()}
+    modulation_snr_samples: Dict[str, Dict[float, List[Any]]] = {mod: {} for mod in int2mod.values()}
 
-    print("Processing batches of I/Q data...")
-    for batch_idx, (inputs, labels, snrs) in enumerate(tqdm(dataloader, desc="Processing batches")):
-        # Move data to the processing device (e.g., GPU)
-        inputs = inputs.to(device)
-        snrs = snrs.to(device)
+    print("Grouping I/Q data by modulation type and SNR...")
+    for inputs, labels, snrs in tqdm(dataloader, desc="Loading data"):
+        inputs = inputs.numpy()
+        labels = labels.numpy()
+        snrs = snrs.numpy()
 
-        # Convert labels to modulation types
-        mod_batch = [int2mod[label.item()] for label in labels]
+        for iq_data, label, snr in zip(inputs, labels, snrs):
+            modulation_type = int2mod[label]
 
-        # Process and save batch of constellation diagrams
-        save_constellation_batch(inputs, mod_batch, snrs, batch_idx, output_dir)
+            # Convert snr from numpy array to scalar (float or int)
+            snr = snr.item()
+
+            # Group by modulation and SNR
+            if snr not in modulation_snr_samples[modulation_type]:
+                modulation_snr_samples[modulation_type][snr] = []
+            modulation_snr_samples[modulation_type][snr].append(iq_data)
+
+    # Return the grouped data and modulation-int mapping
+    return modulation_snr_samples, int2mod
+
+
+def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[torch.Tensor]]], output_dir: str = 'constellation') -> None:
+    """
+    Process I/Q data grouped by modulation type and SNR, saving the constellation diagrams.
+    Args:
+        grouped_data (dict): Data grouped by modulation type and SNR.
+        output_dir (str): Directory to save the constellation diagrams.
+    """
+    print("\nProcessing modulation types and SNRs...")
+    for modulation_type, snr_dict in grouped_data.items():
+        for snr, samples in snr_dict.items():
+            desc = f'Processing {modulation_type} at {snr} dB'
+            for sample_idx, iq_data in tqdm(enumerate(samples), desc=desc, total=len(samples)):
+                save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output_dir)
 
 
 if __name__ == "__main__":
@@ -78,7 +99,16 @@ if __name__ == "__main__":
     device = get_device()
 
     # Load the entire dataset into a DataLoader
-    dataloader, mod2int = get_dataloader(batch_size=1024)  # Adjust batch_size based on your memory
+    dataloader, mod2int = get_dataloader(batch_size=4096)  # Adjust batch_size based on your memory
 
-    # Process the dataset in batches and save constellation diagrams
-    process_batches(dataloader, mod2int, device, output_dir='constellation')
+    # Group data by modulation and SNR
+    grouped_data, int2mod = group_by_modulation_snr(dataloader, mod2int)
+
+    # Print sample counts for each modulation and SNR
+    print("\nModulation types, SNRs, and sample counts:")
+    for modulation_type, snr_dict in grouped_data.items():
+        for snr, samples in snr_dict.items():
+            print(f"{modulation_type} at SNR {snr}: {len(samples)} samples")
+
+    # Process the dataset without batching by modulation and SNR
+    process_by_modulation_snr(grouped_data, output_dir='constellation')
