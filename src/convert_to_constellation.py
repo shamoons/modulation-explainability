@@ -3,7 +3,6 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
 from data_loader import get_dataloaders
 
 
@@ -43,27 +42,26 @@ def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output
     plt.close()
 
 
-def generate_modulation_constellations(modulation_type, samples, snrs, output_dir):
+def generate_modulation_snr_constellations(modulation_type, snr, samples, output_dir):
     """
-    Generate and save constellation diagrams for all samples of a specific modulation type.
+    Generate and save constellation diagrams for all samples of a specific modulation and SNR.
     """
-    # Use tqdm progress bar for the samples being processed
-    for sample_idx, (iq_data, snr) in enumerate(tqdm(zip(samples, snrs), total=len(samples), desc=f'Processing {modulation_type}')):
+    desc = f'Processing {modulation_type} at {snr} dB'
+    for sample_idx, iq_data in enumerate(tqdm(samples, desc=desc, total=len(samples))):
         save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output_dir)
 
 
-def convert_all_to_constellations_parallel(train_loader, mod2int, output_dir='constellation'):
+def convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, output_dir='constellation'):
     """
     Convert all samples from the training set into constellation diagrams and save them,
-    parallelized by modulation type.
+    grouped by modulation type and SNR.
     """
     int2mod = {v: k for k, v in mod2int.items()}
 
-    # Group the inputs by modulation type
-    modulation_samples = {mod: [] for mod in int2mod.values()}
-    modulation_snrs = {mod: [] for mod in int2mod.values()}
+    # Group the inputs by modulation type and SNR
+    modulation_snr_samples = {mod: {} for mod in int2mod.values()}
 
-    print("Grouping I/Q data by modulation type...")
+    print("Grouping I/Q data by modulation type and SNR...")
     for inputs, labels, snrs in tqdm(train_loader, desc="Loading data"):
         inputs = inputs.numpy()
         labels = labels.numpy()
@@ -71,32 +69,32 @@ def convert_all_to_constellations_parallel(train_loader, mod2int, output_dir='co
 
         for iq_data, label, snr in zip(inputs, labels, snrs):
             modulation_type = int2mod[label]
-            modulation_samples[modulation_type].append(iq_data)
-            modulation_snrs[modulation_type].append(snr)
 
-    # Print modulation types and counts
-    print("\nModulation types and sample counts:")
-    for modulation_type, samples in modulation_samples.items():
-        print(f"{modulation_type}: {len(samples)} samples")
+            # Convert snr from numpy array to scalar (float or int)
+            snr = snr.item()
 
-    # Parallelize across modulation types
-    print("\nStarting parallel processing for modulation types...")
-    with ProcessPoolExecutor() as executor:
-        futures = []
-        for modulation_type in modulation_samples.keys():
-            samples = modulation_samples[modulation_type]
-            snrs = modulation_snrs[modulation_type]
+            # Group by modulation and SNR
+            if snr not in modulation_snr_samples[modulation_type]:
+                modulation_snr_samples[modulation_type][snr] = []
+            modulation_snr_samples[modulation_type][snr].append(iq_data)
+
+    # Print modulation types, SNRs, and counts
+    print("\nModulation types, SNRs, and sample counts:")
+    for modulation_type, snr_dict in modulation_snr_samples.items():
+        for snr, samples in snr_dict.items():
+            print(f"{modulation_type} at SNR {snr}: {len(samples)} samples")
+
+    # Process each modulation type and SNR sequentially
+    print("\nProcessing modulation types and SNRs sequentially...")
+    for modulation_type, snr_dict in modulation_snr_samples.items():
+        for snr, samples in snr_dict.items():
             if len(samples) > 0:
-                futures.append(executor.submit(generate_modulation_constellations, modulation_type, samples, snrs, output_dir))
-
-        # Wait for all processes to complete
-        for future in futures:
-            future.result()
+                generate_modulation_snr_constellations(modulation_type, snr, samples, output_dir)
 
 
 if __name__ == "__main__":
     print("Loading dataset...")
-    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=64)
+    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=256)
 
-    # Convert the training data to constellation diagrams in parallel
-    convert_all_to_constellations_parallel(train_loader, mod2int, output_dir='constellation')
+    # Convert the training data to constellation diagrams, grouped by modulation and SNR
+    convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, output_dir='constellation')
