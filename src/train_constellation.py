@@ -4,7 +4,8 @@ import torch.optim as optim
 from models.constellation_model import ConstellationCNN  # Import ConstellationCNN model
 from constellation_loader import get_constellation_dataloader  # Import function for loading constellation images
 from utils import get_device  # Function to get the device (CPU or GPU)
-from training_constellation import train, validate  # Import training and validation functions
+from training_constellation import train  # Import the training function
+from training_constellation import validate  # Import validation function
 import warnings
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
@@ -37,13 +38,9 @@ if __name__ == "__main__":
 
     # Train the model
     epochs = 50
-    train(model, device, criterion, optimizer, train_loader, val_loader, epochs=epochs)
+    train(model, device, criterion, optimizer, train_loader, epochs=epochs)
 
-    # Evaluate the model on validation set after training
-    val_loss, val_accuracy = validate(model, device, criterion, val_loader)
+    # Validate the model on validation set after training
+    val_loss, val_accuracy, val_predictions, val_targets = validate(model, device, criterion, val_loader)
 
     print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
-
-    # Optionally: Add evaluation on the test set
-    test_loss, test_accuracy = validate(model, device, criterion, test_loader)
-    print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%")

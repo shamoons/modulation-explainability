@@ -1,14 +1,13 @@
-# src/training_constellation.py
 import torch
 import wandb
+from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 
 
-def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=10, scheduler=None, patience=5):
+def train(model, device, criterion, optimizer, train_loader, epochs=10):
     """
-    Train the model and validate it at the end of each epoch.
-    Includes early stopping, learning rate scheduling, and gradient clipping.
-    Logs metrics with Weights and Biases (wandb) and uses tqdm for progress bars.
+    Train the model.
+    Includes gradient clipping and logs metrics with Weights and Biases (wandb).
 
     Args:
         model: The PyTorch model.
@@ -16,16 +15,10 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         criterion: The loss function.
         optimizer: The optimizer for backpropagation.
         train_loader: DataLoader for the training data.
-        val_loader: DataLoader for the validation data.
         epochs: Number of epochs to train.
-        scheduler: Optional learning rate scheduler.
-        patience: Patience for early stopping.
     """
     wandb.init(project="modulation-explainability", config={"epochs": epochs})
     model.to(device)
-
-    best_val_loss = float('inf')
-    early_stopping_counter = 0
 
     for epoch in range(epochs):
         model.train()
@@ -63,41 +56,14 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         train_accuracy = 100.0 * correct / total
         train_loss = running_loss / len(train_loader)
 
-        # Validation with tqdm progress bar
-        val_loss, val_accuracy = validate(model, device, criterion, val_loader)
-
-        # Learning rate scheduler step
-        if scheduler:
-            scheduler.step(val_loss)
-
-        # Early stopping check
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            early_stopping_counter = 0
-            # Save the model if it has improved
-            torch.save(model.state_dict(), 'best_constellation_model.pth')
-            print(f"Saved model with validation loss: {val_loss:.4f}")
-        else:
-            early_stopping_counter += 1
-            print(f"Early stopping counter: {early_stopping_counter}/{patience}")
-
-        # Stop training early if no improvement after 'patience' epochs
-        if early_stopping_counter >= patience:
-            print("Early stopping due to no improvement in validation loss.")
-            break
-
         # Log to Weights and Biases
         wandb.log({
             "epoch": epoch + 1,
             "train_loss": train_loss,
             "train_accuracy": train_accuracy,
-            "val_loss": val_loss,
-            "val_accuracy": val_accuracy,
-            "learning_rate": optimizer.param_groups[0]['lr']  # Log the learning rate
         })
 
-        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%, "
-              f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
+        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
 
 
 def validate(model, device, criterion, val_loader):
@@ -113,11 +79,16 @@ def validate(model, device, criterion, val_loader):
     Returns:
         val_loss: The validation loss.
         val_accuracy: The validation accuracy.
+        val_predictions: List of predicted labels for confusion matrix.
+        val_targets: List of true labels for confusion matrix.
     """
     model.eval()
     val_loss = 0.0
     correct = 0
     total = 0
+
+    val_predictions = []
+    val_targets = []
 
     with torch.no_grad():
         with tqdm(val_loader, desc="Validation", leave=False) as progress:
@@ -132,9 +103,19 @@ def validate(model, device, criterion, val_loader):
                 total += labels.size(0)
                 correct += predicted.eq(labels).sum().item()
 
+                # Store predictions and true labels for confusion matrix
+                val_predictions.extend(predicted.cpu().numpy())
+                val_targets.extend(labels.cpu().numpy())
+
                 # Update progress bar with current validation loss and accuracy
                 progress.set_postfix(loss=loss.item(), accuracy=100.0 * correct / total)
 
     val_accuracy = 100.0 * correct / total
     val_loss = val_loss / len(val_loader)
-    return val_loss, val_accuracy
+
+    # Confusion Matrix
+    cm = confusion_matrix(val_targets, val_predictions)
+    print("Confusion Matrix:")
+    print(cm)
+
+    return val_loss, val_accuracy, val_predictions, val_targets
