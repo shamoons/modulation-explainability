@@ -4,14 +4,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class DSCBlock(nn.Module):
+class ResidualDSCBlock(nn.Module):
     """
-    A depthwise separable convolution block.
-    Depthwise convolution followed by pointwise convolution.
+    A depthwise separable convolution block with residual connection.
+    Depthwise convolution followed by pointwise convolution, with a residual (skip) connection.
     """
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
-        super(DSCBlock, self).__init__()
+        super(ResidualDSCBlock, self).__init__()
         # Depthwise convolution
         self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size,
                                    stride=stride, padding=padding, groups=in_channels, bias=False)
@@ -19,11 +19,34 @@ class DSCBlock(nn.Module):
         self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         self.bn = nn.BatchNorm2d(out_channels)
 
+        # Shortcut connection for residual (in case in_channels != out_channels)
+        self.shortcut = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=False) if in_channels != out_channels else nn.Identity()
+
     def forward(self, x):
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        x = self.bn(x)
-        return F.relu(x)
+        residual = self.shortcut(x)  # Create shortcut connection
+        out = self.depthwise(x)
+        out = self.pointwise(out)
+        out = self.bn(out)
+        return F.relu(out + residual)  # Add residual connection and apply ReLU
+
+
+class SEBlock(nn.Module):
+    """
+    Squeeze-and-Excitation (SE) block to apply channel-wise attention.
+    """
+
+    def __init__(self, channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.global_avg_pool = nn.AdaptiveAvgPool2d(1)  # Squeeze step
+        self.fc1 = nn.Linear(channels, channels // reduction)
+        self.fc2 = nn.Linear(channels // reduction, channels)
+
+    def forward(self, x):
+        batch_size, channels, _, _ = x.size()
+        se = self.global_avg_pool(x).view(batch_size, channels)
+        se = F.relu(self.fc1(se))
+        se = torch.sigmoid(self.fc2(se)).view(batch_size, channels, 1, 1)
+        return x * se.expand_as(x)  # Apply attention (excitation)
 
 
 class ConstellationCNN(nn.Module):
@@ -34,12 +57,15 @@ class ConstellationCNN(nn.Module):
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(32)
 
-        # Depthwise separable convolution blocks
-        self.dsc_block1 = DSCBlock(32, 64)
-        self.dsc_block2 = DSCBlock(64, 128)
-        self.dsc_block3 = DSCBlock(128, 256)
+        # Residual Depthwise Separable Convolution blocks
+        self.dsc_block1 = ResidualDSCBlock(32, 64)
+        self.dsc_block2 = ResidualDSCBlock(64, 128)
+        self.dsc_block3 = ResidualDSCBlock(128, 256)
 
-        # Global Average Pooling (moved this before _get_conv_output)
+        # Add Squeeze-and-Excitation (SE) Block after convolution blocks
+        self.se_block = SEBlock(256)
+
+        # Global Average Pooling
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
 
         # Compute the size after convolution and pooling
@@ -60,6 +86,7 @@ class ConstellationCNN(nn.Module):
             x = self.dsc_block1(x)
             x = self.dsc_block2(x)
             x = self.dsc_block3(x)
+            x = self.se_block(x)  # Apply SE block here
             x = self.global_avg_pool(x)
             feature_size = x.view(1, -1).size(1)
         return feature_size
@@ -72,6 +99,9 @@ class ConstellationCNN(nn.Module):
         x = self.dsc_block1(x)
         x = self.dsc_block2(x)
         x = self.dsc_block3(x)
+
+        # Apply Squeeze-and-Excitation block
+        x = self.se_block(x)
 
         # Global average pooling
         x = self.global_avg_pool(x)
