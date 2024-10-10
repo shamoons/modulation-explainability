@@ -75,7 +75,7 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
             best_val_loss = val_loss
             early_stopping_counter = 0
             # Save the model if it has improved
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), 'best_constellation_model.pth')
             print(f"Saved model with validation loss: {val_loss:.4f}")
         else:
             early_stopping_counter += 1

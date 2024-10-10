@@ -4,3 +4,4 @@ __pycache__/
 output/
 constellation/
 .DS_Store
+*.pth

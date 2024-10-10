@@ -5,6 +5,9 @@ from models.constellation_model import ConstellationCNN  # Import ConstellationC
 from constellation_loader import get_constellation_dataloader  # Import function for loading constellation images
 from utils import get_device  # Function to get the device (CPU or GPU)
 from training_constellation import train, validate  # Import training and validation functions
+import warnings
+warnings.filterwarnings("ignore", message=r".*NNPACK.*")
+
 
 if __name__ == "__main__":
     # Load data
