@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
-from typing import Dict, Tuple, Any, List
+from typing import Dict, Tuple, Any, List, Optional
 from data_loader import get_dataloader
 from utils import get_device
 
@@ -77,16 +77,21 @@ def group_by_modulation_snr(dataloader: DataLoader, mod2int: Dict[str, int]) -> 
     return modulation_snr_samples, int2mod
 
 
-def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[torch.Tensor]]], output_dir: str = 'constellation') -> None:
+def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[torch.Tensor]]], snrs_to_process: Optional[List[float]] = None, output_dir: str = 'constellation') -> None:
     """
     Process I/Q data grouped by modulation type and SNR, saving the constellation diagrams.
     Args:
         grouped_data (dict): Data grouped by modulation type and SNR.
+        snrs_to_process (list, optional): List of SNR values to process. If None, process all SNRs.
         output_dir (str): Directory to save the constellation diagrams.
     """
     print("\nProcessing modulation types and SNRs...")
     for modulation_type, snr_dict in grouped_data.items():
         for snr, samples in snr_dict.items():
+            # If snrs_to_process is provided, skip SNRs that are not in the list
+            if snrs_to_process is not None and snr not in snrs_to_process:
+                continue
+
             # Determine the output directory
             snr_str = f"SNR_{int(snr) if float(snr).is_integer() else snr}"
             modulation_dir = os.path.join(output_dir, modulation_type, snr_str)
@@ -121,5 +126,8 @@ if __name__ == "__main__":
         for snr, samples in snr_dict.items():
             print(f"{modulation_type} at SNR {snr}: {len(samples)} samples")
 
-    # Process the dataset without batching by modulation and SNR
-    process_by_modulation_snr(grouped_data, output_dir='constellation')
+    # Example SNR list you want to process, set to None to process all
+    snrs_to_process = [0, 10, 20]  # Change this to the SNRs you want or set to None
+
+    # Process the dataset based on SNR selection
+    process_by_modulation_snr(grouped_data, snrs_to_process, output_dir='constellation')
