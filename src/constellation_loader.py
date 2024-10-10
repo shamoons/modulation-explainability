@@ -11,27 +11,37 @@ class ConstellationDataset(Dataset):
     optionally filtering by SNR. Images are loaded as grayscale (single channel).
     """
 
-    def __init__(self, root_dir, snr_list=None, transform=None):
+    def __init__(self, root_dir, snr_list=None):
         """
         Args:
             root_dir (str): Root directory where the constellation images are stored.
             snr_list (list of str or None): List of SNR values to load. If None, load all SNRs.
-            transform (callable, optional): Optional transform to be applied on a sample (image).
         """
         self.root_dir = root_dir
         self.snr_list = snr_list if snr_list is not None else []  # If not provided, load all SNRs
-        self.transform = transform
 
-        self.image_paths = self._load_image_paths()
+        # Internal method to fetch image paths and labels
+        self.image_paths, self.labels = self._load_image_paths_and_labels()
 
-    def _load_image_paths(self):
+        # Default transform applied to all images (Resizing, ToTensor, and Normalizing)
+        self.transform = transforms.Compose([
+            transforms.Resize((64, 64)),  # Resize images to a standard size
+            transforms.ToTensor(),  # Convert image to tensor (single-channel)
+            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize grayscale image between -1 and 1
+        ])
+
+    def _load_image_paths_and_labels(self):
         """
-        Traverse the root directory and load image paths filtered by SNR (if applicable).
+        Traverse the root directory and load image paths filtered by SNR (if applicable),
+        also capturing the modulation type as a label.
 
         Returns:
             image_paths (list of str): List of paths to constellation images.
+            labels (list of int): List of labels corresponding to modulation types.
         """
         image_paths = []
+        labels = []
+        modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir))}
 
         # Traverse the directory structure
         for modulation_type in os.listdir(self.root_dir):
@@ -45,8 +55,9 @@ class ConstellationDataset(Dataset):
                             if img_name.endswith('.png'):  # Only load PNG images
                                 img_path = os.path.join(snr_path, img_name)
                                 image_paths.append(img_path)
+                                labels.append(modulation_labels[modulation_type])  # Assign modulation label
 
-        return image_paths
+        return image_paths, labels
 
     def __len__(self):
         """
@@ -56,25 +67,27 @@ class ConstellationDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        Get a specific image and apply any specified transformations.
+        Get a specific image and label, apply the default transformation (resizing, tensor conversion, normalization).
 
         Args:
             idx (int): Index of the image to load.
 
         Returns:
-            sample (Tensor): The transformed image (grayscale, single-channel).
+            tuple: (Tensor image, int label)
         """
         img_path = self.image_paths[idx]
+        label = self.labels[idx]
+
         # Load image as grayscale (single channel)
         image = Image.open(img_path).convert('L')  # Convert to grayscale
 
-        if self.transform:
-            image = self.transform(image)
+        # Apply the default transform (resize, to tensor, normalize)
+        image = self.transform(image)
 
-        return image
+        return image, label  # Return both image and label
 
 
-def get_constellation_dataloader(root_dir, snr_list=None, batch_size=64, shuffle=True, transform=None):
+def get_constellation_dataloader(root_dir, snr_list=None, batch_size=64, shuffle=True):
     """
     Function to create a DataLoader for the constellation dataset.
 
@@ -83,12 +96,11 @@ def get_constellation_dataloader(root_dir, snr_list=None, batch_size=64, shuffle
         snr_list (list of str or None): List of SNR values to load. If None, load all SNRs.
         batch_size (int): Number of images per batch.
         shuffle (bool): Whether to shuffle the data.
-        transform (callable, optional): Optional transformation for the images.
 
     Returns:
         DataLoader: PyTorch DataLoader for the constellation dataset.
     """
-    dataset = ConstellationDataset(root_dir, snr_list=snr_list, transform=transform)
+    dataset = ConstellationDataset(root_dir, snr_list=snr_list)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return dataloader
 
@@ -98,16 +110,9 @@ if __name__ == "__main__":
     root_dir = "constellation"  # Replace with the actual directory where constellation images are stored
     snr_list = ['-10', '2']  # Example: Load only images with SNRs -10 and 2 (can be omitted to load all)
 
-    # Example transformation (convert image to tensor and normalize)
-    transform = transforms.Compose([
-        transforms.Resize((64, 64)),  # Resize images to a standard size
-        transforms.ToTensor(),  # Convert image to tensor (single-channel)
-        transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize grayscale image between -1 and 1
-    ])
-
     # Get DataLoader
-    dataloader = get_constellation_dataloader(root_dir, snr_list=snr_list, batch_size=32, transform=transform)
+    dataloader = get_constellation_dataloader(root_dir, snr_list=snr_list, batch_size=32)
 
     # Iterate through the DataLoader (for demonstration purposes)
-    for images in dataloader:
-        print(f"Batch of images: {images.size()}")  # Should print (batch_size, 1, 64, 64) for single-channel images
+    for images, labels in dataloader:
+        print(f"Batch of images: {images.size()}, Batch of labels: {labels.size()}")  # Should print (batch_size, 1, 64, 64) for single-channel images
