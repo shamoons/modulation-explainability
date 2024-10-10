@@ -41,21 +41,24 @@ class ConstellationDataset(Dataset):
         """
         image_paths = []
         labels = []
-        modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir))}
+
+        # Fix: Create a dictionary only for directories
+        modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
 
         # Traverse the directory structure
         for modulation_type in os.listdir(self.root_dir):
             modulation_dir = os.path.join(self.root_dir, modulation_type)
-            if os.path.isdir(modulation_dir):
+            if os.path.isdir(modulation_dir):  # Skip non-directory files like .DS_Store
                 for snr_dir in os.listdir(modulation_dir):
-                    snr_value = snr_dir.split('_')[1]  # Extract SNR from directory name (e.g., "SNR_2" -> 2)
-                    if not self.snr_list or snr_value in self.snr_list:
-                        snr_path = os.path.join(modulation_dir, snr_dir)
-                        for img_name in os.listdir(snr_path):
-                            if img_name.endswith('.png'):  # Only load PNG images
-                                img_path = os.path.join(snr_path, img_name)
-                                image_paths.append(img_path)
-                                labels.append(modulation_labels[modulation_type])  # Assign modulation label
+                    snr_path = os.path.join(modulation_dir, snr_dir)
+                    if os.path.isdir(snr_path):  # Ensure this is a directory
+                        snr_value = snr_dir.split('_')[1]  # Extract SNR from directory name (e.g., "SNR_2" -> 2)
+                        if not self.snr_list or snr_value in self.snr_list:
+                            for img_name in os.listdir(snr_path):
+                                if img_name.endswith('.png'):  # Only load PNG images
+                                    img_path = os.path.join(snr_path, img_name)
+                                    image_paths.append(img_path)
+                                    labels.append(modulation_labels[modulation_type])  # Assign modulation label
 
         return image_paths, labels
 

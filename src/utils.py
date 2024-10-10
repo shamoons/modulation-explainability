@@ -1,5 +1,7 @@
 # src/utils.py
 import torch
+import warnings
+warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
 def get_device():
