@@ -8,7 +8,7 @@ from data_loader import get_dataloaders
 
 def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output_dir):
     """
-    Save a constellation diagram of the I/Q data for a single sample.
+    Save a constellation diagram of the I/Q data for a single sample without axes or labels.
 
     Args:
         iq_data (ndarray): The I/Q data (1024, 2).
@@ -26,6 +26,10 @@ def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output
     plt.figure(figsize=(6, 6))
     plt.scatter(in_phase, quadrature, s=5, color='blue')
 
+    # Remove axes and labels
+    plt.axis('off')
+
+    # Set limits so the plots are consistent in size
     plt.xlim(-1, 1)
     plt.ylim(-1, 1)
 
@@ -38,6 +42,8 @@ def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output
     os.makedirs(modulation_dir, exist_ok=True)
 
     save_path = os.path.join(modulation_dir, f'sample_{sample_idx}.png')
+
+    # Save without axis labels or ticks and without any padding
     plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
     plt.close()
 
@@ -94,7 +100,7 @@ def convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, outpu
 
 if __name__ == "__main__":
     print("Loading dataset...")
-    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=256)
+    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=2048)
 
     # Convert the training data to constellation diagrams, grouped by modulation and SNR
     convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, output_dir='constellation')
