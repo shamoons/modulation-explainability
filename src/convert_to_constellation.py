@@ -87,6 +87,17 @@ def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[torch.Ten
     print("\nProcessing modulation types and SNRs...")
     for modulation_type, snr_dict in grouped_data.items():
         for snr, samples in snr_dict.items():
+            # Determine the output directory
+            snr_str = f"SNR_{int(snr) if float(snr).is_integer() else snr}"
+            modulation_dir = os.path.join(output_dir, modulation_type, snr_str)
+
+            # Check if the folder exists and has the correct number of samples
+            if os.path.exists(modulation_dir):
+                existing_files = [f for f in os.listdir(modulation_dir) if f.endswith('.png')]
+                if len(existing_files) == len(samples):
+                    print(f"Skipping {modulation_type} at SNR {snr}: Already processed ({len(samples)} samples)")
+                    continue  # Skip this modulation/SNR set if all files are already saved
+
             desc = f'Processing {modulation_type} at {snr} dB'
             for sample_idx, iq_data in tqdm(enumerate(samples), desc=desc, total=len(samples)):
                 save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output_dir)
