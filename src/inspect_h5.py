@@ -1,3 +1,4 @@
+# src/inspect_h5.py
 import h5py
 
 

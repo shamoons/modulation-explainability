@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from data_loader import get_dataloaders
+from data_loader import get_dataloader
 
 
 def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output_dir):
@@ -57,9 +57,9 @@ def generate_modulation_snr_constellations(modulation_type, snr, samples, output
         save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output_dir)
 
 
-def convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, output_dir='constellation'):
+def convert_all_to_constellations_by_modulation_snr(dataloader, mod2int, output_dir='constellation'):
     """
-    Convert all samples from the training set into constellation diagrams and save them,
+    Convert all samples from the dataset into constellation diagrams and save them,
     grouped by modulation type and SNR.
     """
     int2mod = {v: k for k, v in mod2int.items()}
@@ -68,7 +68,7 @@ def convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, outpu
     modulation_snr_samples = {mod: {} for mod in int2mod.values()}
 
     print("Grouping I/Q data by modulation type and SNR...")
-    for inputs, labels, snrs in tqdm(train_loader, desc="Loading data"):
+    for inputs, labels, snrs in tqdm(dataloader, desc="Loading data"):
         inputs = inputs.numpy()
         labels = labels.numpy()
         snrs = snrs.numpy()
@@ -100,7 +100,7 @@ def convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, outpu
 
 if __name__ == "__main__":
     print("Loading dataset...")
-    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=2048)
+    dataloader, mod2int = get_dataloader(batch_size=2048)
 
-    # Convert the training data to constellation diagrams, grouped by modulation and SNR
-    convert_all_to_constellations_by_modulation_snr(train_loader, mod2int, output_dir='constellation')
+    # Convert the entire dataset to constellation diagrams, grouped by modulation and SNR
+    convert_all_to_constellations_by_modulation_snr(dataloader, mod2int, output_dir='constellation')

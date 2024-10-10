@@ -11,13 +11,18 @@ if __name__ == "__main__":
     print("Loading data...")
 
     # Get the DataLoaders for training, validation, and testing
-    batch_size = 64
+    batch_size = 256
     input_size = (64, 64)  # Constellation image size
 
     # Load train, validation, and test sets
     train_loader = get_constellation_dataloader(root_dir="constellation", batch_size=batch_size)
     val_loader = get_constellation_dataloader(root_dir="constellation", batch_size=batch_size, shuffle=False)
     test_loader = get_constellation_dataloader(root_dir="constellation", batch_size=batch_size, shuffle=False)
+
+    # Print the number of samples in each set
+    print(f"Number of training samples: {len(train_loader.dataset)}")
+    print(f"Number of validation samples: {len(val_loader.dataset)}")
+    print(f"Number of test samples: {len(test_loader.dataset)}")
 
     # Initialize model, loss function, and optimizer
     model = ConstellationCNN(num_classes=24, input_size=input_size)  # 24 modulation classes for this example

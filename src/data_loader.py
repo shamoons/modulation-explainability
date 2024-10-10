@@ -4,7 +4,6 @@ import json
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from sklearn.model_selection import train_test_split
 
 
 class RadioMLDataset(torch.utils.data.Dataset):
@@ -31,11 +30,11 @@ class RadioMLDataset(torch.utils.data.Dataset):
         return self.X[idx], self.y[idx], self.snr[idx]
 
 
-def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
-              json_file='data/RML2018.01A/classes-fixed.json',
-              limit=None):
+def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
+                  json_file='data/RML2018.01A/classes-fixed.json',
+                  limit=None):
     """
-    Loads and preprocesses the RadioML 2018.01A dataset from an HDF5 file.
+    Loads and preprocesses the RadioML 2018.01A dataset from an HDF5 file without splitting.
     If a limit is specified, it loads only that many samples; otherwise, it loads the entire dataset.
 
     Args:
@@ -44,7 +43,7 @@ def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
         limit (int): Maximum number of samples to load (None means load all data).
 
     Returns:
-        X_train, X_val, X_test, y_train, y_val, y_test, snr_train, snr_val, snr_test, mod2int
+        X, Y, Z, mod2int: All I/Q data, labels, SNR values, and modulation-to-integer mapping.
     """
     # Load the modulation type mappings from JSON
     with open(json_file, 'r') as f:
@@ -72,19 +71,15 @@ def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
     print(f"Shape of labels (Y): {Y.shape}")
     print(f"Shape of SNR values (Z): {Z.shape}")
 
-    # Split the data into training, validation, and test sets
-    X_train, X_temp, y_train, y_temp, snr_train, snr_temp = train_test_split(X, Y, Z, test_size=0.3, random_state=42)
-    X_val, X_test, y_val, y_test, snr_val, snr_test = train_test_split(X_temp, y_temp, snr_temp, test_size=0.5, random_state=42)
-
-    return X_train, X_val, X_test, y_train, y_val, y_test, snr_train, snr_val, snr_test, mod2int
+    return X, Y, Z, mod2int
 
 
-def get_dataloaders(batch_size=64,
-                    h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
-                    json_file='data/RML2018.01A/classes-fixed.json',
-                    limit=None):
+def get_dataloader(batch_size=64,
+                   h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
+                   json_file='data/RML2018.01A/classes-fixed.json',
+                   limit=None):
     """
-    Returns DataLoaders for training, validation, and testing sets.
+    Returns a DataLoader for the entire dataset.
 
     Args:
         batch_size (int): Number of samples per batch to load.
@@ -93,20 +88,15 @@ def get_dataloaders(batch_size=64,
         limit (int): Maximum number of samples to load (None means load all data).
 
     Returns:
-        train_loader (DataLoader): DataLoader for the training set.
-        val_loader (DataLoader): DataLoader for the validation set.
-        test_loader (DataLoader): DataLoader for the test set.
+        DataLoader: DataLoader for the entire dataset.
+        mod2int: Modulation to integer mapping.
     """
-    X_train, X_val, X_test, y_train, y_val, y_test, snr_train, snr_val, snr_test, mod2int = load_data(h5_file, json_file, limit)
+    X, Y, Z, mod2int = load_all_data(h5_file, json_file, limit)
 
-    # Create PyTorch Datasets
-    train_dataset = RadioMLDataset(X_train, y_train, snr_train)
-    val_dataset = RadioMLDataset(X_val, y_val, snr_val)
-    test_dataset = RadioMLDataset(X_test, y_test, snr_test)
+    # Create PyTorch Dataset
+    dataset = RadioMLDataset(X, Y, Z)
 
-    # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    # Create DataLoader
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    return train_loader, val_loader, test_loader, mod2int
+    return dataloader, mod2int
