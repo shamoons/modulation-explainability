@@ -5,7 +5,6 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm  # Import tqdm
 
 
 class RadioMLDataset(torch.utils.data.Dataset):
@@ -14,23 +13,27 @@ class RadioMLDataset(torch.utils.data.Dataset):
     This class handles loading and accessing data in batches.
     """
 
-    def __init__(self, X, y):
+    def __init__(self, X, y, snr):
         """
         Args:
             X (ndarray): The signal data (I/Q components).
             y (ndarray): The labels (modulation types as integers).
+            snr (ndarray): The SNR values for each frame.
         """
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.long)
+        self.snr = torch.tensor(snr, dtype=torch.float32)
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+        return self.X[idx], self.y[idx], self.snr[idx]
 
 
-def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file='data/RML2018.01A/classes-fixed.json', limit=None):
+def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
+              json_file='data/RML2018.01A/classes-fixed.json',
+              limit=None):
     """
     Loads and preprocesses the RadioML 2018.01A dataset from an HDF5 file.
     If a limit is specified, it loads only that many samples; otherwise, it loads the entire dataset.
@@ -41,7 +44,7 @@ def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file=
         limit (int): Maximum number of samples to load (None means load all data).
 
     Returns:
-        X_train, X_val, X_test, y_train, y_val, y_test, mod2int
+        X_train, X_val, X_test, y_train, y_val, y_test, snr_train, snr_val, snr_test, mod2int
     """
     # Load the modulation type mappings from JSON
     with open(json_file, 'r') as f:
@@ -60,31 +63,26 @@ def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file=
         print(f"Total samples in dataset: {num_samples}")
         print(f"Loading {limit} samples...")
 
-        # Use tqdm to show the progress of loading large data arrays
-        print("Loading I/Q Data...")
-        X = np.array([f['X'][i] for i in tqdm(range(limit))])  # I/Q data (num_samples, 1024, 2)
-
-        # Check if the second dimension is 2, if not, reshape
-        if X.shape[-1] != 2:
-            X = X.reshape(-1, 1024, 2)  # Reshape to (num_samples, 1024, 2)
-
-        print("Loading Labels...")
-        Y = np.array([f['Y'][i] for i in tqdm(range(limit))])  # One-hot encoded modulation labels
+        # Directly load I/Q Data, Labels, and SNR
+        X = f['X'][:limit]  # I/Q data (num_samples, 1024, 2)
+        Y = np.argmax(f['Y'][:limit], axis=1)  # One-hot encoded labels converted to integers
+        Z = f['Z'][:limit]  # SNR values
 
     print(f"Shape of I/Q data (X): {X.shape}")
     print(f"Shape of labels (Y): {Y.shape}")
-
-    # Convert one-hot encoded labels to integer labels
-    y = np.argmax(Y, axis=1)  # Use axis=1 since Y is one-hot encoded
+    print(f"Shape of SNR values (Z): {Z.shape}")
 
     # Split the data into training, validation, and test sets
-    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
-    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    X_train, X_temp, y_train, y_temp, snr_train, snr_temp = train_test_split(X, Y, Z, test_size=0.3, random_state=42)
+    X_val, X_test, y_val, y_test, snr_val, snr_test = train_test_split(X_temp, y_temp, snr_temp, test_size=0.5, random_state=42)
 
-    return X_train, X_val, X_test, y_train, y_val, y_test, mod2int
+    return X_train, X_val, X_test, y_train, y_val, y_test, snr_train, snr_val, snr_test, mod2int
 
 
-def get_dataloaders(batch_size=64, h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file='data/RML2018.01A/classes-fixed.json', limit=None):
+def get_dataloaders(batch_size=64,
+                    h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
+                    json_file='data/RML2018.01A/classes-fixed.json',
+                    limit=None):
     """
     Returns DataLoaders for training, validation, and testing sets.
 
@@ -99,12 +97,12 @@ def get_dataloaders(batch_size=64, h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1
         val_loader (DataLoader): DataLoader for the validation set.
         test_loader (DataLoader): DataLoader for the test set.
     """
-    X_train, X_val, X_test, y_train, y_val, y_test, mod2int = load_data(h5_file, json_file, limit)
+    X_train, X_val, X_test, y_train, y_val, y_test, snr_train, snr_val, snr_test, mod2int = load_data(h5_file, json_file, limit)
 
     # Create PyTorch Datasets
-    train_dataset = RadioMLDataset(X_train, y_train)
-    val_dataset = RadioMLDataset(X_val, y_val)
-    test_dataset = RadioMLDataset(X_test, y_test)
+    train_dataset = RadioMLDataset(X_train, y_train, snr_train)
+    val_dataset = RadioMLDataset(X_val, y_val, snr_val)
+    test_dataset = RadioMLDataset(X_test, y_test, snr_test)
 
     # Create DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

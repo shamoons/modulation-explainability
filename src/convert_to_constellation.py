@@ -1,6 +1,7 @@
 # src/convert_to_constellation.py
 import os
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
 from data_loader import get_dataloaders
 
@@ -12,7 +13,7 @@ def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output
     Args:
         iq_data (ndarray): The I/Q data (1024, 2).
         modulation_type (str): The modulation type label for the sample.
-        snr (int or str): The SNR value for the sample.
+        snr (float): The SNR value for the sample.
         sample_idx (int): The index of the sample being saved.
         output_dir (str): Directory where the plot will be saved.
     """
@@ -24,15 +25,22 @@ def save_constellation_diagram(iq_data, modulation_type, snr, sample_idx, output
     quadrature = iq_data[:, 1]  # Q component
 
     plt.figure(figsize=(6, 6))
-    plt.scatter(in_phase, quadrature, s=1, color='blue')
-    plt.axis('off')  # Remove axis for clean plot
+    # Increased point size for better visibility
+    plt.scatter(in_phase, quadrature, s=5, color='blue')
 
-    # Check if SNR is available, else set to 'unknown'
-    if snr is None:
-        snr = 'unknown'
+    # Optional: Add x/y limits to focus on relevant range (depends on your data)
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
+
+    # Convert SNR to a scalar if it's a NumPy array
+    if isinstance(snr, np.ndarray):
+        snr = snr.item()
+
+    # Ensure SNR is formatted as an integer if possible
+    snr_str = f"SNR_{int(snr) if float(snr).is_integer() else snr}"
 
     # Create the directory if it doesn't exist
-    modulation_dir = os.path.join(output_dir, modulation_type, f"SNR_{snr}")
+    modulation_dir = os.path.join(output_dir, modulation_type, snr_str)
     os.makedirs(modulation_dir, exist_ok=True)
 
     # Save the plot
@@ -56,21 +64,20 @@ def convert_all_to_constellations(train_loader, mod2int, output_dir='constellati
 
     # Iterate through the entire DataLoader
     print("Converting I/Q data to constellation diagrams...")
-    for batch_idx, (inputs, labels) in enumerate(tqdm(train_loader)):
+    for batch_idx, (inputs, labels, snrs) in enumerate(tqdm(train_loader)):
         inputs = inputs.numpy()  # Convert tensors to numpy arrays
         labels = labels.numpy()
+        snrs = snrs.numpy()  # Convert SNR values to numpy array
 
-        for sample_idx, (iq_data, label) in enumerate(zip(inputs, labels)):
+        for sample_idx, (iq_data, label, snr) in enumerate(zip(inputs, labels, snrs)):
             modulation_type = int2mod[label]
-            # For now, assuming SNR is unavailable; using a placeholder value (can be modified to retrieve real SNR)
-            snr = 'unknown'
-            save_constellation_diagram(iq_data[0], modulation_type, snr, batch_idx * len(inputs) + sample_idx, output_dir)
+            save_constellation_diagram(iq_data, modulation_type, snr, batch_idx * len(inputs) + sample_idx, output_dir)
 
 
 if __name__ == "__main__":
     # Load the dataset
     print("Loading dataset...")
-    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=64)  # Load only limited samples for now
+    train_loader, val_loader, test_loader, mod2int = get_dataloaders(batch_size=64, limit=50000)  # Load only limited samples for now
 
     # Convert the training data to constellation diagrams
     convert_all_to_constellations(train_loader, mod2int, output_dir='constellation')
