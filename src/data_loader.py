@@ -30,15 +30,15 @@ class RadioMLDataset(torch.utils.data.Dataset):
         return self.X[idx], self.y[idx]
 
 
-def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file='data/RML2018.01A/classes-fixed.json', limit=1000):
+def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file='data/RML2018.01A/classes-fixed.json', limit=None):
     """
-    Loads and preprocesses a limited subset of the RadioML 2018.01A dataset from an HDF5 file.
-    It converts one-hot encoded modulation types to integer labels using the provided JSON file.
+    Loads and preprocesses the RadioML 2018.01A dataset from an HDF5 file.
+    If a limit is specified, it loads only that many samples; otherwise, it loads the entire dataset.
 
     Args:
         h5_file (str): Path to the HDF5 file.
         json_file (str): Path to the JSON file mapping modulation types to integers.
-        limit (int): Maximum number of samples to load.
+        limit (int): Maximum number of samples to load (None means load all data).
 
     Returns:
         X_train, X_val, X_test, y_train, y_val, y_test, mod2int
@@ -51,12 +51,25 @@ def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file=
 
     # Open the HDF5 file and load the data
     with h5py.File(h5_file, 'r') as f:
+        num_samples = len(f['X'])
+        if limit is None:
+            limit = num_samples  # If no limit is specified, load all data
+        else:
+            limit = min(limit, num_samples)
+
+        print(f"Total samples in dataset: {num_samples}")
+        print(f"Loading {limit} samples...")
+
         # Use tqdm to show the progress of loading large data arrays
         print("Loading I/Q Data...")
-        X = np.array([f['X'][i] for i in tqdm(range(min(limit, len(f['X']))))])  # Limit the samples to 'limit'
+        X = np.array([f['X'][i] for i in tqdm(range(limit))])  # I/Q data (num_samples, 1024, 2)
+
+        # Check if the second dimension is 2, if not, reshape
+        if X.shape[-1] != 2:
+            X = X.reshape(-1, 1024, 2)  # Reshape to (num_samples, 1024, 2)
 
         print("Loading Labels...")
-        Y = np.array([f['Y'][i] for i in tqdm(range(min(limit, len(f['Y']))))])  # Limit the samples to 'limit'
+        Y = np.array([f['Y'][i] for i in tqdm(range(limit))])  # One-hot encoded modulation labels
 
     print(f"Shape of I/Q data (X): {X.shape}")
     print(f"Shape of labels (Y): {Y.shape}")
@@ -71,15 +84,15 @@ def load_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file=
     return X_train, X_val, X_test, y_train, y_val, y_test, mod2int
 
 
-def get_dataloaders(batch_size=64, h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file='data/RML2018.01A/classes-fixed.json', limit=1000):
+def get_dataloaders(batch_size=64, h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5', json_file='data/RML2018.01A/classes-fixed.json', limit=None):
     """
-    Returns DataLoaders for a limited set of training, validation, and testing sets.
+    Returns DataLoaders for training, validation, and testing sets.
 
     Args:
         batch_size (int): Number of samples per batch to load.
         h5_file (str): Path to the HDF5 file.
         json_file (str): Path to the JSON file mapping modulation types to integers.
-        limit (int): Maximum number of samples to load.
+        limit (int): Maximum number of samples to load (None means load all data).
 
     Returns:
         train_loader (DataLoader): DataLoader for the training set.

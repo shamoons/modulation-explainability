@@ -73,7 +73,6 @@ if __name__ == "__main__":
     print(model)
 
     # Example of input tensor (Batch size, Channels, Height, Width)
-    # Example input (Batch size: 8, Image size: 64x64)
-    sample_input = torch.randn(8, 1, 64, 64)
+    sample_input = torch.randn(8, 2, 1024, 1)  # Updated for 2 channels, 1024 samples, 1 spatial dimension
     output = model(sample_input)
     print(f"Output shape: {output.shape}")
