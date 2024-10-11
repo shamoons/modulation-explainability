@@ -103,7 +103,7 @@ def get_dataloader(batch_size=64,
     dataset = RadioMLDataset(X, Y, Z)
 
     # Create DataLoader
-    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=8, shuffle=True, pin_memory=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=True, pin_memory=True)
 
     logging.info(f"Dataloader created with batch size {batch_size}")
 
