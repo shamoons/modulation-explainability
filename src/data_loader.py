@@ -4,6 +4,10 @@ import json
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
 class RadioMLDataset(torch.utils.data.Dataset):
@@ -45,6 +49,8 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
     Returns:
         X, Y, Z, mod2int: All I/Q data, labels, SNR values, and modulation-to-integer mapping.
     """
+    logging.info(f"Loading data from {h5_file} and {json_file}...")
+
     # Load the modulation type mappings from JSON
     with open(json_file, 'r') as f:
         modulation_types = json.load(f)
@@ -59,17 +65,17 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
         else:
             limit = min(limit, num_samples)
 
-        print(f"Total samples in dataset: {num_samples}")
-        print(f"Loading {limit} samples...")
+        logging.info(f"Total samples in dataset: {num_samples}")
+        logging.info(f"Loading {limit} samples...")
 
         # Directly load I/Q Data, Labels, and SNR
         X = f['X'][:limit]  # I/Q data (num_samples, 1024, 2)
         Y = np.argmax(f['Y'][:limit], axis=1)  # One-hot encoded labels converted to integers
         Z = f['Z'][:limit]  # SNR values
 
-    print(f"Shape of I/Q data (X): {X.shape}")
-    print(f"Shape of labels (Y): {Y.shape}")
-    print(f"Shape of SNR values (Z): {Z.shape}")
+    logging.info(f"Shape of I/Q data (X): {X.shape}")
+    logging.info(f"Shape of labels (Y): {Y.shape}")
+    logging.info(f"Shape of SNR values (Z): {Z.shape}")
 
     return X, Y, Z, mod2int
 
@@ -97,6 +103,8 @@ def get_dataloader(batch_size=64,
     dataset = RadioMLDataset(X, Y, Z)
 
     # Create DataLoader
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=8, shuffle=True, pin_memory=True)
+
+    logging.info(f"Dataloader created with batch size {batch_size}")
 
     return dataloader, mod2int
