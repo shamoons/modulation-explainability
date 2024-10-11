@@ -41,13 +41,13 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
                   mods_to_process=None):
     """
     Loads and preprocesses the RadioML 2018.01A dataset from an HDF5 file without splitting.
-    If a limit is specified, it loads only that many samples; otherwise, it loads the entire dataset.
+    If a limit is specified, it applies the limit per modulation type and SNR combination.
     Also filters by modulation types first and then by SNR values.
 
     Args:
         h5_file (str): Path to the HDF5 file.
         json_file (str): Path to the JSON file mapping modulation types to integers.
-        limit (int): Maximum number of samples to load (None means load all data).
+        limit (int): Maximum number of samples per modulation/SNR combination (None means load all).
         snr_list (list of float or None): List of SNR values to load. If None, load all SNRs.
         mods_to_process (list of str or None): List of modulation types to load. If None, load all modulations.
 
@@ -65,13 +65,8 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
     # Open the HDF5 file and load the data
     with h5py.File(h5_file, 'r') as f:
         num_samples = len(f['X'])
-        if limit is None:
-            limit = num_samples  # If no limit is specified, load all data
-        else:
-            limit = min(limit, num_samples)
 
         logging.info(f"Total samples in dataset: {num_samples}")
-        logging.info(f"Loading {limit} samples...")
 
         # Initialize lists to hold filtered data
         X_filtered, Y_filtered, Z_filtered = [], [], []
@@ -82,24 +77,36 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
         else:
             mod_indices = range(len(modulation_types))
 
+        # Track number of samples loaded for each modulation/SNR combination
+        samples_loaded = {}
+
         for mod_index in mod_indices:
             for snr_index in range(26):  # Assuming there are 26 SNR values from -20 to +30
                 snr_value = -20 + (snr_index * 2)  # Compute actual SNR value
 
+                # Skip SNRs not in the specified list (if applicable)
+                if snr_list is not None and snr_value not in snr_list:
+                    continue
+
                 for frame_index in range(4096):  # 4096 frames per modulation-SNR combination
                     idx = mod_index * 26 * 4096 + snr_index * 4096 + frame_index
-                    if idx >= limit:  # Stop if we exceed the limit
+
+                    # Stop loading more data if limit for this modulation/SNR is reached
+                    key = (mod_index, snr_value)
+                    if limit is not None and samples_loaded.get(key, 0) >= limit:
                         break
 
                     X_sample = f['X'][idx]
                     Y_sample = np.argmax(f['Y'][idx])  # One-hot encoded to integer
                     Z_sample = snr_value  # SNR value from computation
 
-                    # Append to filtered lists if SNR is in the specified list
-                    if snr_list is None or snr_value in snr_list:
-                        X_filtered.append(X_sample)
-                        Y_filtered.append(Y_sample)
-                        Z_filtered.append(Z_sample)
+                    # Append to filtered lists if the sample passes filtering
+                    X_filtered.append(X_sample)
+                    Y_filtered.append(Y_sample)
+                    Z_filtered.append(Z_sample)
+
+                    # Update the count for the modulation/SNR combination
+                    samples_loaded[key] = samples_loaded.get(key, 0) + 1
 
         # Convert filtered lists to numpy arrays
         X = np.array(X_filtered)
