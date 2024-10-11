@@ -21,7 +21,12 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         val_loader: DataLoader for the validation data.
         epochs: Number of epochs to train.
     """
+    # Initialize WandB project
     wandb.init(project="modulation-explainability", config={"epochs": epochs})
+
+    # Extract labels from the dataset in val_loader (assuming labels are stored in the dataset)
+    label_names = val_loader.dataset.mods_to_process if val_loader.dataset.mods_to_process else sorted(val_loader.dataset.modulation_labels.keys())
+
     model.to(device)
 
     for epoch in range(epochs):
@@ -72,8 +77,8 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         # Perform validation at the end of each epoch
         val_loss, val_accuracy, val_predictions, val_targets = validate(model, device, criterion, val_loader)
 
-        # Generate confusion matrix and save it as an image
-        save_confusion_matrix(val_targets, val_predictions, epoch)
+        # Generate confusion matrix and save it as an image with labels
+        save_confusion_matrix(val_targets, val_predictions, epoch, labels=label_names)
 
         print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
 
@@ -136,9 +141,14 @@ def save_confusion_matrix(targets, predictions, epoch, labels=None):
         targets: List of true labels.
         predictions: List of predicted labels.
         epoch: Current epoch number (used in the filename).
-        labels: Optional list of labels for the confusion matrix.
+        labels: Optional list of labels for the confusion matrix. If None, uses numeric labels.
     """
     cm = confusion_matrix(targets, predictions)
+
+    # If no labels are provided, use numeric labels
+    if labels is None:
+        num_classes = cm.shape[0]
+        labels = list(range(num_classes))
 
     # Plot confusion matrix using seaborn heatmap
     plt.figure(figsize=(10, 8))

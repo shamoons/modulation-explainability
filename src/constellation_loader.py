@@ -22,6 +22,9 @@ class ConstellationDataset(Dataset):
         self.snr_list = snr_list if snr_list is not None else []  # If not provided, load all SNRs
         self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
 
+        # Create a dictionary only for directories and save it as an attribute
+        self.modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
+
         # Internal method to fetch image paths and labels
         self.image_paths, self.labels = self._load_image_paths_and_labels()
 
@@ -44,9 +47,6 @@ class ConstellationDataset(Dataset):
         image_paths = []
         labels = []
 
-        # Create a dictionary only for directories
-        modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
-
         # Traverse the directory structure
         for modulation_type in os.listdir(self.root_dir):
             modulation_dir = os.path.join(self.root_dir, modulation_type)
@@ -63,7 +63,7 @@ class ConstellationDataset(Dataset):
                                 if img_name.endswith('.png'):  # Only load PNG images
                                     img_path = os.path.join(snr_path, img_name)
                                     image_paths.append(img_path)
-                                    labels.append(modulation_labels[modulation_type])  # Assign modulation label
+                                    labels.append(self.modulation_labels[modulation_type])  # Assign modulation label
 
         return image_paths, labels
 
@@ -110,7 +110,7 @@ def get_constellation_dataloader(root_dir, snr_list=None, mods_to_process=None, 
         DataLoader: PyTorch DataLoader for the constellation dataset.
     """
     dataset = ConstellationDataset(root_dir, snr_list=snr_list, mods_to_process=mods_to_process)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=8, pin_memory=True)
     return dataloader
 
 
