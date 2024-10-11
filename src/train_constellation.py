@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     # Get the DataLoaders for training, validation, and testing
     batch_size = 256
-    input_size = (64, 64)  # Constellation image size
+    input_size = (224, 224)  # Constellation image size
 
     # Load train, validation, and test sets
     train_loader = get_constellation_dataloader(root_dir="constellation", batch_size=batch_size)

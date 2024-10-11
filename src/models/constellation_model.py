@@ -51,7 +51,7 @@ class SEBlock(nn.Module):
 
 
 class ConstellationCNN(nn.Module):
-    def __init__(self, num_classes=11, input_size=(64, 64)):
+    def __init__(self, num_classes=11, input_size=(224, 224)):
         super(ConstellationCNN, self).__init__()
 
         # Modify first convolution block to accept 3 channels for the input image
@@ -117,7 +117,7 @@ class ConstellationCNN(nn.Module):
 
 if __name__ == "__main__":
     # Example of creating the model and printing the architecture
-    input_size = (64, 64)  # The size of the constellation images
+    input_size = (224, 224)  # The size of the constellation images
     model = ConstellationCNN(num_classes=24, input_size=input_size)
     print(model)
 

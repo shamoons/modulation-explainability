@@ -5,3 +5,4 @@ output/
 constellation/
 .DS_Store
 *.pth
+atik/

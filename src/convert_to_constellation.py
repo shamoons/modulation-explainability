@@ -2,6 +2,7 @@
 import torch
 import numpy as np
 import os
+from PIL import Image
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from typing import Dict, Tuple, List
@@ -35,10 +36,11 @@ def save_image(image: np.ndarray, file_path: str, cmap: str = 'gray', background
 def generate_image(iq_data: torch.Tensor, image_size: Tuple[int, int], image_dir: str, image_name: str) -> None:
     """
     Generate a constellation image from the I/Q signal and save it using `save_image`.
+    The image is resized to the desired image_size (e.g., 224x224) before saving.
 
     Args:
         iq_data (torch.Tensor): I/Q data (shape = (N, 2) where 2 corresponds to real and imaginary parts).
-        image_size (Tuple[int, int]): Size of the image (e.g., (128, 128)).
+        image_size (Tuple[int, int]): Final size of the image (e.g., (224, 224)).
         image_dir (str): Directory where the image will be saved.
         image_name (str): The name of the image file.
     """
@@ -46,22 +48,22 @@ def generate_image(iq_data: torch.Tensor, image_size: Tuple[int, int], image_dir
     c_factor = 5.0 / torch.tensor(blk_size)
     cons_scale = torch.tensor([2.5, 2.5])
 
-    # Set the final image size without extra padding
-    image_size_x, image_size_y = image_size
+    # Use the exact image size provided for internal processing
+    internal_image_size_x, internal_image_size_y = image_size[0] + 4 * max(blk_size), image_size[1] + 4 * max(blk_size)
 
-    d_i_y, d_q_x = 2 * cons_scale[0] / image_size[0], 2 * cons_scale[1] / image_size[1]
+    d_i_y, d_q_x = 2 * cons_scale[0] / internal_image_size_x, 2 * cons_scale[1] / internal_image_size_y
     d_xy = torch.sqrt(d_i_y ** 2 + d_q_x ** 2)
 
     # Convert I/Q data to image positions
     sample_x = torch.round((cons_scale[1] - iq_data[:, 1]) / d_q_x).to(torch.int32)  # Imaginary part (Q)
     sample_y = torch.round((cons_scale[0] + iq_data[:, 0]) / d_i_y).to(torch.int32)  # Real part (I)
 
-    # Create pixel centroid grid
-    ii, jj = torch.meshgrid(torch.arange(image_size_x), torch.arange(image_size_y), indexing='ij')
+    # Create pixel centroid grid with the internal image size
+    ii, jj = torch.meshgrid(torch.arange(internal_image_size_x), torch.arange(internal_image_size_y), indexing='ij')
     pixel_centroid_real = -cons_scale[0] + d_i_y / 2 + jj * d_i_y
     pixel_centroid_imag = cons_scale[1] - d_q_x / 2 - ii * d_q_x
 
-    image_array = torch.zeros((image_size_x, image_size_y, 3))
+    image_array = torch.zeros((internal_image_size_x, internal_image_size_y, 3))
 
     for kk, blk in enumerate(blk_size):
         blk_x_min = sample_x - blk
@@ -69,7 +71,7 @@ def generate_image(iq_data: torch.Tensor, image_size: Tuple[int, int], image_dir
         blk_y_min = sample_y - blk
         blk_y_max = sample_y + blk + 1
 
-        valid = (blk_x_min >= 0) & (blk_y_min >= 0) & (blk_x_max < image_size_x) & (blk_y_max < image_size_y)
+        valid = (blk_x_min >= 0) & (blk_y_min >= 0) & (blk_x_max < internal_image_size_x) & (blk_y_max < internal_image_size_y)
 
         for i in torch.where(valid)[0]:
             x_min, x_max = blk_x_min[i], blk_x_max[i]
@@ -89,8 +91,12 @@ def generate_image(iq_data: torch.Tensor, image_size: Tuple[int, int], image_dir
     # Clip and rescale to 0-255
     image_array = (image_array * 255).numpy().astype(np.uint8)
 
-    # Save the image using `save_image`
-    save_image(image_array, os.path.join(image_dir, f"{image_name}.png"), cmap='gray', background='white')
+    # Convert to PIL image and resize to the desired final size (e.g., 224x224)
+    pil_image = Image.fromarray(image_array)
+    resized_image = pil_image.resize(image_size, Image.Resampling.LANCZOS)
+
+    # Save the resized image
+    resized_image.save(os.path.join(image_dir, f"{image_name}.png"), format="PNG")
 
 
 def process_sample(iq_data: np.ndarray, modulation_type: str, snr: float, sample_idx: int, output_dir: str, image_size: Tuple[int, int]) -> None:
@@ -142,7 +148,7 @@ def group_by_modulation_snr(dataloader, mod2int: Dict[str, int]) -> Tuple[Dict[s
     return modulation_snr_samples, int2mod
 
 
-def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[np.ndarray]]], output_dir: str = 'constellation', image_size: Tuple[int, int] = (128, 128)) -> None:
+def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[np.ndarray]]], output_dir: str = 'constellation', image_size: Tuple[int, int] = (224, 224)) -> None:
     """
     Process I/Q data grouped by modulation type and SNR, saving the constellation diagrams.
 
@@ -167,7 +173,7 @@ if __name__ == "__main__":
     # Define the SNRs and modulation types to process
     snrs_to_process = [-20, 10, 0, 10, 20, 30]  # Specify SNRs of interest or set to None for all
     mods_to_process = None  # Specify modulation types of interest or set to None for all
-    limit = 5000  # Maximum number of samples to process per modulation-SNR combination
+    limit = 100  # Maximum number of samples to process per modulation-SNR combination
 
     # Get data loader and define the batch size and SNRs to process
     dataloader, mod2int = get_dataloader(batch_size=4096, snr_list=snrs_to_process, mods_to_process=mods_to_process, limit=limit)

@@ -1,6 +1,8 @@
 # src/training_constellation.py
 import torch
 import wandb
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 
@@ -68,7 +70,11 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
-        val_loss, val_accuracy, _, _ = validate(model, device, criterion, val_loader)
+        val_loss, val_accuracy, val_predictions, val_targets = validate(model, device, criterion, val_loader)
+
+        # Generate confusion matrix and save it as an image
+        save_confusion_matrix(val_targets, val_predictions, epoch)
+
         print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
 
 
@@ -119,9 +125,31 @@ def validate(model, device, criterion, val_loader):
     val_accuracy = 100.0 * correct / total
     val_loss = val_loss / len(val_loader)
 
-    # Confusion Matrix
-    cm = confusion_matrix(val_targets, val_predictions)
-    print("Confusion Matrix:")
-    print(cm)
-
     return val_loss, val_accuracy, val_predictions, val_targets
+
+
+def save_confusion_matrix(targets, predictions, epoch, labels=None):
+    """
+    Save the confusion matrix as an image using matplotlib.
+
+    Args:
+        targets: List of true labels.
+        predictions: List of predicted labels.
+        epoch: Current epoch number (used in the filename).
+        labels: Optional list of labels for the confusion matrix.
+    """
+    cm = confusion_matrix(targets, predictions)
+
+    # Plot confusion matrix using seaborn heatmap
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=labels, yticklabels=labels)
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.title(f"Confusion Matrix - Epoch {epoch + 1}")
+
+    # Save confusion matrix
+    plt.savefig(f"confusion_matrix_epoch_{epoch + 1}.png")
+    plt.close()
+
+    # Log to Weights and Biases
+    wandb.log({f"Confusion Matrix Epoch {epoch + 1}": wandb.Image(f"confusion_matrix_epoch_{epoch + 1}.png")})
