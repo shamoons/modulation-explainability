@@ -8,17 +8,19 @@ import torchvision.transforms as transforms
 class ConstellationDataset(Dataset):
     """
     PyTorch Dataset class to load constellation images from directories,
-    optionally filtering by SNR. Images are loaded as 3-channel (RGB).
+    optionally filtering by SNR and modulation type. Images are loaded as 3-channel (RGB).
     """
 
-    def __init__(self, root_dir, snr_list=None):
+    def __init__(self, root_dir, snr_list=None, mods_to_process=None):
         """
         Args:
             root_dir (str): Root directory where the constellation images are stored.
             snr_list (list of str or None): List of SNR values to load. If None, load all SNRs.
+            mods_to_process (list of str or None): List of modulation types to load. If None, load all modulations.
         """
         self.root_dir = root_dir
         self.snr_list = snr_list if snr_list is not None else []  # If not provided, load all SNRs
+        self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
 
         # Internal method to fetch image paths and labels
         self.image_paths, self.labels = self._load_image_paths_and_labels()
@@ -32,7 +34,7 @@ class ConstellationDataset(Dataset):
 
     def _load_image_paths_and_labels(self):
         """
-        Traverse the root directory and load image paths filtered by SNR (if applicable),
+        Traverse the root directory and load image paths filtered by SNR and modulation type,
         also capturing the modulation type as a label.
 
         Returns:
@@ -42,13 +44,16 @@ class ConstellationDataset(Dataset):
         image_paths = []
         labels = []
 
-        # Fix: Create a dictionary only for directories
+        # Create a dictionary only for directories
         modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
 
         # Traverse the directory structure
         for modulation_type in os.listdir(self.root_dir):
             modulation_dir = os.path.join(self.root_dir, modulation_type)
             if os.path.isdir(modulation_dir):  # Skip non-directory files like .DS_Store
+                # Check if the modulation type is in the specified list
+                if self.mods_to_process and modulation_type not in self.mods_to_process:
+                    continue
                 for snr_dir in os.listdir(modulation_dir):
                     snr_path = os.path.join(modulation_dir, snr_dir)
                     if os.path.isdir(snr_path):  # Ensure this is a directory
@@ -90,31 +95,33 @@ class ConstellationDataset(Dataset):
         return image, label  # Return both image and label
 
 
-def get_constellation_dataloader(root_dir, snr_list=None, batch_size=64, shuffle=True):
+def get_constellation_dataloader(root_dir, snr_list=None, mods_to_process=None, batch_size=64, shuffle=True):
     """
     Function to create a DataLoader for the constellation dataset.
 
     Args:
         root_dir (str): Root directory where constellation images are stored.
         snr_list (list of str or None): List of SNR values to load. If None, load all SNRs.
+        mods_to_process (list of str or None): List of modulation types to load. If None, load all modulations.
         batch_size (int): Number of images per batch.
         shuffle (bool): Whether to shuffle the data.
 
     Returns:
         DataLoader: PyTorch DataLoader for the constellation dataset.
     """
-    dataset = ConstellationDataset(root_dir, snr_list=snr_list)
+    dataset = ConstellationDataset(root_dir, snr_list=snr_list, mods_to_process=mods_to_process)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return dataloader
 
 
 if __name__ == "__main__":
-    # Example usage: Load all SNRs
+    # Example usage: Load all SNRs and specified modulations
     root_dir = "constellation"  # Replace with the actual directory where constellation images are stored
     snr_list = ['-10', '2']  # Example: Load only images with SNRs -10 and 2 (can be omitted to load all)
+    mods_to_process = ['8PSK', 'QPSK']  # Example: Load only 8PSK and QPSK modulations (can be omitted to load all)
 
     # Get DataLoader
-    dataloader = get_constellation_dataloader(root_dir, snr_list=snr_list, batch_size=32)
+    dataloader = get_constellation_dataloader(root_dir, snr_list=snr_list, mods_to_process=mods_to_process, batch_size=32)
 
     # Iterate through the DataLoader (for demonstration purposes)
     for images, labels in dataloader:
