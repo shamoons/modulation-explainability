@@ -129,9 +129,9 @@ def process_sample(iq_data: torch.Tensor, modulation_type: str, snr: float, samp
     generate_three_channel_image(enhanced_gray_image, save_step=save_three_channel, modulation_type=modulation_type, snr=snr, sample_idx=sample_idx, output_dir=output_dir)
 
 
-def group_by_modulation_snr(dataloader: DataLoader, mod2int: Dict[str, int]) -> Tuple[Dict[str, Dict[float, List[torch.Tensor]]], Dict[int, str]]:
+def group_by_modulation_snr(dataloader: DataLoader, mod2int: Dict[str, int], snrs_to_process: Optional[List[float]] = None) -> Tuple[Dict[str, Dict[float, List[torch.Tensor]]], Dict[int, str]]:
     """
-    Group the dataset by modulation type and SNR.
+    Group the dataset by modulation type and SNR, filtering only by specified SNRs.
     """
     int2mod = {v: k for k, v in mod2int.items()}
     modulation_snr_samples: Dict[str, Dict[float, List[Any]]] = {mod: {} for mod in int2mod.values()}
@@ -144,6 +144,10 @@ def group_by_modulation_snr(dataloader: DataLoader, mod2int: Dict[str, int]) -> 
         for iq_data, label, snr in zip(inputs, labels, snrs):
             modulation_type = int2mod[label]
             snr = snr.item()
+
+            # Only add samples if the SNR is in the list of specified SNRs
+            if snrs_to_process is not None and snr not in snrs_to_process:
+                continue
 
             if snr not in modulation_snr_samples[modulation_type]:
                 modulation_snr_samples[modulation_type][snr] = []
@@ -182,10 +186,12 @@ if __name__ == "__main__":
     device = get_device()
     logging.info(f"Using device: {device}")
 
+    # Get data loader and define the batch size and SNRs to process
     dataloader, mod2int = get_dataloader(batch_size=4096)
 
-    grouped_data, int2mod = group_by_modulation_snr(dataloader, mod2int)
-
-    # Flags to save intermediate images
+    # Only process the specified SNRs
     snrs_to_process = [30, 20, 10]
-    process_by_modulation_snr(grouped_data, snrs_to_process=snrs_to_process, output_dir='constellation', save_constellation=False, save_gray=False, save_enhanced_gray=False, save_three_channel=True)
+    grouped_data, int2mod = group_by_modulation_snr(dataloader, mod2int, snrs_to_process=snrs_to_process)
+
+    # Process the data and generate images for the specified SNRs
+    process_by_modulation_snr(grouped_data, snrs_to_process=snrs_to_process, output_dir='constellation', save_constellation=True, save_gray=True, save_enhanced_gray=True, save_three_channel=True)
