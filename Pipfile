@@ -17,6 +17,7 @@ h5py = "*"
 torchviz = "*"
 torchview = "*"
 scipy = "*"
+opencv-python = "*"
 
 [dev-packages]
 

@@ -54,8 +54,8 @@ class ConstellationCNN(nn.Module):
     def __init__(self, num_classes=11, input_size=(64, 64)):
         super(ConstellationCNN, self).__init__()
 
-        # First convolution block (change in_channels to 1 for grayscale images)
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
+        # Modify first convolution block to accept 3 channels for the input image
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1)  # Changed in_channels to 3
         self.bn1 = nn.BatchNorm2d(32)
 
         # Residual Depthwise Separable Convolution blocks
@@ -82,7 +82,7 @@ class ConstellationCNN(nn.Module):
         This helps to dynamically calculate the input size for the fully connected layer.
         """
         with torch.no_grad():
-            dummy_input = torch.ones(1, 1, *input_size)  # Batch size of 1, grayscale (1 channel)
+            dummy_input = torch.ones(1, 3, *input_size)  # Batch size of 1, 3 channels for the input image
             x = F.relu(self.bn1(self.conv1(dummy_input)))
             x = self.dsc_block1(x)
             x = self.dsc_block2(x)
@@ -122,10 +122,10 @@ if __name__ == "__main__":
     print(model)
 
     # Example of input tensor (Batch size, Channels, Height, Width)
-    sample_input = torch.randn(1, 1, *input_size)  # 1 sample, 1 channel (grayscale), 64x64 image size
+    sample_input = torch.randn(1, 3, *input_size)  # 1 sample, 3 channels, 64x64 image size
 
     # Create a visualization of the model's computation graph using torchview
-    model_graph = draw_graph(model, input_size=(1, 1, *input_size))
+    model_graph = draw_graph(model, input_size=(1, 3, *input_size))
 
     # Save the graph as a PNG file
     model_graph.visual_graph.render("constellation_model_torchview_graph", format="png")

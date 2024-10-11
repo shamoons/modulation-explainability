@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 class ConstellationDataset(Dataset):
     """
     PyTorch Dataset class to load constellation images from directories,
-    optionally filtering by SNR. Images are loaded as grayscale (single channel).
+    optionally filtering by SNR. Images are loaded as 3-channel (RGB).
     """
 
     def __init__(self, root_dir, snr_list=None):
@@ -26,8 +26,8 @@ class ConstellationDataset(Dataset):
         # Default transform applied to all images (Resizing, ToTensor, and Normalizing)
         self.transform = transforms.Compose([
             transforms.Resize((64, 64)),  # Resize images to a standard size
-            transforms.ToTensor(),  # Convert image to tensor (single-channel)
-            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize grayscale image between -1 and 1
+            transforms.ToTensor(),  # Convert image to tensor (multi-channel)
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize 3-channel image between -1 and 1
         ])
 
     def _load_image_paths_and_labels(self):
@@ -81,8 +81,8 @@ class ConstellationDataset(Dataset):
         img_path = self.image_paths[idx]
         label = self.labels[idx]
 
-        # Load image as grayscale (single channel)
-        image = Image.open(img_path).convert('L')  # Convert to grayscale
+        # Load image as RGB (three-channel)
+        image = Image.open(img_path).convert('RGB')  # Convert to RGB (3 channels)
 
         # Apply the default transform (resize, to tensor, normalize)
         image = self.transform(image)
@@ -118,4 +118,4 @@ if __name__ == "__main__":
 
     # Iterate through the DataLoader (for demonstration purposes)
     for images, labels in dataloader:
-        print(f"Batch of images: {images.size()}, Batch of labels: {labels.size()}")  # Should print (batch_size, 1, 64, 64) for single-channel images
+        print(f"Batch of images: {images.size()}, Batch of labels: {labels.size()}")  # Should print (batch_size, 3, 64, 64) for 3-channel images
