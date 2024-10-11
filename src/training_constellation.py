@@ -1,12 +1,13 @@
+# src/training_constellation.py
 import torch
 import wandb
 from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 
 
-def train(model, device, criterion, optimizer, train_loader, epochs=10):
+def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=10):
     """
-    Train the model.
+    Train the model and validate it at the end of each epoch.
     Includes gradient clipping and logs metrics with Weights and Biases (wandb).
 
     Args:
@@ -15,6 +16,7 @@ def train(model, device, criterion, optimizer, train_loader, epochs=10):
         criterion: The loss function.
         optimizer: The optimizer for backpropagation.
         train_loader: DataLoader for the training data.
+        val_loader: DataLoader for the validation data.
         epochs: Number of epochs to train.
     """
     wandb.init(project="modulation-explainability", config={"epochs": epochs})
@@ -64,6 +66,10 @@ def train(model, device, criterion, optimizer, train_loader, epochs=10):
         })
 
         print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
+
+        # Perform validation at the end of each epoch
+        val_loss, val_accuracy, _, _ = validate(model, device, criterion, val_loader)
+        print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
 
 
 def validate(model, device, criterion, val_loader):

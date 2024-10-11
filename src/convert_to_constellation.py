@@ -127,7 +127,7 @@ if __name__ == "__main__":
             print(f"{modulation_type} at SNR {snr}: {len(samples)} samples")
 
     # Example SNR list you want to process, set to None to process all
-    snrs_to_process = [0, 10, 20]  # Change this to the SNRs you want or set to None
+    snrs_to_process = [30, 26, 22]  # Change this to the SNRs you want or set to None
 
     # Process the dataset based on SNR selection
     process_by_modulation_snr(grouped_data, snrs_to_process, output_dir='constellation')

@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchview import draw_graph
 
 
 class ResidualDSCBlock(nn.Module):
@@ -117,10 +118,14 @@ class ConstellationCNN(nn.Module):
 if __name__ == "__main__":
     # Example of creating the model and printing the architecture
     input_size = (64, 64)  # The size of the constellation images
-    model = ConstellationCNN(num_classes=11, input_size=input_size)
+    model = ConstellationCNN(num_classes=24, input_size=input_size)
     print(model)
 
     # Example of input tensor (Batch size, Channels, Height, Width)
-    sample_input = torch.randn(8, 1, *input_size)  # 8 samples, 1 channel (grayscale), 64x64 image size
-    output = model(sample_input)
-    print(f"Output shape: {output.shape}")
+    sample_input = torch.randn(1, 1, *input_size)  # 1 sample, 1 channel (grayscale), 64x64 image size
+
+    # Create a visualization of the model's computation graph using torchview
+    model_graph = draw_graph(model, input_size=(1, 1, *input_size))
+
+    # Save the graph as a PNG file
+    model_graph.visual_graph.render("constellation_model_torchview_graph", format="png")
