@@ -15,11 +15,23 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
-def save_image(image: np.ndarray, file_path: str) -> None:
+def save_image(image: np.ndarray, file_path: str, cmap: str = 'gray', background: str = 'white') -> None:
     """
     Save an image to the specified file path.
+    Args:
+        image (np.ndarray): The image array to save.
+        file_path (str): The path where the image will be saved.
+        cmap (str): The colormap to use ('gray', 'viridis', etc.).
+        background (str): Background color, 'white' or 'black'.
     """
-    plt.imsave(file_path, image)
+    plt.imshow(image, cmap=cmap, origin='lower')
+    if background == 'white':
+        plt.gca().set_facecolor('white')
+    else:
+        plt.gca().set_facecolor('black')
+    plt.axis('off')
+    plt.savefig(file_path, bbox_inches='tight', pad_inches=0)
+    plt.close()
 
 
 def generate_constellation_diagram(iq_data: torch.Tensor, bins: int = 256, save_step: bool = False, modulation_type: str = '', snr: float = 0, sample_idx: int = 0, output_dir: str = '') -> np.ndarray:
@@ -39,7 +51,7 @@ def generate_constellation_diagram(iq_data: torch.Tensor, bins: int = 256, save_
     if save_step:
         modulation_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
         os.makedirs(modulation_dir, exist_ok=True)
-        save_image(heatmap, os.path.join(modulation_dir, f'constellation_sample_{sample_idx}.png'))
+        save_image(heatmap, os.path.join(modulation_dir, f'constellation_sample_{sample_idx}.png'), cmap='gray', background='white')
 
     return heatmap
 
@@ -54,7 +66,7 @@ def generate_gray_image(heatmap: np.ndarray, save_step: bool = False, modulation
     if save_step:
         modulation_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
         os.makedirs(modulation_dir, exist_ok=True)
-        save_image(gray_image, os.path.join(modulation_dir, f'gray_sample_{sample_idx}.png'))
+        save_image(gray_image, os.path.join(modulation_dir, f'gray_sample_{sample_idx}.png'), cmap='gray', background='black')
 
     return gray_image
 
@@ -69,19 +81,27 @@ def generate_enhanced_gray_image(gray_image: np.ndarray, save_step: bool = False
     if save_step:
         modulation_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
         os.makedirs(modulation_dir, exist_ok=True)
-        save_image(enhanced_gray_image, os.path.join(modulation_dir, f'enhanced_gray_sample_{sample_idx}.png'))
+        save_image(enhanced_gray_image, os.path.join(modulation_dir, f'enhanced_gray_sample_{sample_idx}.png'), cmap='gray', background='black')
 
     return enhanced_gray_image
 
 
 def generate_three_channel_image(enhanced_gray_image: np.ndarray, save_step: bool = False, modulation_type: str = '', snr: float = 0, sample_idx: int = 0, output_dir: str = '') -> np.ndarray:
     """
-    Generate a three-channel image by applying Gaussian filters with different sigma values.
+    Generate a vibrant three-channel image by applying Gaussian filters with different sigma values.
     """
+    # Apply Gaussian filters with different sigma values
     channel1 = gaussian_filter(enhanced_gray_image, sigma=1)
     channel2 = gaussian_filter(enhanced_gray_image, sigma=2)
     channel3 = gaussian_filter(enhanced_gray_image, sigma=3)
-    three_channel_image = np.stack([channel1, channel2, channel3], axis=-1)
+
+    # Normalize each channel to enhance vibrancy
+    channel1 = (channel1 - np.min(channel1)) / (np.max(channel1) - np.min(channel1))
+    channel2 = (channel2 - np.min(channel2)) / (np.max(channel2) - np.min(channel2))
+    channel3 = (channel3 - np.min(channel3)) / (np.max(channel3) - np.min(channel3))
+
+    # Stack the three channels to create a vibrant image
+    three_channel_image = np.stack([channel1 * 255, channel2 * 255, channel3 * 255], axis=-1).astype(np.uint8)
 
     # Optionally save the three-channel image
     if save_step:
@@ -162,9 +182,10 @@ if __name__ == "__main__":
     device = get_device()
     logging.info(f"Using device: {device}")
 
-    dataloader, mod2int = get_dataloader(batch_size=2048)
+    dataloader, mod2int = get_dataloader(batch_size=4096)
 
     grouped_data, int2mod = group_by_modulation_snr(dataloader, mod2int)
 
     # Flags to save intermediate images
-    process_by_modulation_snr(grouped_data, snrs_to_process=[30], output_dir='constellation', save_constellation=True, save_gray=True, save_enhanced_gray=True, save_three_channel=True)
+    snrs_to_process = [30, 20, 10]
+    process_by_modulation_snr(grouped_data, snrs_to_process=snrs_to_process, output_dir='constellation', save_constellation=False, save_gray=False, save_enhanced_gray=False, save_three_channel=True)
