@@ -171,9 +171,9 @@ def process_by_modulation_snr(grouped_data: Dict[str, Dict[float, List[np.ndarra
 
 if __name__ == "__main__":
     # Define the SNRs and modulation types to process
-    snrs_to_process = [-20, 10, 0, 10, 20, 30]  # Specify SNRs of interest or set to None for all
+    snrs_to_process = [-20, 0, 30]  # Specify SNRs of interest or set to None for all
     mods_to_process = None  # Specify modulation types of interest or set to None for all
-    limit = 50000  # Maximum number of samples to process per modulation-SNR combination
+    limit = 1000  # Maximum number of samples to process per modulation-SNR combination
 
     # Get data loader and define the batch size and SNRs to process
     dataloader, mod2int = get_dataloader(batch_size=4096, snr_list=snrs_to_process, mods_to_process=mods_to_process, limit=limit)

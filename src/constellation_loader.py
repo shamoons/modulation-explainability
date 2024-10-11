@@ -30,7 +30,7 @@ class ConstellationDataset(Dataset):
 
         # Default transform applied to all images (Resizing, ToTensor, and Normalizing)
         self.transform = transforms.Compose([
-            transforms.Resize((64, 64)),  # Resize images to a standard size
+            transforms.Resize((224, 224)),  # Resize images to a standard size
             transforms.ToTensor(),  # Convert image to tensor (multi-channel)
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize 3-channel image between -1 and 1
         ])
