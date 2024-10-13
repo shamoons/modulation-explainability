@@ -1,56 +1,51 @@
 # src/train_constellation.py
+import torch
 import torch.nn as nn
 import torch.optim as optim
-from models.constellation_model import ConstellationResNet  # Import the updated model
-from constellation_loader import get_constellation_dataloader  # Import function for loading constellation images
-from utils.device_utils import get_device  # Function to get the device (CPU or GPU)
-from training_constellation import train  # Import the training and validation function
+from torch.utils.data.sampler import SubsetRandomSampler
+from sklearn.model_selection import train_test_split
+from models.constellation_model import ConstellationResNet
+from constellation_loader import ConstellationDataset
+from utils.device_utils import get_device
+from training_constellation import train
 import warnings
 
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
-
 
 if __name__ == "__main__":
     # Load data
     print("Loading data...")
 
-    # Set parameters
     batch_size = 32
     image_type = 'grayscale'  # Choose 'three_channel' or 'grayscale'
+    root_dir = "constellation"  # All data in one directory
 
-    # Determine input_channels based on image_type
-    if image_type == 'grayscale':
-        input_channels = 1
-    elif image_type == 'three_channel':
-        input_channels = 3
-    else:
-        raise ValueError(f"Unsupported image_type '{image_type}'. Supported types are 'three_channel' and 'grayscale'.")
+    # Load full dataset (without splitting)
+    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type)
 
-    # Get the DataLoaders for training and validation
-    train_loader = get_constellation_dataloader(
-        root_dir="constellation",
-        batch_size=batch_size,
-        image_type=image_type
-    )
-    val_loader = get_constellation_dataloader(
-        root_dir="constellation",
-        batch_size=batch_size,
-        shuffle=False,
-        image_type=image_type
-    )
+    # Get train/validation split indices
+    indices = list(range(len(dataset)))
+    train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
+
+    # Create samplers for train and validation sets
+    train_sampler = SubsetRandomSampler(train_idx)
+    val_sampler = SubsetRandomSampler(val_idx)
+
+    # Data loaders for training and validation
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=8, pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=8, pin_memory=True)
 
     # Print the number of samples in each set
-    print(f"Number of training samples: {len(train_loader.dataset)}")
-    print(f"Number of validation samples: {len(val_loader.dataset)}")
+    print(f"Number of training samples: {len(train_idx)}")
+    print(f"Number of validation samples: {len(val_idx)}")
+
+    # Determine input channels based on image_type
+    input_channels = 1 if image_type == 'grayscale' else 3
 
     # Initialize model, loss function, and optimizer
-    model = ConstellationResNet(
-        num_classes=24,  # Adjust based on the number of modulation classes
-        input_channels=input_channels,  # Use input_channels determined by image_type
-        pretrained=False  # Set to True if you want to use pretrained weights
-    )
+    model = ConstellationResNet(num_classes=24, input_channels=input_channels)
     criterion = nn.CrossEntropyLoss()  # Loss function for classification tasks
-    optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam optimizer
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Determine device (CUDA or CPU)
     device = get_device()
@@ -65,5 +60,5 @@ if __name__ == "__main__":
         train_loader,
         val_loader,
         epochs=epochs,
-        image_type=image_type  # Pass image_type to the training function
+        image_type=image_type
     )
