@@ -131,7 +131,7 @@ def get_constellation_dataloader(root_dir, snr_list=None, mods_to_process=None, 
         DataLoader: PyTorch DataLoader for the constellation dataset.
     """
     dataset = ConstellationDataset(root_dir, snr_list=snr_list, mods_to_process=mods_to_process, image_type=image_type)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=8, pin_memory=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=12, pin_memory=True)
     return dataloader
 
 
