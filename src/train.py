@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from models.cnn_model import LightweightCNN
 from data_loader import get_dataloaders  # Updated function for batched loading
-from utils import get_device
+from utils.device_utils import get_device
 from training import train, validate  # Add validate function for evaluation
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from models.constellation_model import ConstellationResNet  # Import the updated model
 from constellation_loader import get_constellation_dataloader  # Import function for loading constellation images
-from utils import get_device  # Function to get the device (CPU or GPU)
+from utils.device_utils import get_device  # Function to get the device (CPU or GPU)
 from training_constellation import train  # Import the training and validation function
 import warnings
 
