@@ -7,7 +7,7 @@ from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 
 
-def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=10):
+def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=10, image_type='three_channel'):
     """
     Train the model and validate it at the end of each epoch.
     Includes gradient clipping and logs metrics with Weights and Biases (wandb).
@@ -20,9 +20,10 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         train_loader: DataLoader for the training data.
         val_loader: DataLoader for the validation data.
         epochs: Number of epochs to train.
+        image_type: Type of images used ('three_channel' or 'grayscale').
     """
-    # Initialize WandB project
-    wandb.init(project="modulation-explainability", config={"epochs": epochs})
+    # Initialize WandB project and log image_type
+    wandb.init(project="modulation-explainability", config={"epochs": epochs, "image_type": image_type})
 
     # Extract labels from the dataset in val_loader (assuming labels are stored in the dataset)
     label_names = val_loader.dataset.mods_to_process if val_loader.dataset.mods_to_process else sorted(val_loader.dataset.modulation_labels.keys())
