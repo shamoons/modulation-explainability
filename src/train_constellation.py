@@ -14,7 +14,7 @@ if __name__ == "__main__":
     print("Loading data...")
 
     # Get the DataLoaders for training, validation, and testing
-    batch_size = 256
+    batch_size = 32
     input_size = (224, 224)  # Constellation image size
 
     # Load train, validation, and test sets
