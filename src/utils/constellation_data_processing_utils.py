@@ -20,12 +20,14 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     Returns:
         torch.Tensor: The image array.
     """
-    blk_size = [5, 25, 50]
+    # blk_size = [5, 25, 50]
+    # c_factor = 5.0 / torch.tensor(blk_size)
+    blk_size = [2, 10, 25]
     c_factor = 5.0 / torch.tensor(blk_size)
     cons_scale = torch.tensor([2.5, 2.5])
 
-    internal_image_size_x = image_size[0] + 4 * max(blk_size)
-    internal_image_size_y = image_size[1] + 4 * max(blk_size)
+    internal_image_size_x = image_size[0] + 2 * max(blk_size)
+    internal_image_size_y = image_size[1] + 2 * max(blk_size)
 
     d_i_y = 2 * cons_scale[0] / internal_image_size_x
     d_q_x = 2 * cons_scale[1] / internal_image_size_y
@@ -78,6 +80,26 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     return image_array
 
 
+def renormalize_image(image_array: torch.Tensor) -> torch.Tensor:
+    """
+    Renormalize the image array to ensure the brightest points are max bright.
+
+    Args:
+        image_array (torch.Tensor): The image array where pixel intensities are calculated.
+
+    Returns:
+        torch.Tensor: Renormalized image array.
+    """
+    # Find the maximum value in the image array
+    max_value = torch.max(image_array)
+
+    # Avoid division by zero and scale the array to have max intensity as 1.0
+    if max_value > 0:
+        image_array = image_array / max_value
+
+    return image_array
+
+
 def process_sample(iq_data: np.ndarray, modulation_type: str, snr: float, sample_idx: int, output_dir: str, image_size: tuple, image_types: list) -> None:
     """
     Process a single I/Q data sample through all steps.
@@ -99,6 +121,8 @@ def process_sample(iq_data: np.ndarray, modulation_type: str, snr: float, sample
 
     # Generate the image array once
     image_array = get_image_array(iq_data_torch, image_size)
+
+    image_array = renormalize_image(image_array)
 
     # Generate and save images
     generate_and_save_images(image_array, image_size, image_dir, image_name, image_types, raw_iq_data=iq_data_torch)

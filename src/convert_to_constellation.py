@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # Define SNRs and modulation types to process
     snrs_to_process = [0, 20, 30]
     mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '64QAM', '256QAM']
-    limit = 256  # Set a limit if you want to restrict samples
+    limit = 64  # Set a limit if you want to restrict samples
 
     # Define image types, including "raw"
     image_types = ['grayscale']
