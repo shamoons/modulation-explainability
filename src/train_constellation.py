@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
@@ -36,8 +37,8 @@ def main(checkpoint=None):
     val_sampler = SubsetRandomSampler(val_idx)
 
     # Data loaders for training and validation
-    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
+    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True, shuffle=True)
+    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True, shuffle=True)
 
     # Print the number of samples in each set
     print(f"Number of training samples: {len(train_idx)}")
@@ -58,7 +59,10 @@ def main(checkpoint=None):
 
     # Initialize loss function and optimizer
     criterion = nn.CrossEntropyLoss()  # Loss function for classification tasks
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Add learning rate scheduler (ReduceLROnPlateau)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
 
     # Determine device (CUDA or CPU)
     device = get_device()
@@ -70,6 +74,7 @@ def main(checkpoint=None):
         device,
         criterion,
         optimizer,
+        scheduler,  # Pass the scheduler to the train function
         train_loader,
         val_loader,
         epochs=epochs,

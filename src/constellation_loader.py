@@ -25,7 +25,6 @@ class ConstellationDataset(Dataset):
         self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
         self.image_type = image_type  # Image type to load
 
-
         # Create a dictionary only for directories and save it as an attribute
         self.modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
 
@@ -40,13 +39,13 @@ class ConstellationDataset(Dataset):
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),  # Resize images to a standard size
                 transforms.ToTensor(),  # Convert image to tensor (multi-channel)
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize 3-channel image between -1 and 1
+                transforms.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])  # Normalize 3-channel image between 0 and 1
             ])
         elif self.image_type == 'grayscale':
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),  # Resize images to a standard size
                 transforms.ToTensor(),  # Convert image to tensor (single-channel)
-                transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize single-channel image between -1 and 1
+                transforms.Normalize(mean=[0.0], std=[1.0])  # Normalize single-channel image between 0 and 1
             ])
         else:
             raise ValueError(f"Unsupported image_type '{self.image_type}'. Supported types are 'three_channel' and 'grayscale'.")

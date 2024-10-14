@@ -8,7 +8,7 @@ from tqdm import tqdm
 import os
 
 
-def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=10, image_type='three_channel', save_dir="checkpoints"):
+def train(model, device, criterion, optimizer, scheduler, train_loader, val_loader, epochs=10, image_type='three_channel', save_dir="checkpoints"):
     """
     Train the model and save the best one based on validation loss.
     Log F1 score after validation step and plot F1 score for each class.
@@ -59,6 +59,9 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
 
         # Perform validation at the end of each epoch
         val_loss, val_accuracy, val_predictions, val_targets = validate(model, device, criterion, val_loader)
+
+        # Adjust the learning rate based on the validation loss
+        scheduler.step(val_loss)
 
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
