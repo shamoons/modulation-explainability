@@ -150,6 +150,10 @@ def plot_f1_scores(f1_scores, labels, epoch):
     """
     Plot F1 scores for each class and save the plot.
     """
+
+    if len(f1_scores) != len(labels):
+        print(f"Warning: Mismatch in F1 scores ({len(f1_scores)}) and labels ({len(labels)}) length.")
+        return
     plt.figure(figsize=(10, 6))
     plt.bar(labels, f1_scores, color='b', alpha=0.7)
     plt.xticks(rotation=45)

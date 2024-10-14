@@ -25,6 +25,7 @@ class ConstellationDataset(Dataset):
         self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
         self.image_type = image_type  # Image type to load
 
+
         # Create a dictionary only for directories and save it as an attribute
         self.modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
 

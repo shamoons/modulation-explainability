@@ -28,6 +28,7 @@ def main(checkpoint=None):
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
+    print(len(dataset))
     train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
 
     # Create samplers for train and validation sets
