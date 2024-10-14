@@ -4,21 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-torch = "*"
-torchvision = "*"
+torch = "==2.4.1"
+torchvision = "==0.19.1"
 numpy = "<2"
-pandas = "*"
-matplotlib = "*"
-captum = "*"
-wandb = "*"
-scikit-learn = "*"
-tqdm = "*"
-h5py = "*"
-torchviz = "*"
-torchview = "*"
-scipy = "*"
-opencv-python = "*"
-seaborn = "*"
+matplotlib = "==3.9.2"
+wandb = "==0.18.3"
+scikit-learn = "==1.5.2"
+tqdm = "==4.66.5"
+h5py = "==3.12.1"
+scipy = "==1.13.1"
+seaborn = "==0.13.2"
 
 [dev-packages]
 
