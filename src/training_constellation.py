@@ -1,4 +1,3 @@
-# src/training_constellation.py
 import torch
 import wandb
 import matplotlib.pyplot as plt
@@ -38,7 +37,7 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
 
         # Training loop with tqdm progress bar
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training", leave=False) as progress:
-            for inputs, (modulation_labels, snr_labels) in progress:
+            for inputs, modulation_labels, snr_labels in progress:
                 inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
                 optimizer.zero_grad()
 
@@ -122,7 +121,7 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
 
     with torch.no_grad():
         with tqdm(val_loader, desc="Validation", leave=False) as progress:
-            for inputs, (modulation_labels, snr_labels) in progress:
+            for inputs, modulation_labels, snr_labels in progress:
                 inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
 
                 # Forward pass
@@ -154,7 +153,6 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
     val_snr_accuracy = 100.0 * correct_snr / total
     val_loss = val_loss / len(val_loader)
 
-    # Return results and also confusion matrix data
     return val_loss, val_modulation_accuracy, val_snr_accuracy
 
 

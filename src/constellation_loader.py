@@ -24,16 +24,14 @@ class ConstellationDataset(Dataset):
         self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
         self.image_type = image_type  # Image type to load
 
-        # Create a dictionary only for directories and save it as an attribute
+        # Create a dictionary for directories and save it as an attribute
         self.modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
+        self.snr_labels = {snr: idx for idx, snr in enumerate(range(-20, 32, 2))}  # Example SNR range
 
-        # Print available modulation schemes
-        print(f"Available modulation schemes: {list(self.modulation_labels.keys())}")
-
-        # Internal method to fetch image paths and labels
+        # Load image paths and labels
         self.image_paths, self.modulation_labels_list, self.snr_labels_list = self._load_image_paths_and_labels()
 
-        # Default transform applied to all images (Resizing, ToTensor, and Normalizing)
+        # Default transform applied to all images
         if self.image_type == 'three_channel':
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),  # Resize images to a standard size
@@ -80,7 +78,7 @@ class ConstellationDataset(Dataset):
                                     img_path = os.path.join(snr_path, img_name)
                                     image_paths.append(img_path)
                                     modulation_labels_list.append(self.modulation_labels[modulation_type])  # Assign modulation label
-                                    snr_labels_list.append(snr_value)  # Assign SNR label
+                                    snr_labels_list.append(self.snr_labels[snr_value])  # Assign SNR label
 
         return image_paths, modulation_labels_list, snr_labels_list
 
@@ -136,18 +134,3 @@ def get_constellation_dataloader(root_dir, snr_list=None, mods_to_process=None, 
     dataset = ConstellationDataset(root_dir, snr_list=snr_list, mods_to_process=mods_to_process, image_type=image_type)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=12, pin_memory=True)
     return dataloader
-
-
-if __name__ == "__main__":
-    # Example usage: Load images with specified SNRs, modulations, and image type
-    root_dir = "constellation"  # Replace with the actual directory where constellation images are stored
-    snr_list = ['20', '30']  # Example: Load only images with SNRs 20 and 30 (can be omitted to load all)
-    mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', 'QAM16', 'QAM64', 'QAM256']
-    image_type = 'grayscale'  # Specify the image type to load ('three_channel' or 'grayscale')
-
-    # Get DataLoader
-    dataloader = get_constellation_dataloader(root_dir, snr_list=snr_list, mods_to_process=mods_to_process, image_type=image_type, batch_size=32)
-
-    # Iterate through the DataLoader (for demonstration purposes)
-    for images, modulation_labels, snr_labels in dataloader:
-        print(f"Batch of images: {images.size()}, Batch of modulation labels: {modulation_labels.size()}, Batch of SNR labels: {snr_labels.size()}")

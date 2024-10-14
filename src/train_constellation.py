@@ -21,16 +21,15 @@ def main(checkpoint=None):
     # Load data
     print("Loading data...")
 
-    batch_size = 256
-    image_type = 'grayscale'  # Choose 'three_channel' or 'grayscale'
-    root_dir = "constellation"  # All data in one directory
+    batch_size = 8
+    image_type = 'grayscale'
+    root_dir = "constellation"
 
     # Load full dataset (without splitting)
     dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type)
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
-    print(len(dataset))
     train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
 
     # Create samplers for train and validation sets
@@ -41,10 +40,6 @@ def main(checkpoint=None):
     train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True)
     val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
 
-    # Print the number of samples in each set
-    print(f"Number of training samples: {len(train_idx)}")
-    print(f"Number of validation samples: {len(val_idx)}")
-
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
@@ -53,7 +48,6 @@ def main(checkpoint=None):
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
-        print(f"Loading checkpoint from {checkpoint}")
         model.load_state_dict(torch.load(checkpoint))
     else:
         print("No checkpoint provided, starting training from scratch.")
@@ -65,8 +59,8 @@ def main(checkpoint=None):
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Add learning rate scheduler (ReduceLROnPlateau)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+    # Add learning rate scheduler (Remove verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
 
     # Determine device (CUDA or CPU)
     device = get_device()
@@ -76,10 +70,10 @@ def main(checkpoint=None):
     train(
         model,
         device,
-        criterion_modulation,  # Pass modulation criterion
-        criterion_snr,         # Pass custom SNR criterion
+        criterion_modulation,
+        criterion_snr,
         optimizer,
-        scheduler,  # Pass the scheduler to the train function
+        scheduler,
         train_loader,
         val_loader,
         epochs=epochs,
