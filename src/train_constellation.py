@@ -32,6 +32,10 @@ def main(checkpoint=None):
     indices = list(range(len(dataset)))
     train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
 
+    # Print the number of training and validation samples
+    print(f"Number of training samples: {len(train_idx)}")
+    print(f"Number of validation samples: {len(val_idx)}")
+
     # Create samplers for train and validation sets
     train_sampler = SubsetRandomSampler(train_idx)
     val_sampler = SubsetRandomSampler(val_idx)
