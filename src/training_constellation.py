@@ -93,8 +93,8 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
 
         # Plot confusion matrices for both modulation and SNR
         # Extract label names from dataset
-        modulation_labels = list(val_loader.modulation_labels.keys())  # Extract modulation label names
-        snr_labels = list(map(str, val_loader.snr_labels.keys()))  # Extract SNR labels as strings
+        modulation_labels = list(val_loader.dataset.modulation_labels.keys())  # Extract modulation label names
+        snr_labels = list(map(str, val_loader.dataset.snr_labels.keys()))  # Extract SNR labels as strings
 
         # In the training loop, when calling plot_confusion_matrix:
         plot_confusion_matrix(all_true_modulation_labels, all_pred_modulation_labels, 'Modulation', epoch, label_names=modulation_labels)
