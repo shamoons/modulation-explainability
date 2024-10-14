@@ -1,5 +1,6 @@
 # src/utils/constellation_data_processing_utils.py
 from typing import Dict, List, Tuple
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 import os
@@ -7,6 +8,42 @@ import logging
 
 from tqdm import tqdm
 from utils.image_utils import generate_and_save_images
+
+
+def plot_points(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
+    """
+    Generate the constellation diagram from I/Q data.
+    The intensity of points increases when multiple points overlap, and the resulting tensor is returned.
+
+    Args:
+        iq_data (torch.Tensor): I/Q data (shape = (N, 2)).
+        image_size (tuple): Size of the plot (e.g., (224, 224)).
+
+    Returns:
+        torch.Tensor: A grayscale intensity array with the same format as get_image_array output.
+    """
+    # Create an empty tensor for storing intensities
+    image_array = torch.zeros((image_size[0], image_size[1]))
+
+    # Calculate histogram (binning points into the specified image size)
+    heatmap, xedges, yedges = np.histogram2d(iq_data[:, 0].numpy(), iq_data[:, 1].numpy(), bins=image_size)
+
+    # Normalize intensities
+    heatmap = torch.tensor(heatmap / heatmap.max())
+
+    # Replicate the grayscale values across the 3 channels (to maintain compatibility with existing code structure)
+    image_array = heatmap
+
+    # # Plot the points as a grayscale image
+    # fig, ax = plt.subplots(figsize=(6, 6))
+    # ax.imshow(heatmap.T, origin='lower', cmap='gray', interpolation='nearest')
+    # ax.set_xlabel('In-Phase (I)')
+    # ax.set_ylabel('Quadrature (Q)')
+    # ax.set_title('Constellation Diagram (Grayscale)')
+
+    # plt.show()
+
+    return image_array
 
 
 def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
@@ -101,6 +138,34 @@ def renormalize_image(image_array: torch.Tensor) -> torch.Tensor:
 
 
 def process_sample(iq_data: np.ndarray, modulation_type: str, snr: float, sample_idx: int, output_dir: str, image_size: tuple, image_types: list) -> None:
+    """
+    Process a single I/Q data sample through all steps.
+
+    Args:
+        iq_data (np.ndarray): The I/Q data sample.
+        modulation_type (str): Modulation type of the sample.
+        snr (float): Signal-to-noise ratio of the sample.
+        sample_idx (int): Index of the sample.
+        output_dir (str): Directory where images will be saved.
+        image_size (tuple): Size of the output images.
+        image_types (list): List of image types to generate.
+    """
+    image_name = f"{modulation_type}_SNR_{int(snr)}_sample_{sample_idx}"
+    image_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
+    os.makedirs(image_dir, exist_ok=True)
+
+    iq_data_torch = torch.tensor(iq_data)
+
+    # Choose the image generation method based on the image type
+    if 'point' in image_types:
+        image_array = plot_points(iq_data_torch, image_size)
+    else:
+        image_array = get_image_array(iq_data_torch, image_size)
+
+    image_array = renormalize_image(image_array)
+
+    # Generate and save images
+    generate_and_save_images(image_array, image_size, image_dir, image_name, image_types, raw_iq_data=iq_data_torch)
     """
     Process a single I/Q data sample through all steps.
 

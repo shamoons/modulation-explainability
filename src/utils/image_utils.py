@@ -61,7 +61,7 @@ def generate_and_save_images(
         image_size (Tuple[int, int]): Final size of the image (e.g., (224, 224)).
         image_dir (str): Directory where the images will be saved.
         image_name (str): The base name of the image files.
-        image_types (List[str]): List of image types to generate ('three_channel', 'grayscale', 'raw').
+        image_types (List[str]): List of image types to generate ('three_channel', 'grayscale', 'raw', 'point').
         raw_iq_data (torch.Tensor): Optional raw I/Q data to save as 'raw' image.
     """
     # Clip and rescale to 0-255 for regular images
@@ -77,6 +77,20 @@ def generate_and_save_images(
             # Prepend image_type to the image_name
             full_image_name = f"{image_type}_{image_name}"
             resized_image.save(os.path.join(image_dir, f"{full_image_name}.png"), format="PNG")
+
+        elif image_type == 'point':
+            # Use the image_array directly as it was generated for 'point'
+
+            if image_array_np.ndim == 3:
+                image_array_np = np.mean(image_array_np, axis=2)  # Average over the color channels
+            plt.figure(figsize=(6, 6))
+            plt.imshow(image_array_np.T, origin='lower', cmap='gray', interpolation='nearest')
+            plt.axis('off')
+
+            # Save the point-based constellation diagram
+            plt.tight_layout()
+            plt.savefig(os.path.join(image_dir, f"point_{image_name}.png"), bbox_inches='tight', pad_inches=0)
+            plt.close()
 
         elif image_type == 'raw' and raw_iq_data is not None:
             # Plot raw I/Q data as two separate time-series graphs

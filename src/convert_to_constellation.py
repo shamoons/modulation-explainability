@@ -11,10 +11,10 @@ if __name__ == "__main__":
     # Define SNRs and modulation types to process
     snrs_to_process = [0, 20, 30]
     mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '64QAM', '256QAM']
-    limit = None  # Set a limit if you want to restrict samples
+    limit = 10  # Set a limit if you want to restrict samples
 
     # Define image types, including "raw"
-    image_types = ['grayscale']
+    image_types = ['point']
 
     # Get the dataloader and process the data
     dataloader, mod2int = get_dataloader(batch_size=4096, snr_list=snrs_to_process, mods_to_process=mods_to_process, limit=limit)

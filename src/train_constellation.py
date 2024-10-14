@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # Load data
     print("Loading data...")
 
-    batch_size = 512
+    batch_size = 256
     image_type = 'grayscale'  # Choose 'three_channel' or 'grayscale'
     root_dir = "constellation"  # All data in one directory
 
