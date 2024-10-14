@@ -1,4 +1,4 @@
-# src/utils.py
+# src/utils/device_utils.py
 import torch
 
 

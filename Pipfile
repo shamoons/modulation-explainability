@@ -18,6 +18,7 @@ torchviz = "*"
 torchview = "*"
 scipy = "*"
 opencv-python = "*"
+seaborn = "*"
 
 [dev-packages]
 

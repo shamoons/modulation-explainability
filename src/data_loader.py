@@ -41,18 +41,8 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
                   mods_to_process=None):
     """
     Loads and preprocesses the RadioML 2018.01A dataset from an HDF5 file without splitting.
-    If a limit is specified, it loads only that many samples; otherwise, it loads the entire dataset.
+    If a limit is specified, it applies the limit per modulation type and SNR combination.
     Also filters by modulation types first and then by SNR values.
-
-    Args:
-        h5_file (str): Path to the HDF5 file.
-        json_file (str): Path to the JSON file mapping modulation types to integers.
-        limit (int): Maximum number of samples to load (None means load all data).
-        snr_list (list of float or None): List of SNR values to load. If None, load all SNRs.
-        mods_to_process (list of str or None): List of modulation types to load. If None, load all modulations.
-
-    Returns:
-        X, Y, Z, mod2int: All I/Q data, labels, SNR values, and modulation-to-integer mapping.
     """
     logging.info(f"Loading data from {h5_file} and {json_file}...")
 
@@ -62,16 +52,12 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
 
     mod2int = {mod: i for i, mod in enumerate(modulation_types)}
 
+    print(f"Available modulation schemes in dataset: {modulation_types}")
+
     # Open the HDF5 file and load the data
     with h5py.File(h5_file, 'r') as f:
         num_samples = len(f['X'])
-        if limit is None:
-            limit = num_samples  # If no limit is specified, load all data
-        else:
-            limit = min(limit, num_samples)
-
         logging.info(f"Total samples in dataset: {num_samples}")
-        logging.info(f"Loading {limit} samples...")
 
         # Initialize lists to hold filtered data
         X_filtered, Y_filtered, Z_filtered = [], [], []
@@ -82,26 +68,43 @@ def load_all_data(h5_file='data/RML2018.01A/GOLD_XYZ_OSC.0001_1024.hdf5',
         else:
             mod_indices = range(len(modulation_types))
 
+        # Track number of samples loaded for each modulation/SNR combination
+        samples_loaded = {}
+
         for mod_index in mod_indices:
             for snr_index in range(26):  # Assuming there are 26 SNR values from -20 to +30
                 snr_value = -20 + (snr_index * 2)  # Compute actual SNR value
 
+                # Check if the SNR value is in the list
+                if snr_list is not None and snr_value not in snr_list:
+                    continue
+
+                samples_loaded[(mod_index, snr_value)] = 0  # Initialize the sample count
+
                 for frame_index in range(4096):  # 4096 frames per modulation-SNR combination
                     idx = mod_index * 26 * 4096 + snr_index * 4096 + frame_index
-                    if idx >= limit:  # Stop if we exceed the limit
+
+                    # Skip if the limit for this modulation/SNR is reached
+                    key = (mod_index, snr_value)
+                    if limit is not None and samples_loaded.get(key, 0) >= limit:
                         break
 
                     X_sample = f['X'][idx]
                     Y_sample = np.argmax(f['Y'][idx])  # One-hot encoded to integer
                     Z_sample = snr_value  # SNR value from computation
 
-                    # Append to filtered lists if SNR is in the specified list
-                    if snr_list is None or snr_value in snr_list:
-                        X_filtered.append(X_sample)
-                        Y_filtered.append(Y_sample)
-                        Z_filtered.append(Z_sample)
+                    # Append to filtered lists if the sample passes filtering
+                    X_filtered.append(X_sample)
+                    Y_filtered.append(Y_sample)
+                    Z_filtered.append(Z_sample)
 
-        # Convert filtered lists to numpy arrays
+                    samples_loaded[key] += 1
+
+        # After filtering, print the number of samples loaded for each modulation/SNR
+        for (mod_idx, snr_val), count in samples_loaded.items():
+            mod_name = list(mod2int.keys())[mod_idx]
+            print(f"Modulation: {mod_name}, SNR: {snr_val}, Samples loaded: {count}")
+
         X = np.array(X_filtered)
         Y = np.array(Y_filtered)
         Z = np.array(Z_filtered)
@@ -138,7 +141,7 @@ def get_dataloader(batch_size=64,
     dataset = RadioMLDataset(X, Y, Z)
 
     # Create DataLoader
-    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=True, pin_memory=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=12, shuffle=True, pin_memory=True)
 
     logging.info(f"Dataloader created with batch size {batch_size}")
 
@@ -146,13 +149,9 @@ def get_dataloader(batch_size=64,
 
 
 if __name__ == "__main__":
-    # Example usage: Load specified SNRs and modulations
-    snr_list = ['-10', '2']  # Example: Load only images with SNRs -10 and 2 (can be omitted to load all)
-    mods_to_process = ['8PSK', 'QPSK']  # Example: Load only 8PSK and QPSK modulations (can be omitted to load all)
+    snr_list = [30]
+    # mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', 'QAM16', 'QAM64', 'QAM256']
+    mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '64QAM', '256QAM']
 
     # Get DataLoader
-    dataloader = get_dataloader(batch_size=32, snr_list=snr_list, mods_to_process=mods_to_process)
-
-    # Iterate through the DataLoader (for demonstration purposes)
-    for images, labels in dataloader:
-        print(f"Batch of images: {images.size()}, Batch of labels: {labels.size()}")  # Should print (batch_size, 3, 64, 64) for 3-channel images
+    dataloader, mod2int = get_dataloader(batch_size=128, snr_list=snr_list, mods_to_process=mods_to_process)
