@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # Load data
     print("Loading data...")
 
-    batch_size = 256
+    batch_size = 512
     image_type = 'grayscale'  # Choose 'three_channel' or 'grayscale'
     root_dir = "constellation"  # All data in one directory
 
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     val_sampler = SubsetRandomSampler(val_idx)
 
     # Data loaders for training and validation
-    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=8, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=8, pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
 
     # Print the number of samples in each set
     print(f"Number of training samples: {len(train_idx)}")
