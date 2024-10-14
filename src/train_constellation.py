@@ -38,8 +38,8 @@ def main(checkpoint=None):
     val_sampler = SubsetRandomSampler(val_idx)
 
     # Data loaders for training and validation
-    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True, shuffle=True)
+    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True)
+    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
 
     # Print the number of samples in each set
     print(f"Number of training samples: {len(train_idx)}")
