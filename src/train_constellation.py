@@ -8,11 +8,14 @@ from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
+import argparse
 import warnings
+import os
 
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
-if __name__ == "__main__":
+
+def main(checkpoint=None):
     # Load data
     print("Loading data...")
 
@@ -42,10 +45,19 @@ if __name__ == "__main__":
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
-    # Initialize model, loss function, and optimizer
+    # Initialize model
     model = ConstellationResNet(num_classes=24, input_channels=input_channels)
+
+    # If checkpoint is provided, load the existing model state
+    if checkpoint is not None and os.path.isfile(checkpoint):
+        print(f"Loading checkpoint from {checkpoint}")
+        model.load_state_dict(torch.load(checkpoint))
+    else:
+        print("No checkpoint provided, starting training from scratch.")
+
+    # Initialize loss function and optimizer
     criterion = nn.CrossEntropyLoss()  # Loss function for classification tasks
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     # Determine device (CUDA or CPU)
     device = get_device()
@@ -62,3 +74,11 @@ if __name__ == "__main__":
         epochs=epochs,
         image_type=image_type
     )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train constellation model with optional checkpoint loading')
+    parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
+    args = parser.parse_args()
+
+    main(checkpoint=args.checkpoint)

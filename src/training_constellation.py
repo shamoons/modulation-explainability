@@ -55,12 +55,6 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         train_accuracy = 100.0 * correct / total
         train_loss = running_loss / len(train_loader)
 
-        wandb.log({
-            "epoch": epoch + 1,
-            "train_loss": train_loss,
-            "train_accuracy": train_accuracy,
-        })
-
         print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
@@ -75,10 +69,17 @@ def train(model, device, criterion, optimizer, train_loader, val_loader, epochs=
         save_confusion_matrix(val_targets, val_predictions, epoch, labels=label_names)
 
         # Calculate F1 scores and plot them
-        precision, recall, f1_scores, _ = precision_recall_fscore_support(val_targets, val_predictions, average=None)
+        precision, recall, f1_scores, _ = precision_recall_fscore_support(val_targets, val_predictions, average=None, zero_division=1)
         plot_f1_scores(f1_scores, label_names, epoch)
 
         print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": train_loss,
+            "train_accuracy": train_accuracy,
+            "val_loss": val_loss,
+            "val_accuracy": val_accuracy
+        })
 
 
 def validate(model, device, criterion, val_loader):
