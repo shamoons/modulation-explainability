@@ -21,7 +21,7 @@ def main(checkpoint=None):
     # Load data
     print("Loading data...")
 
-    batch_size = 256
+    batch_size = 64
     image_type = 'grayscale'
     root_dir = "constellation"
 

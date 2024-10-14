@@ -1,8 +1,8 @@
+# src/training_constellation.py
 import torch
 import wandb
-import matplotlib.pyplot as plt
-import seaborn as sns
 from utils.image_utils import plot_confusion_matrix
+from validate_constellation import validate
 from tqdm import tqdm
 import os
 
@@ -82,6 +82,9 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
         # Perform validation at the end of each epoch
         val_loss, val_modulation_accuracy, val_snr_accuracy = validate(model, device, criterion_modulation, criterion_snr, val_loader)
 
+        # Step the scheduler based on the validation loss
+        scheduler.step(val_loss)
+
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -107,56 +110,3 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
             "val_modulation_accuracy": val_modulation_accuracy,
             "val_snr_accuracy": val_snr_accuracy
         })
-
-
-def validate(model, device, criterion_modulation, criterion_snr, val_loader):
-    """
-    Validate the model on the validation dataset with tqdm progress bar.
-    """
-    model.eval()
-    val_loss = 0.0
-    correct_modulation = 0
-    correct_snr = 0
-    total = 0
-
-    all_true_modulation_labels = []
-    all_pred_modulation_labels = []
-    all_true_snr_labels = []
-    all_pred_snr_labels = []
-
-    with torch.no_grad():
-        with tqdm(val_loader, desc="Validation", leave=False) as progress:
-            for inputs, modulation_labels, snr_labels in progress:
-                inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
-
-                # Forward pass
-                modulation_output, snr_output = model(inputs)
-
-                # Compute loss for both outputs
-                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                loss_snr = criterion_snr(snr_output, snr_labels)
-
-                # Combine both losses
-                total_loss = loss_modulation + loss_snr
-                val_loss += total_loss.item()
-
-                _, predicted_modulation = modulation_output.max(1)
-                _, predicted_snr = snr_output.max(1)
-
-                total += modulation_labels.size(0)
-                correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                correct_snr += predicted_snr.eq(snr_labels).sum().item()
-
-                all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
-                all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
-                all_true_snr_labels.extend(snr_labels.cpu().numpy())
-                all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
-
-                progress.set_postfix(loss=total_loss.item(), mod_accuracy=100.0 * correct_modulation / total, snr_accuracy=100.0 * correct_snr / total)
-
-    val_modulation_accuracy = 100.0 * correct_modulation / total
-    val_snr_accuracy = 100.0 * correct_snr / total
-    val_loss = val_loss / len(val_loader)
-
-    return val_loss, val_modulation_accuracy, val_snr_accuracy
-
