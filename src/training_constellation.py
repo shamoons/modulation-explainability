@@ -2,7 +2,7 @@ import torch
 import wandb
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
+from utils.image_utils import plot_confusion_matrix
 from tqdm import tqdm
 import os
 
@@ -89,8 +89,13 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
 
         # Plot confusion matrices for both modulation and SNR
-        plot_confusion_matrix(all_true_modulation_labels, all_pred_modulation_labels, 'Modulation', epoch)
-        plot_confusion_matrix(all_true_snr_labels, all_pred_snr_labels, 'SNR', epoch)
+        # Extract label names from dataset
+        modulation_labels = list(val_loader.modulation_labels.keys())  # Extract modulation label names
+        snr_labels = list(map(str, val_loader.snr_labels.keys()))  # Extract SNR labels as strings
+
+        # In the training loop, when calling plot_confusion_matrix:
+        plot_confusion_matrix(all_true_modulation_labels, all_pred_modulation_labels, 'Modulation', epoch, label_names=modulation_labels)
+        plot_confusion_matrix(all_true_snr_labels, all_pred_snr_labels, 'SNR', epoch, label_names=snr_labels)
 
         print(f"Validation Loss: {val_loss:.4f}, Modulation Accuracy: {val_modulation_accuracy:.2f}%, SNR Accuracy: {val_snr_accuracy:.2f}%")
         wandb.log({
@@ -155,28 +160,3 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
 
     return val_loss, val_modulation_accuracy, val_snr_accuracy
 
-
-def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch):
-    """
-    Plot and save a confusion matrix.
-
-    Args:
-        true_labels (list of int): True class labels.
-        pred_labels (list of int): Predicted class labels.
-        label_type (str): Type of label ('Modulation' or 'SNR').
-        epoch (int): Current epoch number.
-    """
-    cm = confusion_matrix(true_labels, pred_labels)
-
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.xlabel(f"Predicted {label_type} Label")
-    plt.ylabel(f"True {label_type} Label")
-    plt.title(f"{label_type} Confusion Matrix - Epoch {epoch + 1}")
-
-    # Save confusion matrix
-    plt.savefig(f"confusion_matrix_{label_type}_epoch_{epoch + 1}.png")
-    plt.close()
-
-    # Log to Weights and Biases
-    wandb.log({f"Confusion Matrix {label_type} Epoch {epoch + 1}": wandb.Image(f"confusion_matrix_{label_type}_epoch_{epoch + 1}.png")})

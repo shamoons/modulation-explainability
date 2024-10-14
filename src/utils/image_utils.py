@@ -5,6 +5,10 @@ import os
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+import wandb
+
 
 
 def save_image(image: np.ndarray, file_path: str, cmap: str = 'gray', background: str = 'white') -> None:
@@ -111,3 +115,36 @@ def generate_and_save_images(
             plt.tight_layout()
             plt.savefig(os.path.join(image_dir, f"raw_{image_name}.png"), bbox_inches='tight', pad_inches=0)
             plt.close()
+
+
+def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_names=None):
+    """
+    Plot and save a confusion matrix.
+
+    Args:
+        true_labels (list of int): True class labels.
+        pred_labels (list of int): Predicted class labels.
+        label_type (str): Type of label ('Modulation' or 'SNR').
+        epoch (int): Current epoch number.
+        label_names (list of str or None): List of label names corresponding to class indices.
+    """
+    cm = confusion_matrix(true_labels, pred_labels)
+
+    plt.figure(figsize=(10, 8))
+
+    # Check if label names are provided, otherwise use numeric labels
+    if label_names is None:
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    else:
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=label_names, yticklabels=label_names)
+
+    plt.xlabel(f"Predicted {label_type} Label")
+    plt.ylabel(f"True {label_type} Label")
+    plt.title(f"{label_type} Confusion Matrix - Epoch {epoch + 1}")
+
+    # Save confusion matrix
+    plt.savefig(f"confusion_matrix_{label_type}_epoch_{epoch + 1}.png")
+    plt.close()
+
+    # Log to Weights and Biases
+    wandb.log({f"Confusion Matrix {label_type} Epoch {epoch + 1}": wandb.Image(f"confusion_matrix_{label_type}_epoch_{epoch + 1}.png")})
