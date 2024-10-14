@@ -1,4 +1,3 @@
-# src/constellation_loader.py
 import os
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
@@ -32,7 +31,7 @@ class ConstellationDataset(Dataset):
         print(f"Available modulation schemes: {list(self.modulation_labels.keys())}")
 
         # Internal method to fetch image paths and labels
-        self.image_paths, self.labels = self._load_image_paths_and_labels()
+        self.image_paths, self.modulation_labels_list, self.snr_labels_list = self._load_image_paths_and_labels()
 
         # Default transform applied to all images (Resizing, ToTensor, and Normalizing)
         if self.image_type == 'three_channel':
@@ -53,14 +52,16 @@ class ConstellationDataset(Dataset):
     def _load_image_paths_and_labels(self):
         """
         Traverse the root directory and load image paths filtered by SNR, modulation type, and image type,
-        also capturing the modulation type as a label.
+        also capturing the modulation type and SNR as labels.
 
         Returns:
             image_paths (list of str): List of paths to constellation images.
-            labels (list of int): List of labels corresponding to modulation types.
+            modulation_labels_list (list of int): List of modulation labels.
+            snr_labels_list (list of int): List of SNR labels.
         """
         image_paths = []
-        labels = []
+        modulation_labels_list = []
+        snr_labels_list = []
 
         # Traverse the directory structure
         for modulation_type in os.listdir(self.root_dir):
@@ -72,15 +73,16 @@ class ConstellationDataset(Dataset):
                 for snr_dir in os.listdir(modulation_dir):
                     snr_path = os.path.join(modulation_dir, snr_dir)
                     if os.path.isdir(snr_path):  # Ensure this is a directory
-                        snr_value = snr_dir.split('_')[1]  # Extract SNR from directory name (e.g., "SNR_2" -> "2")
-                        if not self.snr_list or snr_value in self.snr_list:
+                        snr_value = int(snr_dir.split('_')[1])  # Extract SNR from directory name (e.g., "SNR_2" -> 2)
+                        if not self.snr_list or str(snr_value) in self.snr_list:
                             for img_name in os.listdir(snr_path):
                                 if img_name.endswith('.png') and img_name.startswith(self.image_type):  # Filter by image_type
                                     img_path = os.path.join(snr_path, img_name)
                                     image_paths.append(img_path)
-                                    labels.append(self.modulation_labels[modulation_type])  # Assign modulation label
+                                    modulation_labels_list.append(self.modulation_labels[modulation_type])  # Assign modulation label
+                                    snr_labels_list.append(snr_value)  # Assign SNR label
 
-        return image_paths, labels
+        return image_paths, modulation_labels_list, snr_labels_list
 
     def __len__(self):
         """
@@ -90,16 +92,17 @@ class ConstellationDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        Get a specific image and label, apply the default transformation (resizing, tensor conversion, normalization).
+        Get a specific image and labels, apply the default transformation (resizing, tensor conversion, normalization).
 
         Args:
             idx (int): Index of the image to load.
 
         Returns:
-            tuple: (Tensor image, int label)
+            tuple: (Tensor image, int modulation_label, int snr_label)
         """
         img_path = self.image_paths[idx]
-        label = self.labels[idx]
+        modulation_label = self.modulation_labels_list[idx]
+        snr_label = self.snr_labels_list[idx]
 
         # Load image
         if self.image_type == 'three_channel':
@@ -112,7 +115,7 @@ class ConstellationDataset(Dataset):
         # Apply the default transform (resize, to tensor, normalize)
         image = self.transform(image)
 
-        return image, label  # Return both image and label
+        return image, modulation_label, snr_label  # Return image, modulation label, and SNR label
 
 
 def get_constellation_dataloader(root_dir, snr_list=None, mods_to_process=None, image_type='three_channel', batch_size=64, shuffle=True):
@@ -146,5 +149,5 @@ if __name__ == "__main__":
     dataloader = get_constellation_dataloader(root_dir, snr_list=snr_list, mods_to_process=mods_to_process, image_type=image_type, batch_size=32)
 
     # Iterate through the DataLoader (for demonstration purposes)
-    for images, labels in dataloader:
-        print(f"Batch of images: {images.size()}, Batch of labels: {labels.size()}")  # Print image and label batch sizes
+    for images, modulation_labels, snr_labels in dataloader:
+        print(f"Batch of images: {images.size()}, Batch of modulation labels: {modulation_labels.size()}, Batch of SNR labels: {snr_labels.size()}")
