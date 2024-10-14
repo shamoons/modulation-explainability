@@ -9,6 +9,7 @@ from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
+from losses.distance_snr_loss import DistancePenaltyCategoricalSNRLoss  # Import custom SNR loss
 import argparse
 import warnings
 import os
@@ -47,8 +48,8 @@ def main(checkpoint=None):
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
-    # Initialize model
-    model = ConstellationResNet(num_classes=24, input_channels=input_channels)
+    # Initialize model with two output heads (modulation and SNR)
+    model = ConstellationResNet(num_classes=24, snr_classes=26, input_channels=input_channels)
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -57,8 +58,11 @@ def main(checkpoint=None):
     else:
         print("No checkpoint provided, starting training from scratch.")
 
-    # Initialize loss function and optimizer
-    criterion = nn.CrossEntropyLoss()  # Loss function for classification tasks
+    # Initialize loss functions
+    criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
+    criterion_snr = DistancePenaltyCategoricalSNRLoss()  # Custom SNR loss
+
+    # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Add learning rate scheduler (ReduceLROnPlateau)
@@ -72,7 +76,8 @@ def main(checkpoint=None):
     train(
         model,
         device,
-        criterion,
+        criterion_modulation,  # Pass modulation criterion
+        criterion_snr,         # Pass custom SNR criterion
         optimizer,
         scheduler,  # Pass the scheduler to the train function
         train_loader,

@@ -8,7 +8,7 @@ from tqdm import tqdm
 import os
 
 
-def train(model, device, criterion, optimizer, scheduler, train_loader, val_loader, epochs=10, image_type='three_channel', save_dir="checkpoints"):
+def train(model, device, criterion_modulation, criterion_snr, optimizer, train_loader, val_loader, epochs=10, image_type='three_channel', save_dir="checkpoints"):
     """
     Train the model and save the best one based on validation loss.
     Log F1 score after validation step and plot F1 score for each class.
@@ -21,24 +21,35 @@ def train(model, device, criterion, optimizer, scheduler, train_loader, val_load
 
     best_val_loss = float('inf')  # Initialize best validation loss
 
-    label_names = val_loader.dataset.mods_to_process if val_loader.dataset.mods_to_process else sorted(val_loader.dataset.modulation_labels.keys())
-
     model.to(device)
 
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
-        correct = 0
+        correct_modulation = 0
+        correct_snr = 0
         total = 0
+
+        modulation_predictions = []
+        modulation_targets = []
+        snr_predictions = []
+        snr_targets = []
 
         # Training loop with tqdm progress bar
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training", leave=False) as progress:
-            for inputs, labels in progress:
-                inputs, labels = inputs.to(device), labels.to(device)
+            for inputs, (modulation_labels, snr_labels) in progress:
+                inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
                 optimizer.zero_grad()
 
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                # Forward pass
+                modulation_output, snr_output = model(inputs)
+
+                # Compute loss for both outputs
+                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                loss_snr = criterion_snr(snr_output, snr_labels)
+
+                # Total loss is a combination of both losses
+                loss = loss_modulation + loss_snr
                 loss.backward()
 
                 # Gradient clipping to prevent exploding gradients
@@ -46,22 +57,29 @@ def train(model, device, criterion, optimizer, scheduler, train_loader, val_load
                 optimizer.step()
 
                 running_loss += loss.item()
-                _, predicted = outputs.max(1)
-                total += labels.size(0)
-                correct += predicted.eq(labels).sum().item()
+                _, predicted_modulation = modulation_output.max(1)
+                _, predicted_snr = snr_output.max(1)
 
-                progress.set_postfix(loss=loss.item(), accuracy=100.0 * correct / total)
+                total += modulation_labels.size(0)
+                correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
+                correct_snr += predicted_snr.eq(snr_labels).sum().item()
 
-        train_accuracy = 100.0 * correct / total
+                # Track predictions and true labels for confusion matrix and F1
+                modulation_predictions.extend(predicted_modulation.cpu().numpy())
+                modulation_targets.extend(modulation_labels.cpu().numpy())
+                snr_predictions.extend(predicted_snr.cpu().numpy())
+                snr_targets.extend(snr_labels.cpu().numpy())
+
+                progress.set_postfix(loss=loss.item(), mod_accuracy=100.0 * correct_modulation / total, snr_accuracy=100.0 * correct_snr / total)
+
+        train_modulation_accuracy = 100.0 * correct_modulation / total
+        train_snr_accuracy = 100.0 * correct_snr / total
         train_loss = running_loss / len(train_loader)
 
-        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
+        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Modulation Accuracy: {train_modulation_accuracy:.2f}%, SNR Accuracy: {train_snr_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
-        val_loss, val_accuracy, val_predictions, val_targets = validate(model, device, criterion, val_loader)
-
-        # Adjust the learning rate based on the validation loss
-        scheduler.step(val_loss)
+        val_loss, val_modulation_accuracy, val_snr_accuracy = validate(model, device, criterion_modulation, criterion_snr, val_loader)
 
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
@@ -69,103 +87,122 @@ def train(model, device, criterion, optimizer, scheduler, train_loader, val_load
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
 
-        save_confusion_matrix(val_targets, val_predictions, epoch, labels=label_names)
+        # Compute and log confusion matrix and F1 scores
+        log_confusion_matrix(modulation_targets, modulation_predictions, "Modulation", epoch)
+        log_confusion_matrix(snr_targets, snr_predictions, "SNR", epoch)
 
-        # Calculate F1 scores and plot them
-        precision, recall, f1_scores, _ = precision_recall_fscore_support(val_targets, val_predictions, average=None, zero_division=1)
-        plot_f1_scores(f1_scores, label_names, epoch)
+        modulation_f1_scores = precision_recall_fscore_support(modulation_targets, modulation_predictions, average=None)[2]
+        snr_f1_scores = precision_recall_fscore_support(snr_targets, snr_predictions, average=None)[2]
 
-        print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
+        plot_f1_scores(modulation_f1_scores, label_type="Modulation", epoch=epoch)
+        plot_f1_scores(snr_f1_scores, label_type="SNR", epoch=epoch)
+
+        print(f"Validation Loss: {val_loss:.4f}, Modulation Accuracy: {val_modulation_accuracy:.2f}%, SNR Accuracy: {val_snr_accuracy:.2f}%")
         wandb.log({
             "epoch": epoch + 1,
             "train_loss": train_loss,
-            "train_accuracy": train_accuracy,
+            "train_modulation_accuracy": train_modulation_accuracy,
+            "train_snr_accuracy": train_snr_accuracy,
             "val_loss": val_loss,
-            "val_accuracy": val_accuracy
+            "val_modulation_accuracy": val_modulation_accuracy,
+            "val_snr_accuracy": val_snr_accuracy
         })
 
 
-def validate(model, device, criterion, val_loader):
+def validate(model, device, criterion_modulation, criterion_snr, val_loader):
     """
     Validate the model on the validation dataset with tqdm progress bar.
-    Also returns precision, recall, and F1 scores for analysis.
     """
     model.eval()
     val_loss = 0.0
-    correct = 0
+    correct_modulation = 0
+    correct_snr = 0
     total = 0
 
-    val_predictions = []
-    val_targets = []
+    modulation_predictions = []
+    modulation_targets = []
+    snr_predictions = []
+    snr_targets = []
 
     with torch.no_grad():
         with tqdm(val_loader, desc="Validation", leave=False) as progress:
-            for inputs, labels in progress:
-                inputs, labels = inputs.to(device), labels.to(device)
+            for inputs, (modulation_labels, snr_labels) in progress:
+                inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
 
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                # Forward pass
+                modulation_output, snr_output = model(inputs)
+
+                # Compute loss for both outputs
+                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                loss_snr = criterion_snr(snr_output, snr_labels)
+
+                # Total loss
+                loss = loss_modulation + loss_snr
                 val_loss += loss.item()
 
-                _, predicted = outputs.max(1)
-                total += labels.size(0)
-                correct += predicted.eq(labels).sum().item()
+                _, predicted_modulation = modulation_output.max(1)
+                _, predicted_snr = snr_output.max(1)
 
-                val_predictions.extend(predicted.cpu().numpy())
-                val_targets.extend(labels.cpu().numpy())
+                total += modulation_labels.size(0)
+                correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
+                correct_snr += predicted_snr.eq(snr_labels).sum().item()
 
-                # Update progress bar with current validation loss and accuracy
-                progress.set_postfix(loss=loss.item(), accuracy=100.0 * correct / total)
+                # Track predictions and true labels for confusion matrix and F1
+                modulation_predictions.extend(predicted_modulation.cpu().numpy())
+                modulation_targets.extend(modulation_labels.cpu().numpy())
+                snr_predictions.extend(predicted_snr.cpu().numpy())
+                snr_targets.extend(snr_labels.cpu().numpy())
 
-    val_accuracy = 100.0 * correct / total
+                progress.set_postfix(loss=loss.item(), mod_accuracy=100.0 * correct_modulation / total, snr_accuracy=100.0 * correct_snr / total)
+
+    val_modulation_accuracy = 100.0 * correct_modulation / total
+    val_snr_accuracy = 100.0 * correct_snr / total
     val_loss = val_loss / len(val_loader)
 
-    return val_loss, val_accuracy, val_predictions, val_targets
+    # Compute and log confusion matrix and F1 scores for validation
+    log_confusion_matrix(modulation_targets, modulation_predictions, "Modulation", "Validation")
+    log_confusion_matrix(snr_targets, snr_predictions, "SNR", "Validation")
+
+    modulation_f1_scores = precision_recall_fscore_support(modulation_targets, modulation_predictions, average=None)[2]
+    snr_f1_scores = precision_recall_fscore_support(snr_targets, snr_predictions, average=None)[2]
+
+    plot_f1_scores(modulation_f1_scores, label_type="Modulation", epoch="Validation")
+    plot_f1_scores(snr_f1_scores, label_type="SNR", epoch="Validation")
+
+    return val_loss, val_modulation_accuracy, val_snr_accuracy
 
 
-def save_confusion_matrix(targets, predictions, epoch, labels=None):
+def log_confusion_matrix(targets, predictions, label_type, epoch):
     """
-    Save the confusion matrix as an image using matplotlib.
+    Log confusion matrix as an image using matplotlib and save it.
     """
     cm = confusion_matrix(targets, predictions)
-
-    # If no labels are provided, use numeric labels
-    if labels is None:
-        num_classes = cm.shape[0]
-        labels = list(range(num_classes))
-
-    # Plot confusion matrix using seaborn heatmap
     plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=labels, yticklabels=labels)
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
     plt.xlabel("Predicted Label")
     plt.ylabel("True Label")
-    plt.title(f"Confusion Matrix - Epoch {epoch + 1}")
+    plt.title(f"{label_type} Confusion Matrix - Epoch {epoch}")
 
     # Save confusion matrix
-    plt.savefig(f"confusion_matrix_epoch_{epoch + 1}.png")
+    plt.savefig(f"confusion_matrix_{label_type}_epoch_{epoch}.png")
     plt.close()
 
-    # Log to Weights and Biases
-    wandb.log({f"Confusion Matrix Epoch {epoch + 1}": wandb.Image(f"confusion_matrix_epoch_{epoch + 1}.png")})
+    # Log to WandB
+    wandb.log({f"{label_type} Confusion Matrix Epoch {epoch}": wandb.Image(f"confusion_matrix_{label_type}_epoch_{epoch}.png")})
 
 
-def plot_f1_scores(f1_scores, labels, epoch):
+def plot_f1_scores(f1_scores, label_type, epoch):
     """
     Plot F1 scores for each class and save the plot.
     """
-
-    if len(f1_scores) != len(labels):
-        print(f"Warning: Mismatch in F1 scores ({len(f1_scores)}) and labels ({len(labels)}) length.")
-        return
     plt.figure(figsize=(10, 6))
-    plt.bar(labels, f1_scores, color='b', alpha=0.7)
-    plt.xticks(rotation=45)
-    plt.xlabel('Modulation Classes')
+    plt.bar(range(len(f1_scores)), f1_scores, color='b', alpha=0.7)
+    plt.xlabel(f'{label_type} Classes')
     plt.ylabel('F1 Score')
-    plt.title(f'F1 Score for Each Modulation Class - Epoch {epoch}')
+    plt.title(f'F1 Scores for {label_type} Classes - Epoch {epoch}')
     plt.tight_layout()
-    plt.savefig(f'f1_scores_epoch_{epoch}.png')
+    plt.savefig(f'f1_scores_{label_type}_epoch_{epoch}.png')
     plt.close()
 
-    # Log to Weights and Biases
-    wandb.log({f"F1 Scores Epoch {epoch}": wandb.Image(f"f1_scores_epoch_{epoch}.png")})
+    # Log to WandB
+    wandb.log({f"F1 Scores {label_type} Epoch {epoch}": wandb.Image(f'f1_scores_{label_type}_epoch_{epoch}.png')})
