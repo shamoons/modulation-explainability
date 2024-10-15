@@ -48,17 +48,18 @@ def plot_points(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
 
 def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     """
-    Generate the image array from the I/Q data.
+    Generate the image array from the I/Q data for a batch of samples.
 
     Args:
-        iq_data (torch.Tensor): I/Q data (shape = (N, 2)).
+        iq_data (torch.Tensor): I/Q data (shape = (batch_size, N, 2)).
         image_size (tuple): Final size of the image (e.g., (224, 224)).
 
     Returns:
-        torch.Tensor: The image array.
+        torch.Tensor: The image array (batch of images).
     """
-    # blk_size = [5, 25, 50]
-    # c_factor = 5.0 / torch.tensor(blk_size)
+    batch_size = iq_data.shape[0]
+
+    # blk_size and scaling factors
     blk_size = [2, 10, 25]
     c_factor = 5.0 / torch.tensor(blk_size)
     cons_scale = torch.tensor([2.5, 2.5])
@@ -70,11 +71,11 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     d_q_x = 2 * cons_scale[1] / internal_image_size_y
     d_xy = torch.sqrt(d_i_y ** 2 + d_q_x ** 2)
 
-    # Convert I/Q data to image positions
-    sample_x = torch.round((cons_scale[1] - iq_data[:, 1]) / d_q_x).to(torch.int32)  # Imaginary part (Q)
-    sample_y = torch.round((cons_scale[0] + iq_data[:, 0]) / d_i_y).to(torch.int32)  # Real part (I)
+    # Convert I/Q data to image positions for the entire batch
+    sample_x = torch.round((cons_scale[1] - iq_data[:, :, 1]) / d_q_x).to(torch.int32)  # Imaginary part (Q)
+    sample_y = torch.round((cons_scale[0] + iq_data[:, :, 0]) / d_i_y).to(torch.int32)  # Real part (I)
 
-    # Create pixel centroid grid with the internal image size
+    # Create a batch of pixel centroid grids
     ii, jj = torch.meshgrid(
         torch.arange(internal_image_size_x),
         torch.arange(internal_image_size_y),
@@ -84,7 +85,8 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     pixel_centroid_real = -cons_scale[0] + d_i_y / 2 + jj * d_i_y
     pixel_centroid_imag = cons_scale[1] - d_q_x / 2 - ii * d_q_x
 
-    image_array = torch.zeros((internal_image_size_x, internal_image_size_y, 3))
+    # Pre-allocate a batch of image arrays
+    image_array = torch.zeros((batch_size, internal_image_size_x, internal_image_size_y, 3))
 
     for kk, blk in enumerate(blk_size):
         blk_x_min = sample_x - blk
@@ -99,20 +101,21 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
             & (blk_y_max < internal_image_size_y)
         )
 
-        for i in torch.where(valid)[0]:
-            x_min, x_max = blk_x_min[i], blk_x_max[i]
-            y_min, y_max = blk_y_min[i], blk_y_max[i]
+        for b in range(batch_size):
+            for i in torch.where(valid[b])[0]:
+                x_min, x_max = blk_x_min[b, i], blk_x_max[b, i]
+                y_min, y_max = blk_y_min[b, i], blk_y_max[b, i]
 
-            real_part = iq_data[i, 0]
-            imag_part = iq_data[i, 1]
+                real_part = iq_data[b, i, 0]
+                imag_part = iq_data[b, i, 1]
 
-            real_part_distance = torch.abs(real_part - pixel_centroid_real[x_min:x_max, y_min:y_max])
-            imag_part_distance = torch.abs(imag_part - pixel_centroid_imag[x_min:x_max, y_min:y_max])
+                real_part_distance = torch.abs(real_part - pixel_centroid_real[x_min:x_max, y_min:y_max])
+                imag_part_distance = torch.abs(imag_part - pixel_centroid_imag[x_min:x_max, y_min:y_max])
 
-            sample_distance = torch.sqrt(real_part_distance**2 + imag_part_distance**2)
-            image_array[x_min:x_max, y_min:y_max, kk] += torch.exp(-c_factor[kk] * sample_distance / d_xy)
+                sample_distance = torch.sqrt(real_part_distance**2 + imag_part_distance**2)
+                image_array[b, x_min:x_max, y_min:y_max, kk] += torch.exp(-c_factor[kk] * sample_distance / d_xy)
 
-        image_array[:, :, kk] /= torch.max(image_array[:, :, kk])
+            image_array[b, :, :, kk] /= torch.max(image_array[b, :, :, kk])
 
     return image_array
 
@@ -137,22 +140,23 @@ def renormalize_image(image_array: torch.Tensor) -> torch.Tensor:
     return image_array
 
 
-def process_sample(iq_data: np.ndarray, modulation_type: str, snr: float, sample_idx: int, output_dir: str, image_size: tuple, image_types: list) -> None:
+def process_samples(
+    iq_data: np.ndarray, modulation_type: str, snr: float,
+    start_idx: int, output_dir: str, image_size: tuple, image_types: list
+) -> None:
     """
-    Process a single I/Q data sample through all steps.
+    Process a batch of I/Q data samples through all steps.
 
     Args:
-        iq_data (np.ndarray): The I/Q data sample.
-        modulation_type (str): Modulation type of the sample.
-        snr (float): Signal-to-noise ratio of the sample.
-        sample_idx (int): Index of the sample.
+        iq_data (np.ndarray): The I/Q data samples (batch of samples).
+        modulation_type (str): Modulation type of the samples.
+        snr (float): Signal-to-noise ratio of the samples.
+        start_idx (int): Starting index for the batch of samples.
         output_dir (str): Directory where images will be saved.
         image_size (tuple): Size of the output images.
         image_types (list): List of image types to generate.
     """
-    image_name = f"{modulation_type}_SNR_{int(snr)}_sample_{sample_idx}"
-    image_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
-    os.makedirs(image_dir, exist_ok=True)
+    batch_size = iq_data.shape[0]
 
     iq_data_torch = torch.tensor(iq_data)
 
@@ -164,33 +168,13 @@ def process_sample(iq_data: np.ndarray, modulation_type: str, snr: float, sample
 
     image_array = renormalize_image(image_array)
 
-    # Generate and save images
-    generate_and_save_images(image_array, image_size, image_dir, image_name, image_types, raw_iq_data=iq_data_torch)
-    """
-    Process a single I/Q data sample through all steps.
+    for i in range(batch_size):
+        image_name = f"{modulation_type}_SNR_{int(snr)}_sample_{start_idx + i}"
+        image_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
+        os.makedirs(image_dir, exist_ok=True)
 
-    Args:
-        iq_data (np.ndarray): The I/Q data sample.
-        modulation_type (str): Modulation type of the sample.
-        snr (float): Signal-to-noise ratio of the sample.
-        sample_idx (int): Index of the sample.
-        output_dir (str): Directory where images will be saved.
-        image_size (tuple): Size of the output images.
-        image_types (list): List of image types to generate.
-    """
-    image_name = f"{modulation_type}_SNR_{int(snr)}_sample_{sample_idx}"
-    image_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
-    os.makedirs(image_dir, exist_ok=True)
-
-    iq_data_torch = torch.tensor(iq_data)
-
-    # Generate the image array once
-    image_array = get_image_array(iq_data_torch, image_size)
-
-    image_array = renormalize_image(image_array)
-
-    # Generate and save images
-    generate_and_save_images(image_array, image_size, image_dir, image_name, image_types, raw_iq_data=iq_data_torch)
+        # Generate and save images
+        generate_and_save_images(image_array[i], image_size, image_dir, image_name, image_types, raw_iq_data=iq_data_torch[i])
 
 
 def group_by_modulation_snr(
