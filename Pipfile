@@ -12,6 +12,7 @@ wandb = "==0.18.3"
 scikit-learn = "==1.5.2"
 tqdm = "==4.66.5"
 h5py = "==3.12.1"
+pandas = "==2.2.3"
 scipy = "==1.13.1"
 seaborn = "==0.13.2"
 

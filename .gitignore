@@ -7,3 +7,4 @@ constellation/
 *.pth
 atik/
 checkpoints/
+confusion_matrices/

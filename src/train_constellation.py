@@ -18,15 +18,21 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None, batch_size=64):
+def main(checkpoint=None, batch_size=64, snr_list=None):
     # Load data
     print("Loading data...")
 
     image_type = 'grayscale'
     root_dir = "constellation"
 
+    # Parse snr_list if provided
+    if snr_list is not None:
+        snr_list = [int(s.strip()) for s in snr_list.split(',')]
+    else:
+        snr_list = None  # Load all SNRs
+
     # Load full dataset (without splitting)
-    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type)
+    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list)
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
@@ -95,6 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train constellation model with optional checkpoint loading')
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
     parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=64)
+    parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     args = parser.parse_args()
 
-    main(checkpoint=args.checkpoint, batch_size=args.batch_size)
+    main(checkpoint=args.checkpoint, batch_size=args.batch_size, snr_list=args.snr_list)
