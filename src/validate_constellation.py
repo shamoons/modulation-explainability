@@ -12,6 +12,7 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
     val_loss = 0.0
     correct_modulation = 0
     correct_snr = 0
+    correct_both = 0  # For combined accuracy
     total = 0
 
     all_true_modulation_labels = []
@@ -42,15 +43,24 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
                 correct_snr += predicted_snr.eq(snr_labels).sum().item()
 
+                # Calculate combined accuracy
+                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
+
                 all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
                 all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
                 all_true_snr_labels.extend(snr_labels.cpu().numpy())
                 all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
 
-                progress.set_postfix(loss=total_loss.item(), mod_accuracy=100.0 * correct_modulation / total, snr_accuracy=100.0 * correct_snr / total)
+                progress.set_postfix(
+                    loss=total_loss.item(),
+                    mod_accuracy=100.0 * correct_modulation / total,
+                    snr_accuracy=100.0 * correct_snr / total,
+                    combined_accuracy=100.0 * correct_both / total
+                )
 
     val_modulation_accuracy = 100.0 * correct_modulation / total
     val_snr_accuracy = 100.0 * correct_snr / total
+    val_combined_accuracy = 100.0 * correct_both / total
     val_loss = val_loss / len(val_loader)
 
-    return val_loss, val_modulation_accuracy, val_snr_accuracy
+    return val_loss, val_modulation_accuracy, val_snr_accuracy, val_combined_accuracy

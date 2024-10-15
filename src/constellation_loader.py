@@ -1,3 +1,5 @@
+# src/constellation_loader.py
+
 import os
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
@@ -24,9 +26,19 @@ class ConstellationDataset(Dataset):
         self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
         self.image_type = image_type  # Image type to load
 
-        # Create a dictionary for directories and save it as an attribute
-        self.modulation_labels = {mod: idx for idx, mod in enumerate(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))}
-        self.snr_labels = {snr: idx for idx, snr in enumerate(range(-20, 32, 2))}  # Example SNR range
+        # --- Modifications Start Here ---
+
+        # Create modulation label mappings
+        modulation_types = [mod for mod in sorted(os.listdir(self.root_dir)) if os.path.isdir(os.path.join(self.root_dir, mod))]
+        self.modulation_labels = {mod: idx for idx, mod in enumerate(modulation_types)}
+        self.inverse_modulation_labels = {idx: mod for mod, idx in self.modulation_labels.items()}
+
+        # Create SNR label mappings
+        snr_values = sorted(range(-20, 32, 2))  # Adjust this range as per your data
+        self.snr_labels = {snr: idx for idx, snr in enumerate(snr_values)}
+        self.inverse_snr_labels = {idx: snr for snr, idx in self.snr_labels.items()}
+
+        # --- Modifications End Here ---
 
         # Load image paths and labels
         self.image_paths, self.modulation_labels_list, self.snr_labels_list = self._load_image_paths_and_labels()
@@ -114,23 +126,3 @@ class ConstellationDataset(Dataset):
         image = self.transform(image)
 
         return image, modulation_label, snr_label  # Return image, modulation label, and SNR label
-
-
-def get_constellation_dataloader(root_dir, snr_list=None, mods_to_process=None, image_type='three_channel', batch_size=64, shuffle=True):
-    """
-    Function to create a DataLoader for the constellation dataset.
-
-    Args:
-        root_dir (str): Root directory where constellation images are stored.
-        snr_list (list of str or None): List of SNR values to load. If None, load all SNRs.
-        mods_to_process (list of str or None): List of modulation types to load. If None, load all modulations.
-        image_type (str): Type of images to load ('three_channel' or 'grayscale').
-        batch_size (int): Number of images per batch.
-        shuffle (bool): Whether to shuffle the data.
-
-    Returns:
-        DataLoader: PyTorch DataLoader for the constellation dataset.
-    """
-    dataset = ConstellationDataset(root_dir, snr_list=snr_list, mods_to_process=mods_to_process, image_type=image_type)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=12, pin_memory=True)
-    return dataloader

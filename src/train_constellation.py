@@ -1,4 +1,5 @@
 # src/train_constellation.py
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -17,11 +18,10 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None):
+def main(checkpoint=None, batch_size=64):
     # Load data
     print("Loading data...")
 
-    batch_size = 64
     image_type = 'grayscale'
     root_dir = "constellation"
 
@@ -48,7 +48,13 @@ def main(checkpoint=None):
     input_channels = 1 if image_type == 'grayscale' else 3
 
     # Initialize model with two output heads (modulation and SNR)
-    model = ConstellationResNet(num_classes=24, snr_classes=26, input_channels=input_channels)
+    num_modulation_classes = len(dataset.modulation_labels)
+    num_snr_classes = len(dataset.snr_labels)
+    model = ConstellationResNet(
+        num_classes=num_modulation_classes,
+        snr_classes=num_snr_classes,
+        input_channels=input_channels
+    )
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -63,10 +69,10 @@ def main(checkpoint=None):
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Add learning rate scheduler (Remove verbose=True)
+    # Add learning rate scheduler
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
 
-    # Determine device (CUDA or CPU)
+    # Determine device (CUDA, MPS, or CPU)
     device = get_device()
 
     # Train and validate the model
@@ -88,6 +94,7 @@ def main(checkpoint=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train constellation model with optional checkpoint loading')
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
+    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=64)
     args = parser.parse_args()
 
-    main(checkpoint=args.checkpoint)
+    main(checkpoint=args.checkpoint, batch_size=args.batch_size)

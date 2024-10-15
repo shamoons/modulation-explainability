@@ -1,4 +1,5 @@
 # src/training_constellation.py
+
 import torch
 import wandb
 from utils.image_utils import plot_confusion_matrix
@@ -27,6 +28,7 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
         running_loss = 0.0
         correct_modulation = 0
         correct_snr = 0
+        correct_both = 0  # For combined accuracy
         total = 0
 
         # Accumulate true and predicted labels for confusion matrix
@@ -65,22 +67,31 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
                 correct_snr += predicted_snr.eq(snr_labels).sum().item()
 
+                # Calculate combined accuracy
+                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
+
                 # Append true and predicted labels for confusion matrix
                 all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
                 all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
                 all_true_snr_labels.extend(snr_labels.cpu().numpy())
                 all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
 
-                progress.set_postfix(loss=total_loss.item(), mod_accuracy=100.0 * correct_modulation / total, snr_accuracy=100.0 * correct_snr / total)
+                progress.set_postfix(
+                    loss=total_loss.item(),
+                    mod_accuracy=100.0 * correct_modulation / total,
+                    snr_accuracy=100.0 * correct_snr / total,
+                    combined_accuracy=100.0 * correct_both / total
+                )
 
         train_modulation_accuracy = 100.0 * correct_modulation / total
         train_snr_accuracy = 100.0 * correct_snr / total
+        train_combined_accuracy = 100.0 * correct_both / total
         train_loss = running_loss / len(train_loader)
 
-        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Modulation Accuracy: {train_modulation_accuracy:.2f}%, SNR Accuracy: {train_snr_accuracy:.2f}%")
+        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Modulation Accuracy: {train_modulation_accuracy:.2f}%, SNR Accuracy: {train_snr_accuracy:.2f}%, Combined Accuracy: {train_combined_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
-        val_loss, val_modulation_accuracy, val_snr_accuracy = validate(model, device, criterion_modulation, criterion_snr, val_loader)
+        val_loss, val_modulation_accuracy, val_snr_accuracy, val_combined_accuracy = validate(model, device, criterion_modulation, criterion_snr, val_loader)
 
         # Step the scheduler based on the validation loss
         scheduler.step(val_loss)
@@ -91,22 +102,41 @@ def train(model, device, criterion_modulation, criterion_snr, optimizer, schedul
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
 
-        # Plot confusion matrices for both modulation and SNR
-        # Extract label names from dataset
-        modulation_labels = list(val_loader.dataset.modulation_labels.keys())  # Extract modulation label names
-        snr_labels = list(map(str, val_loader.dataset.snr_labels.keys()))  # Extract SNR labels as strings
+        # Extract unique labels for modulation and SNR
+        unique_modulation_labels = sorted(set(all_true_modulation_labels + all_pred_modulation_labels))
+        unique_snr_labels = sorted(set(all_true_snr_labels + all_pred_snr_labels))
 
-        # In the training loop, when calling plot_confusion_matrix:
-        plot_confusion_matrix(all_true_modulation_labels, all_pred_modulation_labels, 'Modulation', epoch, label_names=modulation_labels)
-        plot_confusion_matrix(all_true_snr_labels, all_pred_snr_labels, 'SNR', epoch, label_names=snr_labels)
+        # Map indices back to label names using inverse mappings from the dataset
+        modulation_label_names = [train_loader.dataset.inverse_modulation_labels[idx] for idx in unique_modulation_labels]
+        snr_label_names = [str(train_loader.dataset.inverse_snr_labels[idx]) for idx in unique_snr_labels]
 
-        print(f"Validation Loss: {val_loss:.4f}, Modulation Accuracy: {val_modulation_accuracy:.2f}%, SNR Accuracy: {val_snr_accuracy:.2f}%")
+        # Plot confusion matrices with only the labels present in the data
+        plot_confusion_matrix(
+            all_true_modulation_labels,
+            all_pred_modulation_labels,
+            'Modulation',
+            epoch,
+            label_names=modulation_label_names
+        )
+        plot_confusion_matrix(
+            all_true_snr_labels,
+            all_pred_snr_labels,
+            'SNR',
+            epoch,
+            label_names=snr_label_names
+        )
+
+        print(f"Validation Loss: {val_loss:.4f}, Modulation Accuracy: {val_modulation_accuracy:.2f}%, SNR Accuracy: {val_snr_accuracy:.2f}%, Combined Accuracy: {val_combined_accuracy:.2f}%")
+
+        # Log metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
             "train_loss": train_loss,
             "train_modulation_accuracy": train_modulation_accuracy,
             "train_snr_accuracy": train_snr_accuracy,
+            "train_combined_accuracy": train_combined_accuracy,
             "val_loss": val_loss,
             "val_modulation_accuracy": val_modulation_accuracy,
-            "val_snr_accuracy": val_snr_accuracy
+            "val_snr_accuracy": val_snr_accuracy,
+            "val_combined_accuracy": val_combined_accuracy
         })
