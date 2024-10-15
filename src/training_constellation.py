@@ -150,6 +150,7 @@ def train(
         # Log metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
+            "learning_rate": current_lr,
             "train_loss": train_loss,
             "train_modulation_accuracy": train_modulation_accuracy,
             "train_snr_accuracy": train_snr_accuracy,
