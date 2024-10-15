@@ -75,8 +75,14 @@ def main(checkpoint=None, batch_size=64, snr_list=None, epochs=100, warmup_epoch
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
+    # Step up size should be a quarter of the total number of iterations
+    step_size_up = 4 * len(train_loader)
+
+    # Step down size should be 50% of the total number of iterations
+    step_size_down = 0.5 * len(train_loader)
+
     # Add learning rate scheduler with dynamic step_size_up
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.01, step_size_up=warmup_epochs, mode='triangular2', cycle_momentum=False)
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.00001, max_lr=0.01, step_size_up=step_size_up, step_size_down=step_size_down, mode='triangular2', cycle_momentum=False)
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
