@@ -120,7 +120,7 @@ def train(
         lr_before = optimizer.param_groups[0]['lr']
 
         # Step the scheduler based on the validation loss
-        scheduler.step(val_loss)
+        scheduler.step()
 
         # After stepping the scheduler, get the new learning rate
         lr_after = optimizer.param_groups[0]['lr']
