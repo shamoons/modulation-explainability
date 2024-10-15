@@ -70,7 +70,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None):
 
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
-    criterion_snr = DistancePenaltyCategoricalSNRLoss()  # Custom SNR loss
+    # criterion_snr = DistancePenaltyCategoricalSNRLoss()  # Custom SNR loss
+    criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.01)
