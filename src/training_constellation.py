@@ -3,6 +3,7 @@
 import torch
 import wandb
 from utils.image_utils import plot_confusion_matrix
+from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from tqdm import tqdm
 import os
@@ -25,6 +26,8 @@ def train(
     Train the model and save the best one based on validation loss.
     Log metrics after validation and plot confusion matrices.
     """
+    alpha, beta = load_loss_config()
+
     # Initialize WandB project and log image_type
     wandb.init(project="modulation-explainability", config={"epochs": epochs, "image_type": image_type})
 
@@ -63,7 +66,7 @@ def train(
                 loss_snr = criterion_snr(snr_output, snr_labels)
 
                 # Combine both losses
-                total_loss = loss_modulation + loss_snr
+                total_loss = alpha * loss_modulation + beta * loss_snr
                 total_loss.backward()
 
                 # Gradient clipping to prevent exploding gradients

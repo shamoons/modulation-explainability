@@ -4,9 +4,13 @@ import torch
 from tqdm import tqdm
 import numpy as np
 
+from utils.config_utils import load_loss_config
+
 
 def validate(model, device, criterion_modulation, criterion_snr, val_loader):
     model.eval()
+
+    alpha, beta = load_loss_config()
     val_loss = 0.0
     correct_modulation = 0
     correct_snr = 0
@@ -31,7 +35,7 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
                 # Compute loss
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                 loss_snr = criterion_snr(snr_output, snr_labels)
-                total_loss = loss_modulation + loss_snr
+                total_loss = alpha * loss_modulation + beta * loss_snr
                 val_loss += total_loss.item()
 
                 # Predict labels
