@@ -95,7 +95,7 @@ def train(
         train_loss = running_loss / len(train_loader)
 
         print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
-        print(f"  Train Loss: {train_loss:.4f}")
+        print(f"  Train Loss (mod/snr): {train_loss:.4f} ({loss_modulation:.4f}/{loss_snr:.4f})")
         print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {train_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
