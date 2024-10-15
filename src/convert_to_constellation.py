@@ -38,7 +38,7 @@ if __name__ == "__main__":
     if args.mod_list is not None:
         mods_to_process = args.mod_list.split(',')
     else:
-        mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '64QAM', '256QAM']  # Default modulations if not provided
+        mods_to_process = ['BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '32QAM', '64QAM', '128QAM', '256QAM']  # Default modulations if not provided
 
     # Set a limit for the number of samples to process, default is None (no limit)
     limit = args.limit
