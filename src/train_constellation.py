@@ -75,10 +75,14 @@ def main(checkpoint=None, batch_size=64, snr_list=None, epochs=100, warmup_epoch
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.00001)
 
-    total_iterations = epochs * len(train_loader)  # total iterations across all epochs
-    step_size_up = int(0.1 * total_iterations)  # 10% of total iterations
-    step_size_down = int(0.4 * total_iterations)  # 40% of total iterations
+    # Calculate the number of batches per epoch
+    batches_per_epoch = len(train_loader)
 
+    # Calculate step_size_up as 10% of the total number of epochs
+    step_size_up = int(0.1 * epochs * batches_per_epoch)  # 10% of epochs
+
+    # Calculate step_size_down as 20% of the total number of epochs
+    step_size_down = int(0.2 * epochs * batches_per_epoch)  # 20% of epochs
     # Add learning rate scheduler with dynamic step_size_up
     scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.00001, max_lr=0.01, step_size_up=step_size_up, step_size_down=step_size_down, mode='triangular2', cycle_momentum=False)
 

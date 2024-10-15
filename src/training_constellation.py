@@ -73,6 +73,9 @@ def train(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
 
+                # Adjust learning rate using scheduler
+                scheduler.step()
+
                 running_loss += total_loss.item()
 
                 _, predicted_modulation = modulation_output.max(1)
@@ -116,34 +119,11 @@ def train(
             all_pred_snr_labels,
         ) = val_results
 
-        # Before stepping the scheduler, get the learning rate
-        lr_before = optimizer.param_groups[0]['lr']
-
-        # Step the scheduler based on the validation loss
-        scheduler.step()
-
-        # After stepping the scheduler, get the new learning rate
-        lr_after = optimizer.param_groups[0]['lr']
-
-        # Check if the learning rate has changed
-        if lr_after != lr_before:
-            print(f"Learning rate changed from {lr_before} to {lr_after} at epoch {epoch+1}")
-
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
-
-        # Map indices back to label names using inverse mappings from the dataset
-        modulation_label_names = [
-            train_loader.dataset.inverse_modulation_labels[idx]
-            for idx in range(len(train_loader.dataset.modulation_labels))
-        ]
-        snr_label_names = [
-            str(train_loader.dataset.inverse_snr_labels[idx])
-            for idx in range(len(train_loader.dataset.snr_labels))
-        ]
 
         # Plot confusion matrices using validation data
         plot_confusion_matrix(
@@ -151,14 +131,14 @@ def train(
             all_pred_modulation_labels,
             'Modulation',
             epoch,
-            label_names=modulation_label_names
+            label_names=val_loader.dataset.inverse_modulation_labels
         )
         plot_confusion_matrix(
             all_true_snr_labels,
             all_pred_snr_labels,
             'SNR',
             epoch,
-            label_names=snr_label_names
+            label_names=val_loader.dataset.inverse_snr_labels
         )
 
         print(f"Validation Results:")
@@ -170,7 +150,6 @@ def train(
         # Log metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
-            "learning_rate": lr_after,
             "train_loss": train_loss,
             "train_modulation_accuracy": train_modulation_accuracy,
             "train_snr_accuracy": train_snr_accuracy,
