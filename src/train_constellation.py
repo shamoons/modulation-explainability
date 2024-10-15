@@ -77,7 +77,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None):
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     # Add learning rate scheduler
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.05, patience=10)
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.01, step_size_up=2000, mode='triangular2')
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
