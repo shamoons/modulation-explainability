@@ -23,7 +23,7 @@ def train(
 ):
     """
     Train the model and save the best one based on validation loss.
-    Log metrics after validation step and plot confusion matrices.
+    Log metrics after validation and plot confusion matrices.
     """
     # Initialize WandB project and log image_type
     wandb.init(project="modulation-explainability", config={"epochs": epochs, "image_type": image_type})
@@ -45,10 +45,10 @@ def train(
 
         # Get current learning rate
         current_lr = optimizer.param_groups[0]['lr']
-        print(f"\nEpoch {epoch+1}/{epochs} - Current Learning Rate: {current_lr}")
+        print(f"\nEpoch {epoch+1}/{epochs} - Learning Rate: {current_lr}")
 
         # Training loop with tqdm progress bar
-        with tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training", leave=False) as progress:
+        with tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False) as progress:
             for inputs, modulation_labels, snr_labels in progress:
                 inputs = inputs.to(device)
                 modulation_labels = modulation_labels.to(device)
@@ -82,25 +82,23 @@ def train(
                 # Calculate combined accuracy
                 correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
 
-                progress.set_postfix(
-                    loss=total_loss.item(),
-                    loss_modulation=loss_modulation.item(),
-                    loss_snr=loss_snr.item(),
-                    mod_accuracy=100.0 * correct_modulation / total,
-                    snr_accuracy=100.0 * correct_snr / total,
-                    combined_accuracy=100.0 * correct_both / total
-                )
+                # Update progress bar
+                progress.set_postfix({
+                    'Loss': f"{total_loss.item():.4f}",
+                    'Mod Acc': f"{100.0 * correct_modulation / total:.2f}%",
+                    'SNR Acc': f"{100.0 * correct_snr / total:.2f}%"
+                })
 
         train_modulation_accuracy = 100.0 * correct_modulation / total
         train_snr_accuracy = 100.0 * correct_snr / total
         train_combined_accuracy = 100.0 * correct_both / total
         train_loss = running_loss / len(train_loader)
 
-        print(f"\nEpoch [{epoch+1}/{epochs}]")
-        print(f"\tTrain Loss (mod/snr): {train_loss:.4f} ({loss_modulation.item():.4f}/{loss_snr.item():.4f})")
-        print(f"\tModulation Accuracy: {train_modulation_accuracy:.2f}%")
-        print(f"\tSNR Accuracy: {train_snr_accuracy:.2f}%")
-        print(f"\tCombined Accuracy: {train_combined_accuracy:.2f}%")
+        print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
+        print(f"  Train Loss: {train_loss:.4f}")
+        print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")
+        print(f"  SNR Accuracy: {train_snr_accuracy:.2f}%")
+        print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
         val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader)
@@ -160,19 +158,17 @@ def train(
             label_names=snr_label_names
         )
 
-        print(f"\nValidation Results:")
-        print(f"\tValidation Loss: {val_loss:.4f}")
-        print(f"\tModulation Accuracy: {val_modulation_accuracy:.2f}%")
-        print(f"\tSNR Accuracy: {val_snr_accuracy:.2f}%")
-        print(f"\tCombined Accuracy: {val_combined_accuracy:.2f}%")
+        print(f"Validation Results:")
+        print(f"  Validation Loss: {val_loss:.4f}")
+        print(f"  Modulation Accuracy: {val_modulation_accuracy:.2f}%")
+        print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
+        print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")
 
         # Log metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
             "learning_rate": lr_after,
             "train_loss": train_loss,
-            "train_loss_modulation": loss_modulation.item(),
-            "train_loss_snr": loss_snr.item(),
             "train_modulation_accuracy": train_modulation_accuracy,
             "train_snr_accuracy": train_snr_accuracy,
             "train_combined_accuracy": train_combined_accuracy,

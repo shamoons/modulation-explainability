@@ -152,7 +152,7 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     plt.tight_layout()
 
     # Save confusion matrix
-    file_path = os.path.join(save_dir, f"confusion_matrix_{label_type}_epoch_{epoch + 1}.png")
+    file_path = os.path.join(save_dir, f"{label_type}_epoch_{epoch + 1}.png")
     plt.savefig(file_path)
     plt.close()
 
