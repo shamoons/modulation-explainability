@@ -18,7 +18,7 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None):
+def main(checkpoint=None, batch_size=64, snr_list=None, epochs=100, warmup_epochs=5):
     # Load data
     print("Loading data...")
 
@@ -70,20 +70,24 @@ def main(checkpoint=None, batch_size=64, snr_list=None):
 
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
-    # criterion_snr = DistancePenaltyCategoricalSNRLoss()  # Custom SNR loss
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-    # Add learning rate scheduler
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.01, step_size_up=2000, mode='triangular2', cycle_momentum=False)
+    # Calculate the number of batches per epoch
+    num_batches_per_epoch = len(train_loader)
+
+    # Set step_size_up dynamically based on warmup_epochs and number of batches
+    step_size_up = num_batches_per_epoch * warmup_epochs
+
+    # Add learning rate scheduler with dynamic step_size_up
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.01, step_size_up=step_size_up, mode='triangular2', cycle_momentum=False)
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
 
     # Train and validate the model
-    epochs = 100
     train(
         model,
         device,
@@ -103,6 +107,8 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
     parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=64)
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
+    parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
+    parser.add_argument('--warmup_epochs', type=int, help='Number of warm-up epochs for learning rate', default=5)
     args = parser.parse_args()
 
-    main(checkpoint=args.checkpoint, batch_size=args.batch_size, snr_list=args.snr_list)
+    main(checkpoint=args.checkpoint, batch_size=args.batch_size, snr_list=args.snr_list, epochs=args.epochs, warmup_epochs=args.warmup_epochs)
