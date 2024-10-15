@@ -73,7 +73,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None):
     criterion_snr = DistancePenaltyCategoricalSNRLoss()  # Custom SNR loss
 
     # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     # Add learning rate scheduler
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.05, patience=10)

@@ -27,7 +27,7 @@ class ConstellationDataset(Dataset):
 
         # Ensure snr_list is a list of integers
         if snr_list is not None:
-            self.snr_list = [int(snr) for snr in snr_list]
+            self.snr_list = sorted([int(snr) for snr in snr_list])  # Sort SNRs
         else:
             self.snr_list = None  # Load all SNRs
 
@@ -73,14 +73,14 @@ class ConstellationDataset(Dataset):
         modulation_types_set = set()
 
         # Traverse the directory structure
-        for modulation_type in os.listdir(self.root_dir):
+        for modulation_type in sorted(os.listdir(self.root_dir)):  # Sorted for consistency
             modulation_dir = os.path.join(self.root_dir, modulation_type)
             if os.path.isdir(modulation_dir):  # Skip non-directory files
                 # Check if the modulation type is in the specified list
                 if self.mods_to_process and modulation_type not in self.mods_to_process:
                     continue
                 modulation_types_set.add(modulation_type)
-                for snr_dir in os.listdir(modulation_dir):
+                for snr_dir in sorted(os.listdir(modulation_dir)):  # Sorted SNRs
                     snr_path = os.path.join(modulation_dir, snr_dir)
                     if os.path.isdir(snr_path):
                         snr_value = int(snr_dir.split('_')[1])  # Extract SNR value
@@ -140,3 +140,24 @@ class ConstellationDataset(Dataset):
         image = self.transform(image)
 
         return image, modulation_label, snr_label  # Return image, modulation label, and SNR label
+
+
+if __name__ == "__main__":
+    # Test the dataset loading
+    root_dir = "constellation"
+    snrs_to_test = None
+    mods_to_test = None
+    image_type = 'grayscale'
+
+    # Create dataset instance
+    dataset = ConstellationDataset(root_dir=root_dir, snr_list=snrs_to_test, mods_to_process=mods_to_test, image_type=image_type)
+
+    # Print some dataset information
+    print(f"Total images loaded: {len(dataset)}")
+    print(f"Modulation labels: {dataset.modulation_labels}")
+    print(f"SNR labels: {dataset.snr_labels}")
+
+    # Test accessing an item
+    for i in range(3):
+        img, mod_label, snr_label = dataset[i]
+        print(f"Image {i}: Modulation {mod_label}, SNR {snr_label}, Image shape: {img.shape}")
