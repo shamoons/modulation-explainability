@@ -10,28 +10,39 @@ from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from utils.device_utils import get_device
+from utils.config_utils import load_loss_config  # Add this to load alpha/beta
 
 
-def validate_across_snrs(model, device, criterion, dataloader, snr_list):
+def validate_across_snrs(model, device, criterion_modulation, criterion_snr, dataloader, snr_list):
     """
     Validate the model across specific SNRs and return performance metrics.
+    Includes multi-task loss using alpha and beta to weigh modulation and SNR losses.
     """
     results = {snr: {"accuracy": 0, "loss": 0, "total": 0} for snr in snr_list}
 
+    # Load alpha and beta weights
+    alpha, beta = load_loss_config()
+
     model.eval()
     with torch.no_grad():
-        for inputs, labels, snrs in tqdm(dataloader, desc="Validating across SNRs"):
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
+        for inputs, modulation_labels, snr_labels in tqdm(dataloader, desc="Validating across SNRs"):
+            inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
+            modulation_output, snr_output = model(inputs)
 
-            _, predicted = outputs.max(1)
-            correct = predicted.eq(labels).sum().item()
-            total = labels.size(0)
+            # Compute modulation and SNR losses
+            loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+            loss_snr = criterion_snr(snr_output, snr_labels)
+
+            # Combine losses using alpha and beta
+            total_loss = alpha * loss_modulation + beta * loss_snr
+
+            _, predicted_modulation = modulation_output.max(1)
+            correct = predicted_modulation.eq(modulation_labels).sum().item()
+            total = modulation_labels.size(0)
 
             for snr in snr_list:
                 results[snr]["accuracy"] += correct / total
-                results[snr]["loss"] += loss.item() / total
+                results[snr]["loss"] += total_loss.item() / total
                 results[snr]["total"] += 1
 
     for snr in snr_list:
@@ -42,26 +53,34 @@ def validate_across_snrs(model, device, criterion, dataloader, snr_list):
     return results
 
 
-def validate_per_modulation(model, device, criterion, dataloader, mod_list):
+def validate_per_modulation(model, device, criterion_modulation, criterion_snr, dataloader, mod_list):
     """
-    Validate the model across individual modulation types.
+    Validate the model across individual modulation types with multi-task loss.
     """
     results = {mod: {"accuracy": 0, "loss": 0, "total": 0} for mod in mod_list}
 
+    # Load alpha and beta weights
+    alpha, beta = load_loss_config()
+
     model.eval()
     with torch.no_grad():
-        for inputs, labels, snrs in tqdm(dataloader, desc="Validating across Modulation Types"):
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
+        for inputs, modulation_labels, snr_labels in tqdm(dataloader, desc="Validating across Modulation Types"):
+            inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
+            modulation_output, snr_output = model(inputs)
 
-            _, predicted = outputs.max(1)
-            correct = predicted.eq(labels).sum().item()
-            total = labels.size(0)
+            # Compute losses for modulation and SNR
+            loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+            loss_snr = criterion_snr(snr_output, snr_labels)
+
+            total_loss = alpha * loss_modulation + beta * loss_snr
+
+            _, predicted_modulation = modulation_output.max(1)
+            correct = predicted_modulation.eq(modulation_labels).sum().item()
+            total = modulation_labels.size(0)
 
             for mod in mod_list:
                 results[mod]["accuracy"] += correct / total
-                results[mod]["loss"] += loss.item() / total
+                results[mod]["loss"] += total_loss.item() / total
                 results[mod]["total"] += 1
 
     for mod in mod_list:
@@ -72,9 +91,9 @@ def validate_per_modulation(model, device, criterion, dataloader, mod_list):
     return results
 
 
-def validate_per_snr(model, device, criterion, dataloader, snr_list):
+def validate_per_snr(model, device, criterion_modulation, criterion_snr, dataloader, snr_list):
     """
-    Validate the model across individual SNRs and generate results.
+    Validate the model across individual SNRs and generate results with multi-task loss.
     """
     for snr in snr_list:
         print(f"Validating for SNR: {snr}")
@@ -85,25 +104,30 @@ def validate_per_snr(model, device, criterion, dataloader, snr_list):
         all_predictions = []
         all_targets = []
 
+        # Load alpha and beta weights
+        alpha, beta = load_loss_config()
+
         with torch.no_grad():
-            for inputs, labels, snrs in tqdm(dataloader, desc=f"Validating SNR {snr}"):
-                # Filter for the current SNR
+            for inputs, modulation_labels, snr_labels, snrs in tqdm(dataloader, desc=f"Validating SNR {snr}"):
                 inputs = inputs[snrs == snr]
-                labels = labels[snrs == snr]
-                if len(labels) == 0:
+                modulation_labels = modulation_labels[snrs == snr]
+                snr_labels = snr_labels[snrs == snr]
+                if len(modulation_labels) == 0:
                     continue
 
-                inputs, labels = inputs.to(device), labels.to(device)
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                total_loss += loss.item()
+                inputs, modulation_labels, snr_labels = inputs.to(device), modulation_labels.to(device), snr_labels.to(device)
+                modulation_output, snr_output = model(inputs)
 
-                _, predicted = outputs.max(1)
-                total += labels.size(0)
-                correct += predicted.eq(labels).sum().item()
+                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                loss_snr = criterion_snr(snr_output, snr_labels)
+                total_loss += alpha * loss_modulation + beta * loss_snr
 
-                all_predictions.extend(predicted.cpu().numpy())
-                all_targets.extend(labels.cpu().numpy())
+                _, predicted_modulation = modulation_output.max(1)
+                correct += predicted_modulation.eq(modulation_labels).sum().item()
+                total += modulation_labels.size(0)
+
+                all_predictions.extend(predicted_modulation.cpu().numpy())
+                all_targets.extend(modulation_labels.cpu().numpy())
 
         total_accuracy = 100.0 * correct / total if total > 0 else 0
         total_loss = total_loss / len(dataloader)
@@ -148,24 +172,25 @@ if __name__ == "__main__":
     val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
 
     # Load model
-    model = ConstellationResNet(num_classes=24, input_channels=1 if image_type == 'grayscale' else 3)
+    model = ConstellationResNet(num_classes=13, snr_classes=6, input_channels=1 if image_type == 'grayscale' else 3)
 
     # Load the best model
     best_model_path = "checkpoints/best_model_epoch_1.pth"
     model.load_state_dict(torch.load(best_model_path))
     print(f"Loaded model from {best_model_path}")
 
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion_modulation = torch.nn.CrossEntropyLoss()
+    criterion_snr = torch.nn.CrossEntropyLoss()
 
     # Get device
     device = get_device()
     model.to(device)
 
     # Validate across all SNRs
-    validate_across_snrs(model, device, criterion, val_loader, snr_list)
+    validate_across_snrs(model, device, criterion_modulation, criterion_snr, val_loader, snr_list)
 
     # Validate across modulation types
-    validate_per_modulation(model, device, criterion, val_loader, mod_list)
+    validate_per_modulation(model, device, criterion_modulation, criterion_snr, val_loader, mod_list)
 
     # Validate for each SNR separately
-    validate_per_snr(model, device, criterion, val_loader, snr_list)
+    validate_per_snr(model, device, criterion_modulation, criterion_snr, val_loader, snr_list)
