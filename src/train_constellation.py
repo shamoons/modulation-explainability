@@ -73,7 +73,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, epochs=100, warmup_epoch
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
     # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=0.00001)
 
     # Step up size should be a quarter of the total number of iterations
     step_size_up = 4 * len(train_loader)
