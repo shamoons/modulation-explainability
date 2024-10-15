@@ -125,22 +125,20 @@ def train(
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
 
-        print("Modulation Labels:", val_loader.dataset.inverse_modulation_labels)
-        print("SNR Labels:", val_loader.dataset.inverse_snr_labels)
         # Plot confusion matrices using validation data
         plot_confusion_matrix(
             all_true_modulation_labels,
             all_pred_modulation_labels,
             'Modulation',
             epoch,
-            label_names=val_loader.dataset.inverse_modulation_labels
+            label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
         )
         plot_confusion_matrix(
             all_true_snr_labels,
             all_pred_snr_labels,
             'SNR',
             epoch,
-            label_names=val_loader.dataset.inverse_snr_labels
+            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
         )
 
         print(f"Validation Results:")
