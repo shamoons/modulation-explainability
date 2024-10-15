@@ -76,13 +76,13 @@ def main(checkpoint=None, batch_size=64, snr_list=None):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Add learning rate scheduler
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.05, patience=10)
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
 
     # Train and validate the model
-    epochs = 50
+    epochs = 100
     train(
         model,
         device,
