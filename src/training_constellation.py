@@ -43,6 +43,10 @@ def train(
         correct_both = 0  # For combined accuracy
         total = 0
 
+        # Get current learning rate
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f"\nEpoch {epoch+1}/{epochs} - Current Learning Rate: {current_lr}")
+
         # Training loop with tqdm progress bar
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training", leave=False) as progress:
             for inputs, modulation_labels, snr_labels in progress:
@@ -92,7 +96,11 @@ def train(
         train_combined_accuracy = 100.0 * correct_both / total
         train_loss = running_loss / len(train_loader)
 
-        print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Modulation Accuracy: {train_modulation_accuracy:.2f}%, SNR Accuracy: {train_snr_accuracy:.2f}%, Combined Accuracy: {train_combined_accuracy:.2f}%")
+        print(f"\nEpoch [{epoch+1}/{epochs}]")
+        print(f"\tTrain Loss (mod/snr): {train_loss:.4f} ({loss_modulation.item():.4f}/{loss_snr.item():.4f})")
+        print(f"\tModulation Accuracy: {train_modulation_accuracy:.2f}%")
+        print(f"\tSNR Accuracy: {train_snr_accuracy:.2f}%")
+        print(f"\tCombined Accuracy: {train_combined_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
         val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader)
@@ -107,8 +115,18 @@ def train(
             all_pred_snr_labels,
         ) = val_results
 
+        # Before stepping the scheduler, get the learning rate
+        lr_before = optimizer.param_groups[0]['lr']
+
         # Step the scheduler based on the validation loss
         scheduler.step(val_loss)
+
+        # After stepping the scheduler, get the new learning rate
+        lr_after = optimizer.param_groups[0]['lr']
+
+        # Check if the learning rate has changed
+        if lr_after != lr_before:
+            print(f"Learning rate changed from {lr_before} to {lr_after} at epoch {epoch+1}")
 
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
@@ -142,11 +160,16 @@ def train(
             label_names=snr_label_names
         )
 
-        print(f"Validation Loss: {val_loss:.4f}, Modulation Accuracy: {val_modulation_accuracy:.2f}%, SNR Accuracy: {val_snr_accuracy:.2f}%, Combined Accuracy: {val_combined_accuracy:.2f}%\n")
+        print(f"\nValidation Results:")
+        print(f"\tValidation Loss: {val_loss:.4f}")
+        print(f"\tModulation Accuracy: {val_modulation_accuracy:.2f}%")
+        print(f"\tSNR Accuracy: {val_snr_accuracy:.2f}%")
+        print(f"\tCombined Accuracy: {val_combined_accuracy:.2f}%")
 
         # Log metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
+            "learning_rate": lr_after,
             "train_loss": train_loss,
             "train_loss_modulation": loss_modulation.item(),
             "train_loss_snr": loss_snr.item(),
