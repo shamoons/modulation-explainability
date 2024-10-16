@@ -10,7 +10,6 @@ from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
-from losses.distance_snr_loss import DistancePenaltyCategoricalSNRLoss  # Import custom SNR loss
 import argparse
 import warnings
 import os
@@ -18,7 +17,7 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, warmup_epochs=5):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100):
     # Load data
     print("Loading data...")
 
@@ -105,7 +104,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         train_loader,
         val_loader,
         epochs=epochs,
-        image_type=image_type
+        mod_list=mods_to_process,
+        snr_list=snr_list
     )
 
 
@@ -116,7 +116,6 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
-    parser.add_argument('--warmup_epochs', type=int, help='Number of warm-up epochs for learning rate', default=5)
     args = parser.parse_args()
 
     main(
@@ -124,6 +123,5 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         snr_list=args.snr_list,
         mods_to_process=args.mods_to_process,
-        epochs=args.epochs,
-        warmup_epochs=args.warmup_epochs
+        epochs=args.epochs
     )

@@ -1,0 +1,16 @@
+{
+  "buckets": {
+    "low": {
+      "min": -20,
+      "max": 0
+    },
+    "medium": {
+      "min": 1,
+      "max": 10
+    },
+    "high": {
+      "min": 11,
+      "max": 30
+    }
+  }
+}

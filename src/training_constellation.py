@@ -2,7 +2,7 @@
 
 import torch
 import wandb
-from utils.image_utils import plot_confusion_matrix, plot_f1_scores
+from utils.image_utils import plot_f1_scores
 from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from tqdm import tqdm
@@ -19,17 +19,19 @@ def train(
     train_loader,
     val_loader,
     epochs=10,
-    image_type='three_channel',
-    save_dir="checkpoints"
+    save_dir="checkpoints",
+    mod_list=None,
+    snr_list=None
 ):
     """
     Train the model and save the best one based on validation loss.
     Log metrics after validation and plot confusion matrices and F1 scores.
     """
     alpha, beta = load_loss_config()
+    save_dir = 'checkpoints'
 
-    # Initialize WandB project and log image_type
-    wandb.init(project="modulation-explainability", config={"epochs": epochs, "image_type": image_type})
+    # Initialize WandB project
+    wandb.init(project="modulation-explainability", config={"epochs": epochs, "mod_list": mod_list, "snr_list": snr_list})
 
     # Ensure save directory exists
     os.makedirs(save_dir, exist_ok=True)
@@ -127,22 +129,6 @@ def train(
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
 
-        # Plot confusion matrices using validation data
-        plot_confusion_matrix(
-            all_true_modulation_labels,
-            all_pred_modulation_labels,
-            'Modulation',
-            epoch,
-            label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
-        )
-        plot_confusion_matrix(
-            all_true_snr_labels,
-            all_pred_snr_labels,
-            'SNR',
-            epoch,
-            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
-        )
-
         # Plot F1 scores but do not log them to WandB
         plot_f1_scores(
             all_true_modulation_labels,
@@ -165,7 +151,7 @@ def train(
         print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")
 
-        # Log metrics to WandB (excluding F1 scores)
+        # Log other metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
             "learning_rate": current_lr,
