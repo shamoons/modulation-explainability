@@ -2,10 +2,11 @@
 
 import torch
 import wandb
-from utils.image_utils import plot_f1_scores
+from utils.image_utils import plot_f1_scores, plot_confusion_matrix
 from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from tqdm import tqdm
+from utils.snr_utils import get_snr_bucket, get_snr_label_names
 import os
 
 
@@ -21,17 +22,19 @@ def train(
     epochs=10,
     save_dir="checkpoints",
     mod_list=None,
-    snr_list=None
+    snr_list=None,
+    use_snr_buckets=False
 ):
     """
     Train the model and save the best one based on validation loss.
     Log metrics after validation and plot confusion matrices and F1 scores.
+    If use_snr_buckets is True, SNR values will be classified into buckets (low, medium, high).
     """
     alpha, beta = load_loss_config()
     save_dir = 'checkpoints'
 
     # Initialize WandB project
-    wandb.init(project="modulation-explainability", config={"epochs": epochs, "mod_list": mod_list, "snr_list": snr_list})
+    wandb.init(project="modulation-explainability", config={"epochs": epochs, "mod_list": mod_list, "snr_list": snr_list, "use_snr_buckets": use_snr_buckets})
 
     # Ensure save directory exists
     os.makedirs(save_dir, exist_ok=True)
@@ -62,6 +65,10 @@ def train(
 
                 # Forward pass
                 modulation_output, snr_output = model(inputs)
+
+                # Optionally convert SNR labels to buckets
+                if use_snr_buckets:
+                    snr_labels = torch.tensor([get_snr_bucket(snr.item()) for snr in snr_labels]).to(device)
 
                 # Compute loss for both outputs
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
@@ -109,7 +116,7 @@ def train(
         print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
-        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader)
+        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=use_snr_buckets)
         (
             val_loss,
             modulation_loss_total,
@@ -129,7 +136,27 @@ def train(
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
 
-        # Plot F1 scores but do not log them to WandB
+        plot_confusion_matrix(
+            all_true_modulation_labels,
+            all_pred_modulation_labels,
+            'Modulation',
+            epoch,
+            label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
+        )
+
+        # Dynamically get SNR label names from snr_utils
+        if use_snr_buckets:
+            snr_label_names = get_snr_label_names()
+        else:
+            snr_label_names = [str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
+
+        plot_confusion_matrix(
+            all_true_snr_labels,
+            all_pred_snr_labels,
+            'SNR',
+            epoch,
+            label_names=snr_label_names
+        )
         plot_f1_scores(
             all_true_modulation_labels,
             all_pred_modulation_labels,
@@ -140,7 +167,7 @@ def train(
         plot_f1_scores(
             all_true_snr_labels,
             all_pred_snr_labels,
-            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
+            label_names=snr_label_names,
             label_type='SNR',
             epoch=epoch
         )

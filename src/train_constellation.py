@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
+from utils.snr_utils import get_number_of_snr_buckets
 from training_constellation import train
 import argparse
 import warnings
@@ -17,7 +18,7 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False):
     # Load data
     print("Loading data...")
 
@@ -57,9 +58,14 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
+    # Determine the number of SNR classes based on whether we are using buckets or actual SNR values
+    if use_snr_buckets:
+        num_snr_classes = get_number_of_snr_buckets()
+    else:
+        num_snr_classes = len(dataset.snr_labels)
+
     # Initialize model with two output heads (modulation and SNR)
     num_modulation_classes = len(dataset.modulation_labels)
-    num_snr_classes = len(dataset.snr_labels)
     model = ConstellationResNet(
         num_classes=num_modulation_classes,
         snr_classes=num_snr_classes,
@@ -105,7 +111,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         val_loader,
         epochs=epochs,
         mod_list=mods_to_process,
-        snr_list=snr_list
+        snr_list=snr_list,
+        use_snr_buckets=use_snr_buckets
     )
 
 
@@ -116,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
+    parser.add_argument('--use_snr_buckets', action='store_true', help='Flag to use SNR buckets instead of actual SNR values')
     args = parser.parse_args()
 
     main(
@@ -123,5 +131,6 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         snr_list=args.snr_list,
         mods_to_process=args.mods_to_process,
-        epochs=args.epochs
+        epochs=args.epochs,
+        use_snr_buckets=args.use_snr_buckets
     )

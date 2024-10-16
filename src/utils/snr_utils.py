@@ -5,22 +5,22 @@ import os
 
 def get_snr_bucket(snr):
     """
-    Get the bucket (low, medium, high) for a given SNR value.
+    Get the bucket (0, 1, 2 for low, medium, high) for a given SNR value.
 
     Args:
         snr (float): The SNR value to be classified.
 
     Returns:
-        str: The bucket ('low', 'medium', 'high') to which the SNR belongs.
+        int: The bucket (0 for low, 1 for medium, 2 for high) to which the SNR belongs.
     """
     config_path = os.path.join(os.path.dirname(__file__), '../config/snr_buckets.json')
 
     with open(config_path, 'r') as file:
         config = json.load(file)
 
-    for bucket, range_values in config['buckets'].items():
+    for idx, (bucket, range_values) in enumerate(config['buckets'].items()):
         if range_values['min'] <= snr <= range_values['max']:
-            return bucket
+            return idx  # Return the index (0 for low, 1 for medium, 2 for high)
 
     raise ValueError(f"SNR value {snr} is out of the configured range.")
 
@@ -38,3 +38,19 @@ def get_number_of_snr_buckets():
         config = json.load(file)
 
     return len(config['buckets'])
+
+
+def get_snr_label_names():
+    """
+    Returns the label names for the SNR buckets.
+    Example: ["low", "medium", "high"]
+
+    Returns:
+        list: List of label names for the SNR buckets.
+    """
+    config_path = os.path.join(os.path.dirname(__file__), '../config/snr_buckets.json')
+
+    with open(config_path, 'r') as file:
+        config = json.load(file)
+
+    return list(config['buckets'].keys())

@@ -6,7 +6,7 @@ from torchvision import models
 class ConstellationResNet(nn.Module):
     """
     A wrapper around a ResNet model from torchvision, customized for the constellation classification task.
-    The model outputs two things: 
+    The model outputs two things:
     1) Modulation classification
     2) SNR prediction
     """
@@ -41,11 +41,15 @@ class ConstellationResNet(nn.Module):
         in_features = self.model.fc.in_features  # Number of input features to the final FC layer
         self.model.fc = nn.Identity()  # Replace the fully connected layer with an identity operation
 
+        # Shared feature transformation
+        self.shared_transform = nn.Linear(in_features, in_features)
+        self.shared_activation = nn.ReLU()
+
+        # Batch normalization
+        self.batch_norm = nn.BatchNorm1d(in_features)
+
         # Dropout layer for regularization
         self.dropout = nn.Dropout(p=dropout_prob)
-
-        # Activation layer (ReLU)
-        self.activation = nn.ReLU()
 
         # Separate feature transformation layers for modulation and SNR tasks
         self.modulation_transform = nn.Linear(in_features, in_features)
@@ -68,15 +72,18 @@ class ConstellationResNet(nn.Module):
         # Extract shared features using ResNet
         features = self.model(x)
 
+        # Apply batch normalization to the shared features
+        features = self.batch_norm(features)
+
+        # Apply shared transformation and activation
+        features = self.shared_activation(self.shared_transform(features))
+
         # Apply dropout for regularization
         features = self.dropout(features)
 
-        # Apply activation to shared features
-        features = self.activation(features)
-
         # Separate transformations for modulation and SNR tasks with activation
-        modulation_features = self.activation(self.modulation_transform(features))
-        snr_features = self.activation(self.snr_transform(features))
+        modulation_features = self.shared_activation(self.modulation_transform(features))
+        snr_features = self.shared_activation(self.snr_transform(features))
 
         # Output heads
         modulation_output = self.modulation_head(modulation_features)  # Predict modulation class

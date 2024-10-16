@@ -1,13 +1,11 @@
 # src/validate_constellation.py
-
 import torch
 from tqdm import tqdm
-import numpy as np
-
 from utils.config_utils import load_loss_config
+from utils.snr_utils import get_snr_bucket, get_snr_label_names
 
 
-def validate(model, device, criterion_modulation, criterion_snr, val_loader):
+def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=False):
     model.eval()
 
     alpha, beta = load_loss_config()
@@ -24,12 +22,20 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
     all_true_snr_labels = []
     all_pred_snr_labels = []
 
+    # Get SNR label names dynamically if using SNR buckets
+    if use_snr_buckets:
+        snr_label_names = get_snr_label_names()
+
     with torch.no_grad():
         with tqdm(val_loader, desc="Validation", leave=False) as progress:
             for inputs, modulation_labels, snr_labels in progress:
                 inputs = inputs.to(device)
                 modulation_labels = modulation_labels.to(device)
                 snr_labels = snr_labels.to(device)
+
+                # Optionally convert SNR labels to buckets
+                if use_snr_buckets:
+                    snr_labels = torch.tensor([get_snr_bucket(snr.item()) for snr in snr_labels]).to(device)
 
                 # Forward pass
                 modulation_output, snr_output = model(inputs)
@@ -60,8 +66,14 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
                 # Collect labels for confusion matrices
                 all_true_modulation_labels.extend(modulation_labels_np)
                 all_pred_modulation_labels.extend(predicted_modulation_np)
-                all_true_snr_labels.extend(snr_labels_np)
-                all_pred_snr_labels.extend(predicted_snr_np)
+
+                if use_snr_buckets:
+                    # Convert bucketed SNR labels for confusion matrix and F1 scores
+                    all_true_snr_labels.extend(snr_labels_np)
+                    all_pred_snr_labels.extend(predicted_snr_np)
+                else:
+                    all_true_snr_labels.extend(snr_labels_np)
+                    all_pred_snr_labels.extend(predicted_snr_np)
 
                 progress.set_postfix(
                     loss=total_loss.item(),
