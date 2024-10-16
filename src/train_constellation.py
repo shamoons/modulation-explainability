@@ -18,21 +18,26 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, epochs=100, warmup_epochs=5):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, warmup_epochs=5):
     # Load data
     print("Loading data...")
 
     image_type = 'grayscale'
     root_dir = "constellation"
 
-    # Parse snr_list if provided
+    # Parse snr_list and mods_to_process if provided
     if snr_list is not None:
         snr_list = [int(s.strip()) for s in snr_list.split(',')]
     else:
         snr_list = None  # Load all SNRs
 
-    # Load full dataset (without splitting)
-    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list)
+    if mods_to_process is not None:
+        mods_to_process = [mod.strip() for mod in mods_to_process.split(',')]
+    else:
+        mods_to_process = None  # Load all modulation types
+
+    # Load full dataset (with modulation types and SNRs filtering)
+    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list, mods_to_process=mods_to_process)
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
@@ -109,8 +114,16 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
     parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=64)
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
+    parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
     parser.add_argument('--warmup_epochs', type=int, help='Number of warm-up epochs for learning rate', default=5)
     args = parser.parse_args()
 
-    main(checkpoint=args.checkpoint, batch_size=args.batch_size, snr_list=args.snr_list, epochs=args.epochs, warmup_epochs=args.warmup_epochs)
+    main(
+        checkpoint=args.checkpoint,
+        batch_size=args.batch_size,
+        snr_list=args.snr_list,
+        mods_to_process=args.mods_to_process,
+        epochs=args.epochs,
+        warmup_epochs=args.warmup_epochs
+    )

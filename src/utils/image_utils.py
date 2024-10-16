@@ -117,7 +117,7 @@ def generate_and_save_images(
             plt.close()
 
 
-def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_names=None):
+def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_names=None, output_dir=None):
     """
     Plot and save a confusion matrix.
 
@@ -127,10 +127,12 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
         label_type (str): Type of label ('Modulation' or 'SNR').
         epoch (int): Current epoch number.
         label_names (list of str or None): List of label names corresponding to class indices.
+        output_dir (str or None): Directory where the confusion matrix will be saved. Defaults to 'confusion_matrices'.
     """
     # Create directory for confusion matrices if it doesn't exist
-    save_dir = "confusion_matrices"
-    os.makedirs(save_dir, exist_ok=True)
+    if output_dir is None:
+        output_dir = "confusion_matrices"
+    os.makedirs(output_dir, exist_ok=True)
 
     cm = confusion_matrix(true_labels, pred_labels)
 
@@ -152,15 +154,12 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     plt.tight_layout()
 
     # Save confusion matrix
-    file_path = os.path.join(save_dir, f"{label_type}_epoch_{epoch + 1}.png")
+    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}.png")
     plt.savefig(file_path)
     plt.close()
 
-    # Log to Weights and Biases
-    wandb.log({f"Confusion Matrix {label_type} Epoch {epoch + 1}": wandb.Image(file_path)})
 
-
-def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch):
+def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, output_dir=None):
     """
     Plot and display F1 scores for each class (modulation/SNR) and save the plot.
 
@@ -170,6 +169,7 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch):
         label_names (list of str): List of label names.
         label_type (str): Either 'Modulation' or 'SNR'.
         epoch (int): Current epoch number.
+        output_dir (str or None): Directory where the F1 scores will be saved. Defaults to 'f1_scores'.
     """
     f1_scores = f1_score(true_labels, pred_labels, labels=range(len(label_names)), average=None)
 
@@ -180,8 +180,10 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch):
     plt.tight_layout()
 
     # Save the F1 score plot
-    save_dir = "f1_scores"
-    os.makedirs(save_dir, exist_ok=True)
-    file_path = os.path.join(save_dir, f"{label_type}_f1_epoch_{epoch + 1}.png")
+    if output_dir is None:
+        output_dir = "f1_scores"
+    os.makedirs(output_dir, exist_ok=True)
+
+    file_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}.png")
     plt.savefig(file_path)
     plt.close()
