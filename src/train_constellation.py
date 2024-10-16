@@ -88,12 +88,17 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     # Calculate the number of batches per epoch
     batches_per_epoch = len(train_loader)
 
-    # Set up multiple step-up and step-down phases
-    step_size_up = int(0.1 * batches_per_epoch)  # 10% for step-up (8 epochs)
-    step_size_down = int(0.2 * batches_per_epoch)  # 20% for step-down (16 epochs)
+    # Define number of cycles
+    num_cycles = 4
+
+    # Total number of batches over all epochs
+    total_batches = batches_per_epoch * epochs
+
+    # Step size for each phase (up and down) in each cycle
+    step_size_up_down = total_batches // (num_cycles * 2)
 
     # Add learning rate scheduler with dynamic step_size_up
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.00001, max_lr=0.001, step_size_up=step_size_up, step_size_down=step_size_down, mode='triangular2', cycle_momentum=False)
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.00001, max_lr=0.001, step_size_up=step_size_up_down, step_size_down=step_size_up_down, mode='triangular2', cycle_momentum=False)
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()

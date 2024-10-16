@@ -2,14 +2,14 @@
   "buckets": {
     "low": {
       "min": -20,
-      "max": 0
+      "max": -4
     },
     "medium": {
-      "min": 1,
-      "max": 10
+      "min": -2,
+      "max": 14
     },
     "high": {
-      "min": 11,
+      "min": 16,
       "max": 30
     }
   }
