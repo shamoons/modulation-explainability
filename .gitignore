@@ -8,3 +8,4 @@ constellation/
 atik/
 checkpoints/
 confusion_matrices/
+f1_scores/
