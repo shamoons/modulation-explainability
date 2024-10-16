@@ -7,7 +7,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import torch
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 import wandb
 
 
@@ -158,3 +158,30 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
 
     # Log to Weights and Biases
     wandb.log({f"Confusion Matrix {label_type} Epoch {epoch + 1}": wandb.Image(file_path)})
+
+
+def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch):
+    """
+    Plot and display F1 scores for each class (modulation/SNR) and save the plot.
+
+    Args:
+        true_labels (list of int): True class labels.
+        pred_labels (list of int): Predicted class labels.
+        label_names (list of str): List of label names.
+        label_type (str): Either 'Modulation' or 'SNR'.
+        epoch (int): Current epoch number.
+    """
+    f1_scores = f1_score(true_labels, pred_labels, labels=range(len(label_names)), average=None)
+
+    plt.figure(figsize=(10, 6))
+    plt.barh(label_names, f1_scores, color='blue')
+    plt.xlabel(f"F1 Score")
+    plt.title(f"{label_type} F1 Scores - Epoch {epoch + 1}")
+    plt.tight_layout()
+
+    # Save the F1 score plot
+    save_dir = "f1_scores"
+    os.makedirs(save_dir, exist_ok=True)
+    file_path = os.path.join(save_dir, f"{label_type}_f1_epoch_{epoch + 1}.png")
+    plt.savefig(file_path)
+    plt.close()

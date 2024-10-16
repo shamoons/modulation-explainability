@@ -2,7 +2,7 @@
 
 import torch
 import wandb
-from utils.image_utils import plot_confusion_matrix
+from utils.image_utils import plot_confusion_matrix, plot_f1_scores
 from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from tqdm import tqdm
@@ -24,7 +24,7 @@ def train(
 ):
     """
     Train the model and save the best one based on validation loss.
-    Log metrics after validation and plot confusion matrices.
+    Log metrics after validation and plot confusion matrices and F1 scores.
     """
     alpha, beta = load_loss_config()
 
@@ -141,13 +141,29 @@ def train(
             label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
         )
 
+        # Plot F1 scores but do not log them to WandB
+        plot_f1_scores(
+            all_true_modulation_labels,
+            all_pred_modulation_labels,
+            label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()],
+            label_type='Modulation',
+            epoch=epoch
+        )
+        plot_f1_scores(
+            all_true_snr_labels,
+            all_pred_snr_labels,
+            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
+            label_type='SNR',
+            epoch=epoch
+        )
+
         print(f"Validation Results:")
         print(f"  Validation Loss: {val_loss:.4f}")
         print(f"  Modulation Accuracy: {val_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")
 
-        # Log metrics to WandB
+        # Log metrics to WandB (excluding F1 scores)
         wandb.log({
             "epoch": epoch + 1,
             "learning_rate": current_lr,
