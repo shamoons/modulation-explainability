@@ -88,11 +88,10 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     # Calculate the number of batches per epoch
     batches_per_epoch = len(train_loader)
 
-    # Calculate step_size_up as 5% of the total number of epochs
-    step_size_up = int(0.1 * epochs * batches_per_epoch)  # 5% of epochs
+    # Set up multiple step-up and step-down phases
+    step_size_up = int(0.1 * batches_per_epoch)  # 10% for step-up (8 epochs)
+    step_size_down = int(0.2 * batches_per_epoch)  # 20% for step-down (16 epochs)
 
-    # Calculate step_size_down as 10% of the total number of epochs
-    step_size_down = int(0.2 * epochs * batches_per_epoch)  # 10% of epochs
     # Add learning rate scheduler with dynamic step_size_up
     scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.00001, max_lr=0.001, step_size_up=step_size_up, step_size_down=step_size_down, mode='triangular2', cycle_momentum=False)
 
