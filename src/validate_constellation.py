@@ -12,6 +12,8 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
 
     alpha, beta = load_loss_config()
     val_loss = 0.0
+    modulation_loss_total = 0.0
+    snr_loss_total = 0.0
     correct_modulation = 0
     correct_snr = 0
     correct_both = 0
@@ -37,6 +39,8 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
                 loss_snr = criterion_snr(snr_output, snr_labels)
                 total_loss = alpha * loss_modulation + beta * loss_snr
                 val_loss += total_loss.item()
+                modulation_loss_total += loss_modulation.item()
+                snr_loss_total += loss_snr.item()
 
                 # Predict labels
                 _, predicted_modulation = modulation_output.max(1)
@@ -70,9 +74,13 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader):
     val_snr_accuracy = 100.0 * correct_snr / total
     val_combined_accuracy = 100.0 * correct_both / total
     val_loss = val_loss / len(val_loader)
+    modulation_loss_total /= len(val_loader)
+    snr_loss_total /= len(val_loader)
 
     return (
         val_loss,
+        modulation_loss_total,
+        snr_loss_total,
         val_modulation_accuracy,
         val_snr_accuracy,
         val_combined_accuracy,

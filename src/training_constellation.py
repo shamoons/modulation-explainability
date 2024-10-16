@@ -110,6 +110,8 @@ def train(
         val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader)
         (
             val_loss,
+            modulation_loss_total,
+            snr_loss_total,
             val_modulation_accuracy,
             val_snr_accuracy,
             val_combined_accuracy,
@@ -158,7 +160,7 @@ def train(
         )
 
         print(f"Validation Results:")
-        print(f"  Validation Loss: {val_loss:.4f}")
+        print(f"  Validation Loss (mod/snr): {val_loss:.4f} ({modulation_loss_total:.4f}/{snr_loss_total:.4f})")
         print(f"  Modulation Accuracy: {val_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")

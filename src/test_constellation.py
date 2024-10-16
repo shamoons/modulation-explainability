@@ -23,9 +23,13 @@ def validate_across_conditions(model, device, criterion_modulation, criterion_sn
     # Overall validation
     print("Validating across all SNRs and Modulation types")
     val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader)
-    all_true_mod_labels, all_pred_mod_labels, all_true_snr_labels, all_pred_snr_labels = (
-        val_results[4], val_results[5], val_results[6], val_results[7]
-    )
+
+    # Unpack the new values (modulation loss and snr loss)
+    val_loss, modulation_loss, snr_loss, val_mod_accuracy, val_snr_accuracy, val_combined_accuracy, all_true_mod_labels, all_pred_mod_labels, all_true_snr_labels, all_pred_snr_labels = val_results
+
+    print(f"Overall Validation Loss: {val_loss}")
+    print(f"Modulation Loss: {modulation_loss}")
+    print(f"SNR Loss: {snr_loss}")
 
     # Plot confusion matrices and F1 scores for overall results
     plot_confusion_matrix(
@@ -65,7 +69,7 @@ def validate_across_conditions(model, device, criterion_modulation, criterion_sn
         snr_subset = Subset(val_loader.dataset, snr_idx)
         snr_loader = DataLoader(snr_subset, batch_size=val_loader.batch_size, num_workers=val_loader.num_workers, pin_memory=True)
         val_results_snr = validate(model, device, criterion_modulation, criterion_snr, snr_loader)
-        all_true_mod_labels_snr, all_pred_mod_labels_snr = val_results_snr[4], val_results_snr[5]
+        _, _, _, _, _, _, all_true_mod_labels_snr, all_pred_mod_labels_snr = val_results_snr
 
         # Plot confusion matrix and F1 scores for this SNR
         plot_confusion_matrix(
@@ -90,7 +94,7 @@ def validate_across_conditions(model, device, criterion_modulation, criterion_sn
         mod_subset = Subset(val_loader.dataset, mod_idx)
         mod_loader = DataLoader(mod_subset, batch_size=val_loader.batch_size, num_workers=val_loader.num_workers, pin_memory=True)
         val_results_mod = validate(model, device, criterion_modulation, criterion_snr, mod_loader)
-        all_true_snr_labels_mod, all_pred_snr_labels_mod = val_results_mod[6], val_results_mod[7]
+        _, _, _, _, _, _, all_true_snr_labels_mod, all_pred_snr_labels_mod = val_results_mod
 
         # Plot confusion matrix and F1 scores for this modulation
         plot_confusion_matrix(

@@ -1,5 +1,4 @@
 # src/models/constellation_model.py
-import torch
 import torch.nn as nn
 from torchvision import models
 
@@ -12,7 +11,7 @@ class ConstellationResNet(nn.Module):
     2) SNR prediction
     """
 
-    def __init__(self, num_classes=11, snr_classes=26, input_channels=3):
+    def __init__(self, num_classes=11, snr_classes=26, input_channels=3, dropout_prob=0.5):
         """
         Initialize the ConstellationResNet model with two output heads.
 
@@ -20,6 +19,7 @@ class ConstellationResNet(nn.Module):
             num_classes (int): Number of output classes for modulation.
             snr_classes (int): Number of possible SNR classes (26 in your case).
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
+            dropout_prob (float): Probability of dropout (defaults to 0.5).
         """
         super(ConstellationResNet, self).__init__()
 
@@ -37,12 +37,21 @@ class ConstellationResNet(nn.Module):
                 bias=self.model.conv1.bias,
             )
 
-        # Remove the fully connected layer of ResNet50
+        # Remove the fully connected layer of ResNet
         in_features = self.model.fc.in_features  # Number of input features to the final FC layer
         self.model.fc = nn.Identity()  # Replace the fully connected layer with an identity operation
 
-        # Add two new fully connected layers:
-        # One for modulation classification and one for SNR prediction
+        # Dropout layer for regularization
+        self.dropout = nn.Dropout(p=dropout_prob)
+
+        # Activation layer (ReLU)
+        self.activation = nn.ReLU()
+
+        # Separate feature transformation layers for modulation and SNR tasks
+        self.modulation_transform = nn.Linear(in_features, in_features)
+        self.snr_transform = nn.Linear(in_features, in_features)
+
+        # Output heads for modulation and SNR
         self.modulation_head = nn.Linear(in_features, num_classes)  # Modulation classification head
         self.snr_head = nn.Linear(in_features, snr_classes)  # SNR classification head
 
@@ -56,7 +65,21 @@ class ConstellationResNet(nn.Module):
         Returns:
             tuple: (modulation output, snr output)
         """
-        features = self.model(x)  # Extract features using ResNet
-        modulation_output = self.modulation_head(features)  # Predict modulation class
-        snr_output = self.snr_head(features)  # Predict SNR class
+        # Extract shared features using ResNet
+        features = self.model(x)
+
+        # Apply dropout for regularization
+        features = self.dropout(features)
+
+        # Apply activation to shared features
+        features = self.activation(features)
+
+        # Separate transformations for modulation and SNR tasks with activation
+        modulation_features = self.activation(self.modulation_transform(features))
+        snr_features = self.activation(self.snr_transform(features))
+
+        # Output heads
+        modulation_output = self.modulation_head(modulation_features)  # Predict modulation class
+        snr_output = self.snr_head(snr_features)  # Predict SNR class
+
         return modulation_output, snr_output
