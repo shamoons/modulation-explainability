@@ -32,8 +32,19 @@ def train(
     alpha, beta = load_loss_config()
     save_dir = 'checkpoints'
 
+    # Get the number of training and validation samples
+    num_train_samples = len(train_loader.sampler)
+    num_val_samples = len(val_loader.sampler)
+
     # Initialize WandB project
-    wandb.init(project="modulation-explainability", config={"epochs": epochs, "mod_list": mod_list, "snr_list": snr_list, "use_snr_buckets": use_snr_buckets})
+    wandb.init(project="modulation-explainability", config={
+        "epochs": epochs,
+        "mod_list": mod_list,
+        "snr_list": snr_list,
+        "use_snr_buckets": use_snr_buckets,
+        "num_train_samples": num_train_samples,
+        "num_val_samples": num_val_samples
+    })
 
     # Ensure save directory exists
     os.makedirs(save_dir, exist_ok=True)
@@ -131,7 +142,7 @@ def train(
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4g}")
 
-        plot_confusion_matrix(
+        fig_confusion_matrix_modulation = plot_confusion_matrix(
             all_true_modulation_labels,
             all_pred_modulation_labels,
             'Modulation',
@@ -139,21 +150,21 @@ def train(
             label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
         )
 
-        plot_confusion_matrix(
+        fig_confusion_matrix_snr = plot_confusion_matrix(
             all_true_snr_labels,
             all_pred_snr_labels,
             'SNR',
             epoch,
             label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
         )
-        plot_f1_scores(
+        fig_f1_scores_modulation = plot_f1_scores(
             all_true_modulation_labels,
             all_pred_modulation_labels,
             label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()],
             label_type='Modulation',
             epoch=epoch
         )
-        plot_f1_scores(
+        fig_f1_scores_snr = plot_f1_scores(
             all_true_snr_labels,
             all_pred_snr_labels,
             label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
@@ -178,5 +189,9 @@ def train(
             "val_loss": val_loss,
             "val_modulation_accuracy": val_modulation_accuracy,
             "val_snr_accuracy": val_snr_accuracy,
-            "val_combined_accuracy": val_combined_accuracy
+            "val_combined_accuracy": val_combined_accuracy,
+            "confusion_matrix_modulation": wandb.Image(fig_confusion_matrix_modulation),
+            "confusion_matrix_snr": wandb.Image(fig_confusion_matrix_snr),
+            "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation),
+            "f1_scores_snr": wandb.Image(fig_f1_scores_snr)
         })

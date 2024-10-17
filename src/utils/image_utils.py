@@ -128,6 +128,9 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
         epoch (int): Current epoch number.
         label_names (list of str or None): List of label names corresponding to class indices.
         output_dir (str or None): Directory where the confusion matrix will be saved. Defaults to 'confusion_matrices'.
+
+    Returns:
+        fig (matplotlib.figure.Figure): The confusion matrix figure object.
     """
     # Create directory for confusion matrices if it doesn't exist
     if output_dir is None:
@@ -136,7 +139,7 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
 
     cm = confusion_matrix(true_labels, pred_labels)
 
-    plt.figure(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     # Formatter function to format numbers with 'k' if > 1000
     def format_value(val):
@@ -150,23 +153,24 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
 
     # Check if label names are provided, otherwise use numeric labels
     if label_names is None:
-        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues")
-        plt.xticks([])
-        plt.yticks([])
+        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues", ax=ax)
+        ax.set_xticks([])
+        ax.set_yticks([])
     else:
-        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues", xticklabels=label_names, yticklabels=label_names)
-        plt.xticks(rotation=90)
-        plt.yticks(rotation=0)
+        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues", xticklabels=label_names, yticklabels=label_names, ax=ax)
+        ax.set_xticklabels(label_names, rotation=90)
+        ax.set_yticklabels(label_names, rotation=0)
 
-    plt.xlabel(f"Predicted {label_type} Labels")
-    plt.ylabel(f"True {label_type} Labels")
-    plt.title(f"{label_type} Confusion Matrix - Epoch {epoch + 1}")
-    plt.tight_layout()
+    ax.set_xlabel(f"Predicted {label_type} Labels")
+    ax.set_ylabel(f"True {label_type} Labels")
+    ax.set_title(f"{label_type} Confusion Matrix - Epoch {epoch + 1}")
+    fig.tight_layout()
 
     # Save confusion matrix
     file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}.png")
-    plt.savefig(file_path)
-    plt.close()
+    fig.savefig(file_path)
+
+    return fig  # Return the figure object
 
 
 def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, output_dir=None):
@@ -180,14 +184,17 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
         label_type (str): Either 'Modulation' or 'SNR'.
         epoch (int): Current epoch number.
         output_dir (str or None): Directory where the F1 scores will be saved. Defaults to 'f1_scores'.
+
+    Returns:
+        fig (matplotlib.figure.Figure): The F1 scores figure object.
     """
     f1_scores = f1_score(true_labels, pred_labels, labels=range(len(label_names)), average=None)
 
-    plt.figure(figsize=(10, 6))
-    plt.barh(label_names, f1_scores, color='blue')
-    plt.xlabel(f"F1 Score")
-    plt.title(f"{label_type} F1 Scores - Epoch {epoch + 1}")
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.barh(label_names, f1_scores, color='blue')
+    ax.set_xlabel(f"F1 Score")
+    ax.set_title(f"{label_type} F1 Scores - Epoch {epoch + 1}")
+    fig.tight_layout()
 
     # Save the F1 score plot
     if output_dir is None:
@@ -195,5 +202,6 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
     os.makedirs(output_dir, exist_ok=True)
 
     file_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}.png")
-    plt.savefig(file_path)
-    plt.close()
+    fig.savefig(file_path)
+
+    return fig  # Return the figure object
