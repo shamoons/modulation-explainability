@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 from models.constellation_model import ConstellationResNet
 from constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
-from utils.snr_utils import get_number_of_snr_buckets
 from training_constellation import train
 import argparse
 import warnings
@@ -37,7 +36,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         mods_to_process = None  # Load all modulation types
 
     # Load full dataset (with modulation types and SNRs filtering)
-    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list, mods_to_process=mods_to_process)
+    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list, mods_to_process=mods_to_process, use_snr_buckets=use_snr_buckets)
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
@@ -58,14 +57,12 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
-    # Determine the number of SNR classes based on whether we are using buckets or actual SNR values
-    if use_snr_buckets:
-        num_snr_classes = get_number_of_snr_buckets()
-    else:
-        num_snr_classes = len(dataset.snr_labels)
-
-    # Initialize model with two output heads (modulation and SNR)
+    num_snr_classes = len(dataset.snr_labels)
     num_modulation_classes = len(dataset.modulation_labels)
+
+    print(f"Number of modulation classes: {num_modulation_classes}")
+    print(f"Number of SNR classes: {num_snr_classes}")
+
     model = ConstellationResNet(
         num_classes=num_modulation_classes,
         snr_classes=num_snr_classes,
