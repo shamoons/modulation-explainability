@@ -12,36 +12,38 @@ from utils.image_utils import generate_and_save_images
 
 def plot_points(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     """
-    Generate the constellation diagram from I/Q data.
+    Generate the constellation diagram from I/Q data for a batch of samples.
     The intensity of points increases when multiple points overlap, and the resulting tensor is returned.
 
     Args:
-        iq_data (torch.Tensor): I/Q data (shape = (N, 2)).
+        iq_data (torch.Tensor): I/Q data (shape = (batch_size, N, 2)).
         image_size (tuple): Size of the plot (e.g., (224, 224)).
 
     Returns:
-        torch.Tensor: A grayscale intensity array with the same format as get_image_array output.
+        torch.Tensor: A batch of grayscale intensity arrays with the same format as get_image_array output.
     """
-    # Create an empty tensor for storing intensities
-    image_array = torch.zeros((image_size[0], image_size[1]))
+    batch_size = iq_data.shape[0]
 
-    # Calculate histogram (binning points into the specified image size)
-    heatmap, xedges, yedges = np.histogram2d(iq_data[:, 0].numpy(), iq_data[:, 1].numpy(), bins=image_size)
+    # Create an empty tensor to store the heatmaps for the entire batch
+    image_array = torch.zeros((batch_size, image_size[0], image_size[1]))
 
-    # Normalize intensities
-    heatmap = torch.tensor(heatmap / heatmap.max())
+    # Loop over each sample in the batch
+    for i in range(batch_size):
+        # Reshape the I/Q data for the current sample
+        iq_sample = iq_data[i].view(-1, 2)  # Shape: (N, 2)
 
-    # Replicate the grayscale values across the 3 channels (to maintain compatibility with existing code structure)
-    image_array = heatmap
+        # Convert to numpy arrays for histogram calculation
+        real_part = iq_sample[:, 0].numpy()
+        imag_part = iq_sample[:, 1].numpy()
 
-    # # Plot the points as a grayscale image
-    # fig, ax = plt.subplots(figsize=(6, 6))
-    # ax.imshow(heatmap.T, origin='lower', cmap='gray', interpolation='nearest')
-    # ax.set_xlabel('In-Phase (I)')
-    # ax.set_ylabel('Quadrature (Q)')
-    # ax.set_title('Constellation Diagram (Grayscale)')
+        # Calculate the 2D histogram (binning points into the specified image size)
+        heatmap, xedges, yedges = np.histogram2d(real_part, imag_part, bins=image_size)
 
-    # plt.show()
+        # Normalize intensities
+        heatmap = torch.tensor(heatmap / heatmap.max())
+
+        # Store the heatmap for the current sample in the batch
+        image_array[i] = heatmap
 
     return image_array
 
@@ -160,21 +162,24 @@ def process_samples(
 
     iq_data_torch = torch.tensor(iq_data)
 
-    # Choose the image generation method based on the image type
-    if 'point' in image_types:
-        image_array = plot_points(iq_data_torch, image_size)
-    else:
-        image_array = get_image_array(iq_data_torch, image_size)
+    # Iterate over the different image types
+    for image_type in image_types:
+        # Choose the image generation method based on the image type
+        if image_type == 'point':
+            image_array = plot_points(iq_data_torch, image_size)
+        else:
+            image_array = get_image_array(iq_data_torch, image_size)
 
-    image_array = renormalize_image(image_array)
+        image_array = renormalize_image(image_array)
 
-    for i in range(batch_size):
-        image_name = f"{modulation_type}_SNR_{int(snr)}_sample_{start_idx + i}"
-        image_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
-        os.makedirs(image_dir, exist_ok=True)
+        # Save images for each batch sample
+        for i in range(batch_size):
+            image_name = f"{modulation_type}_SNR_{int(snr)}_sample_{start_idx + i}"
+            image_dir = os.path.join(output_dir, modulation_type, f"SNR_{int(snr)}")
+            os.makedirs(image_dir, exist_ok=True)
 
-        # Generate and save images
-        generate_and_save_images(image_array[i], image_size, image_dir, image_name, image_types, raw_iq_data=iq_data_torch[i])
+            # Generate and save images based on the selected image type
+            generate_and_save_images(image_array[i], image_size, image_dir, image_name, [image_type], raw_iq_data=iq_data_torch[i])
 
 
 def group_by_modulation_snr(

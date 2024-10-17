@@ -7,6 +7,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from models.constellation_model import ConstellationResNet
+from models.vision_transformer_model import ConstellationVisionTransformer
 from constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
@@ -63,11 +64,16 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     print(f"Number of modulation classes: {num_modulation_classes}")
     print(f"Number of SNR classes: {num_snr_classes}")
 
-    model = ConstellationResNet(
+    model = ConstellationVisionTransformer(
         num_classes=num_modulation_classes,
         snr_classes=num_snr_classes,
         input_channels=input_channels
     )
+    # model = ConstellationResNet(
+    #     num_classes=num_modulation_classes,
+    #     snr_classes=num_snr_classes,
+    #     input_channels=input_channels
+    # )
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):

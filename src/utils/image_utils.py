@@ -119,7 +119,7 @@ def generate_and_save_images(
 
 def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_names=None, output_dir=None):
     """
-    Plot and save a confusion matrix.
+    Plot and save a confusion matrix with large numbers formatted in 'k' notation.
 
     Args:
         true_labels (list of int): True class labels.
@@ -138,13 +138,23 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
 
     plt.figure(figsize=(10, 8))
 
+    # Formatter function to format numbers with 'k' if > 1000
+    def format_value(val):
+        if val >= 1000:
+            return f"{val / 1000:.1f}k"
+        else:
+            return f"{val}"
+
+    # Format the confusion matrix values using the formatter
+    fmt_cm = np.vectorize(format_value)(cm)
+
     # Check if label names are provided, otherwise use numeric labels
     if label_names is None:
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues")
         plt.xticks([])
         plt.yticks([])
     else:
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=label_names, yticklabels=label_names)
+        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues", xticklabels=label_names, yticklabels=label_names)
         plt.xticks(rotation=90)
         plt.yticks(rotation=0)
 

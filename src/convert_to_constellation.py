@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument('--snr_list', type=str, default=None, help='Comma-separated list of SNRs to process.')
     parser.add_argument('--mod_list', type=str, default=None, help='Comma-separated list of modulation types to process.')
     parser.add_argument('--batch_size', type=int, default=4096, help='Batch size for processing.')
+    parser.add_argument('--image_types', type=str, default='grayscale', help='Comma-separated list of image types to generate.')
 
     return parser.parse_args()
 
@@ -45,7 +46,8 @@ if __name__ == "__main__":
     limit = args.limit
 
     # Define image types, including "raw"
-    image_types = ['grayscale']
+    image_types = args.image_types.split(',')
+    print(f"Generating images for the following types: {image_types}")
 
     # Get the dataloader and process the data
     dataloader, mod2int = get_dataloader(batch_size=args.batch_size, snr_list=snrs_to_process, mods_to_process=mods_to_process, limit=limit)
