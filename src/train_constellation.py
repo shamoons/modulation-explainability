@@ -64,16 +64,16 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     print(f"Number of modulation classes: {num_modulation_classes}")
     print(f"Number of SNR classes: {num_snr_classes}")
 
-    model = ConstellationVisionTransformer(
-        num_classes=num_modulation_classes,
-        snr_classes=num_snr_classes,
-        input_channels=input_channels
-    )
-    # model = ConstellationResNet(
+    # model = ConstellationVisionTransformer(
     #     num_classes=num_modulation_classes,
     #     snr_classes=num_snr_classes,
     #     input_channels=input_channels
     # )
+    model = ConstellationResNet(
+        num_classes=num_modulation_classes,
+        snr_classes=num_snr_classes,
+        input_channels=input_channels
+    )
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -86,7 +86,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
     # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.00001)
+    optimizer = optim.Adam(model.parameters(), lr=0.00001, weight_decay=1e-5)
 
     # Calculate the number of batches per epoch
     batches_per_epoch = len(train_loader)
