@@ -94,7 +94,7 @@ def train(
 
                 # Update progress bar
                 progress.set_postfix({
-                    'Loss': f"{total_loss.item():.4f}",
+                    'Loss': f"{total_loss.item():.4g}",
                     'Mod Acc': f"{100.0 * correct_modulation / total:.2f}%",
                     'SNR Acc': f"{100.0 * correct_snr / total:.2f}%"
                 })
@@ -105,7 +105,7 @@ def train(
         train_loss = running_loss / len(train_loader)
 
         print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
-        print(f"  Train Loss (mod/snr): {train_loss:.4f} ({loss_modulation:.4f}/{loss_snr:.4f})")
+        print(f"  Train Loss (mod/snr): {train_loss:.4g} ({loss_modulation:.4g}/{loss_snr:.4g})")
         print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {train_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
@@ -129,7 +129,7 @@ def train(
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
-            print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
+            print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4g}")
 
         plot_confusion_matrix(
             all_true_modulation_labels,
@@ -162,7 +162,7 @@ def train(
         )
 
         print(f"Validation Results:")
-        print(f"  Validation Loss (mod/snr): {val_loss:.4f} ({modulation_loss_total:.4f}/{snr_loss_total:.4f})")
+        print(f"  Validation Loss (mod/snr): {val_loss:.4g} ({modulation_loss_total:.4g}/{snr_loss_total:.4g})")
         print(f"  Modulation Accuracy: {val_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")
