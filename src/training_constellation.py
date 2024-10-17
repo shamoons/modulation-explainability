@@ -43,7 +43,9 @@ def train(
         "snr_list": snr_list,
         "use_snr_buckets": use_snr_buckets,
         "num_train_samples": num_train_samples,
-        "num_val_samples": num_val_samples
+        "num_val_samples": num_val_samples,
+        "alpha": alpha,
+        "beta": beta
     })
 
     # Ensure save directory exists
