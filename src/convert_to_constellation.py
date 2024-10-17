@@ -33,7 +33,7 @@ if __name__ == "__main__":
     if args.snr_list is not None:
         snrs_to_process = [int(snr) for snr in args.snr_list.split(',')]
     else:
-        snrs_to_process = [-10, 0, 6, 10, 20, 30]  # Default SNRs if not provided
+        snrs_to_process = None
 
     # Convert comma-separated modulation list to a list of strings
     if args.mod_list is not None:
