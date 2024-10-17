@@ -6,7 +6,6 @@ from utils.image_utils import plot_f1_scores, plot_confusion_matrix
 from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from tqdm import tqdm
-from utils.snr_utils import get_snr_bucket, get_snr_label_names
 import os
 
 
@@ -66,10 +65,6 @@ def train(
                 # Forward pass
                 modulation_output, snr_output = model(inputs)
 
-                # Optionally convert SNR labels to buckets
-                if use_snr_buckets:
-                    snr_labels = torch.tensor([get_snr_bucket(snr.item()) for snr in snr_labels]).to(device)
-
                 # Compute loss for both outputs
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                 loss_snr = criterion_snr(snr_output, snr_labels)
@@ -127,7 +122,7 @@ def train(
             all_true_modulation_labels,
             all_pred_modulation_labels,
             all_true_snr_labels,
-            all_pred_snr_labels,
+            all_pred_snr_labels
         ) = val_results
 
         # Save model if it has the best validation loss
@@ -144,18 +139,12 @@ def train(
             label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
         )
 
-        # Dynamically get SNR label names from snr_utils
-        if use_snr_buckets:
-            snr_label_names = get_snr_label_names()
-        else:
-            snr_label_names = [str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
-
         plot_confusion_matrix(
             all_true_snr_labels,
             all_pred_snr_labels,
             'SNR',
             epoch,
-            label_names=snr_label_names
+            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
         )
         plot_f1_scores(
             all_true_modulation_labels,
@@ -167,7 +156,7 @@ def train(
         plot_f1_scores(
             all_true_snr_labels,
             all_pred_snr_labels,
-            label_names=snr_label_names,
+            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
             label_type='SNR',
             epoch=epoch
         )

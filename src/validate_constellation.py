@@ -1,8 +1,8 @@
 # src/validate_constellation.py
+
 import torch
 from tqdm import tqdm
 from utils.config_utils import load_loss_config
-from utils.snr_utils import get_snr_bucket, get_snr_label_names
 
 
 def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=False):
@@ -22,10 +22,6 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
     all_true_snr_labels = []
     all_pred_snr_labels = []
 
-    # Get SNR label names dynamically if using SNR buckets
-    if use_snr_buckets:
-        snr_label_names = get_snr_label_names()
-
     with torch.no_grad():
         with tqdm(val_loader, desc="Validation", leave=False) as progress:
             for inputs, modulation_labels, snr_labels in progress:
@@ -33,14 +29,10 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
                 modulation_labels = modulation_labels.to(device)
                 snr_labels = snr_labels.to(device)
 
-                # Optionally convert SNR labels to buckets
-                if use_snr_buckets:
-                    snr_labels = torch.tensor([get_snr_bucket(snr.item()) for snr in snr_labels]).to(device)
-
-                # Forward pass
+                # Forward pass through the model
                 modulation_output, snr_output = model(inputs)
 
-                # Compute loss
+                # Compute losses for both modulation and SNR classification
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                 loss_snr = criterion_snr(snr_output, snr_labels)
                 total_loss = alpha * loss_modulation + beta * loss_snr
@@ -57,24 +49,13 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
                 correct_snr += predicted_snr.eq(snr_labels).sum().item()
                 correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
 
-                # Convert to numpy arrays
-                modulation_labels_np = modulation_labels.cpu().numpy()
-                predicted_modulation_np = predicted_modulation.cpu().numpy()
-                snr_labels_np = snr_labels.cpu().numpy()
-                predicted_snr_np = predicted_snr.cpu().numpy()
+                # Collect true and predicted labels for confusion matrix and F1 score computation
+                all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
+                all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
+                all_true_snr_labels.extend(snr_labels.cpu().numpy())
+                all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
 
-                # Collect labels for confusion matrices
-                all_true_modulation_labels.extend(modulation_labels_np)
-                all_pred_modulation_labels.extend(predicted_modulation_np)
-
-                if use_snr_buckets:
-                    # Convert bucketed SNR labels for confusion matrix and F1 scores
-                    all_true_snr_labels.extend(snr_labels_np)
-                    all_pred_snr_labels.extend(predicted_snr_np)
-                else:
-                    all_true_snr_labels.extend(snr_labels_np)
-                    all_pred_snr_labels.extend(predicted_snr_np)
-
+                # Update progress bar with current metrics
                 progress.set_postfix(
                     loss=total_loss.item(),
                     mod_accuracy=100.0 * correct_modulation / total,
@@ -82,6 +63,7 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
                     combined_accuracy=100.0 * correct_both / total
                 )
 
+    # Compute final validation accuracies and loss
     val_modulation_accuracy = 100.0 * correct_modulation / total
     val_snr_accuracy = 100.0 * correct_snr / total
     val_combined_accuracy = 100.0 * correct_both / total
@@ -99,5 +81,5 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
         all_true_modulation_labels,
         all_pred_modulation_labels,
         all_true_snr_labels,
-        all_pred_snr_labels,
+        all_pred_snr_labels
     )
