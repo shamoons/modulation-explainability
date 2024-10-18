@@ -119,7 +119,7 @@ def generate_and_save_images(
 
 def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_names=None, output_dir=None):
     """
-    Plot and save a confusion matrix with large numbers formatted in 'k' notation.
+    Plot and save a normalized confusion matrix (values between 0 and 1).
 
     Args:
         true_labels (list of int): True class labels.
@@ -137,37 +137,31 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
         output_dir = "confusion_matrices"
     os.makedirs(output_dir, exist_ok=True)
 
+    # Compute the confusion matrix
     cm = confusion_matrix(true_labels, pred_labels)
+
+    # Normalize the confusion matrix by dividing each row by its sum
+    cm_normalized = cm.astype('float') / cm.sum(axis=1, keepdims=True)
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Formatter function to format numbers with 'k' if > 1000
-    def format_value(val):
-        if val >= 1000:
-            return f"{val / 1000:.1f}k"
-        else:
-            return f"{val}"
-
-    # Format the confusion matrix values using the formatter
-    fmt_cm = np.vectorize(format_value)(cm)
-
     # Check if label names are provided, otherwise use numeric labels
     if label_names is None:
-        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues", ax=ax)
+        sns.heatmap(cm_normalized, annot=True, fmt=".2f", cmap="Blues", ax=ax)
         ax.set_xticks([])
         ax.set_yticks([])
     else:
-        sns.heatmap(cm, annot=fmt_cm, fmt="", cmap="Blues", xticklabels=label_names, yticklabels=label_names, ax=ax)
+        sns.heatmap(cm_normalized, annot=True, fmt=".2f", cmap="Blues", xticklabels=label_names, yticklabels=label_names, ax=ax)
         ax.set_xticklabels(label_names, rotation=90)
         ax.set_yticklabels(label_names, rotation=0)
 
     ax.set_xlabel(f"Predicted {label_type} Labels")
     ax.set_ylabel(f"True {label_type} Labels")
-    ax.set_title(f"{label_type} Confusion Matrix - Epoch {epoch + 1}")
+    ax.set_title(f"{label_type} Normalized Confusion Matrix - Epoch {epoch + 1}")
     fig.tight_layout()
 
-    # Save confusion matrix
-    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}.png")
+    # Save the normalized confusion matrix
+    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_normalized.png")
     fig.savefig(file_path)
 
     return fig  # Return the figure object
