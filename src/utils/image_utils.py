@@ -161,7 +161,7 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     fig.tight_layout()
 
     # Save the normalized confusion matrix
-    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_normalized.png")
+    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}.png")
     fig.savefig(file_path)
 
     return fig  # Return the figure object
