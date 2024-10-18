@@ -62,40 +62,53 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
     batch_size = iq_data.shape[0]
 
     # blk_size and scaling factors
-    blk_size = [2, 10, 25]
+    # blk_size determines the range of blocks around each point where we'll apply intensity
+    blk_size = [2, 10, 25]  # Defines block sizes (small, medium, large)
+
+    # c_factor is used for controlling the intensity of points at different block sizes
     c_factor = 5.0 / torch.tensor(blk_size)
-    cons_scale = torch.tensor([2.5, 2.5])
 
-    internal_image_size_x = image_size[0] + 2 * max(blk_size)
-    internal_image_size_y = image_size[1] + 2 * max(blk_size)
+    # cons_scale is used to normalize the I/Q data within a bounded range
+    cons_scale = torch.tensor([2.5, 2.5])  # Scale for real (I) and imaginary (Q) parts
 
-    d_i_y = 2 * cons_scale[0] / internal_image_size_x
-    d_q_x = 2 * cons_scale[1] / internal_image_size_y
-    d_xy = torch.sqrt(d_i_y ** 2 + d_q_x ** 2)
+    # Add padding to the image size based on the maximum block size
+    internal_image_size_x = image_size[0]  # + 2 * max(blk_size)
+    internal_image_size_y = image_size[1]  # + 2 * max(blk_size)
 
-    # Convert I/Q data to image positions for the entire batch
-    sample_x = torch.round((cons_scale[1] - iq_data[:, :, 1]) / d_q_x).to(torch.int32)  # Imaginary part (Q)
-    sample_y = torch.round((cons_scale[0] + iq_data[:, :, 0]) / d_i_y).to(torch.int32)  # Real part (I)
+    # Calculate the size of each pixel in terms of I/Q values
+    d_i_y = 2 * cons_scale[0] / internal_image_size_x  # I component (real) scaling
+    d_q_x = 2 * cons_scale[1] / internal_image_size_y  # Q component (imaginary) scaling
 
-    # Create a batch of pixel centroid grids
+    # Calculate the pixel size in the I-Q space
+    d_xy = torch.sqrt(d_i_y ** 2 + d_q_x ** 2)  # Distance between two adjacent pixels
+
+    # Convert I/Q data into pixel positions in the image grid
+    sample_x = torch.round((cons_scale[1] - iq_data[:, :, 1]) / d_q_x).to(torch.int32)  # Imaginary (Q) part
+    sample_y = torch.round((cons_scale[0] + iq_data[:, :, 0]) / d_i_y).to(torch.int32)  # Real (I) part
+
+    # Create a mesh grid for pixel centroids (used to calculate pixel intensities)
     ii, jj = torch.meshgrid(
-        torch.arange(internal_image_size_x),
-        torch.arange(internal_image_size_y),
+        torch.arange(internal_image_size_x),  # X-axis (real part)
+        torch.arange(internal_image_size_y),  # Y-axis (imaginary part)
         indexing='ij'
     )
 
-    pixel_centroid_real = -cons_scale[0] + d_i_y / 2 + jj * d_i_y
-    pixel_centroid_imag = cons_scale[1] - d_q_x / 2 - ii * d_q_x
+    # Calculate the I/Q values corresponding to each pixel in the image
+    pixel_centroid_real = -cons_scale[0] + d_i_y / 2 + jj * d_i_y  # Real (I) part centroids
+    pixel_centroid_imag = cons_scale[1] - d_q_x / 2 - ii * d_q_x  # Imaginary (Q) part centroids
 
-    # Pre-allocate a batch of image arrays
+    # Pre-allocate an empty tensor to store the resulting image arrays for the entire batch
     image_array = torch.zeros((batch_size, internal_image_size_x, internal_image_size_y, 3))
 
+    # Iterate over each block size (small, medium, large)
     for kk, blk in enumerate(blk_size):
+        # Define the block boundaries around each sample point
         blk_x_min = sample_x - blk
         blk_x_max = sample_x + blk + 1
         blk_y_min = sample_y - blk
         blk_y_max = sample_y + blk + 1
 
+        # Determine valid pixel ranges (to ensure points are inside the image bounds)
         valid = (
             (blk_x_min >= 0)
             & (blk_y_min >= 0)
@@ -103,41 +116,30 @@ def get_image_array(iq_data: torch.Tensor, image_size: tuple) -> torch.Tensor:
             & (blk_y_max < internal_image_size_y)
         )
 
+        # Iterate over each sample in the batch
         for b in range(batch_size):
+            # For each sample, iterate over all valid points
             for i in torch.where(valid[b])[0]:
+                # Get the block range for the current sample
                 x_min, x_max = blk_x_min[b, i], blk_x_max[b, i]
                 y_min, y_max = blk_y_min[b, i], blk_y_max[b, i]
 
+                # Get the real and imaginary parts of the I/Q data for the current sample
                 real_part = iq_data[b, i, 0]
                 imag_part = iq_data[b, i, 1]
 
+                # Calculate the distance from the current sample point to the pixel centroids
                 real_part_distance = torch.abs(real_part - pixel_centroid_real[x_min:x_max, y_min:y_max])
                 imag_part_distance = torch.abs(imag_part - pixel_centroid_imag[x_min:x_max, y_min:y_max])
 
+                # Calculate the Euclidean distance to each pixel in the block
                 sample_distance = torch.sqrt(real_part_distance**2 + imag_part_distance**2)
+
+                # Accumulate the pixel intensities based on the distance from the sample point
                 image_array[b, x_min:x_max, y_min:y_max, kk] += torch.exp(-c_factor[kk] * sample_distance / d_xy)
 
+            # Normalize the pixel intensities within the current block size
             image_array[b, :, :, kk] /= torch.max(image_array[b, :, :, kk])
-
-    return image_array
-
-
-def renormalize_image(image_array: torch.Tensor) -> torch.Tensor:
-    """
-    Renormalize the image array to ensure the brightest points are max bright.
-
-    Args:
-        image_array (torch.Tensor): The image array where pixel intensities are calculated.
-
-    Returns:
-        torch.Tensor: Renormalized image array.
-    """
-    # Find the maximum value in the image array
-    max_value = torch.max(image_array)
-
-    # Avoid division by zero and scale the array to have max intensity as 1.0
-    if max_value > 0:
-        image_array = image_array / max_value
 
     return image_array
 
@@ -169,8 +171,6 @@ def process_samples(
             image_array = plot_points(iq_data_torch, image_size)
         else:
             image_array = get_image_array(iq_data_torch, image_size)
-
-        image_array = renormalize_image(image_array)
 
         # Save images for each batch sample
         for i in range(batch_size):
