@@ -45,7 +45,8 @@ def train(
         "num_train_samples": num_train_samples,
         "num_val_samples": num_val_samples,
         "alpha": alpha,
-        "beta": beta
+        "beta": beta,
+        "model": model.model_name,
     })
 
     # Ensure save directory exists

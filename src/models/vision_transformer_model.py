@@ -25,6 +25,7 @@ class ConstellationVisionTransformer(nn.Module):
 
         # Load a Vision Transformer (ViT) model from torchvision
         self.model = vit_b_16(weights='DEFAULT')
+        self.model_name = "vit_b_16"
 
         # Modify the input embedding layer to accept the specified number of input channels
         if input_channels != 3:
