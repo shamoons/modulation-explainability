@@ -140,8 +140,14 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     # Compute the confusion matrix
     cm = confusion_matrix(true_labels, pred_labels)
 
+    # Get the number of true labels per class
+    class_counts = np.bincount(true_labels)
+
+    # Normalize the confusion matrix by dividing each cell by the expected number of true labels for that class
+    cm_normalized = cm.astype('float') / class_counts[:, np.newaxis]
+
     # Normalize the confusion matrix by dividing each row by its sum
-    cm_normalized = cm.astype('float') / cm.sum(axis=1, keepdims=True)
+    cm_normalized = cm.astype('float') / class_counts[:, np.newaxis]
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -161,7 +167,7 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     fig.tight_layout()
 
     # Save the normalized confusion matrix
-    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}.png")
+    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_normalized.png")
     fig.savefig(file_path)
 
     return fig  # Return the figure object

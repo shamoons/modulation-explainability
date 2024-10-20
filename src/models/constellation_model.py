@@ -24,8 +24,8 @@ class ConstellationResNet(nn.Module):
         super(ConstellationResNet, self).__init__()
 
         # Load a ResNet model from torchvision
-        self.model = models.resnet34(weights='DEFAULT')
-        self.model_name = "resnet34"
+        self.model = models.resnet18(weights='DEFAULT')
+        self.model_name = "resnet18"
 
         # Modify the first convolutional layer to accept the specified number of input channels
         if input_channels != 3:
