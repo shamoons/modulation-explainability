@@ -56,7 +56,8 @@ if __name__ == "__main__":
     if args.snr_list is not None:
         snrs_to_process = [int(snr) for snr in args.snr_list.split(',')]
     else:
-        snrs_to_process = list(range(-20, 32, 2))  # Default SNR values from -20 dB to +30 dB
+        snrs_to_process = [-18, -16,-2, 2, 26, 28]
+        # snrs_to_process = list(range(-20, 32, 2))  # Default SNR values from -20 dB to +30 dB
 
     # Convert comma-separated modulation list to a list of strings
     if args.mod_list is not None:
