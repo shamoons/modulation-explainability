@@ -42,23 +42,27 @@ class ConstellationResNet(nn.Module):
         in_features = self.model.fc.in_features  # Number of input features to the final FC layer
         self.model.fc = nn.Identity()  # Replace the fully connected layer with an identity operation
 
-        # Shared feature transformation
-        self.shared_transform = nn.Linear(in_features, in_features)
-        self.shared_activation = nn.ReLU()
+        # Shared feature layers
+        self.shared_transform1 = nn.Linear(in_features, in_features // 2)
+        self.shared_transform2 = nn.Linear(in_features // 2, in_features // 4)
 
-        # Batch normalization
-        self.batch_norm = nn.BatchNorm1d(in_features)
+        # Single ReLU instance
+        self.relu = nn.ReLU()
 
-        # Dropout layer for regularization
+        # Batch normalization for each shared layer
+        self.batch_norm1 = nn.BatchNorm1d(in_features // 2)
+        self.batch_norm2 = nn.BatchNorm1d(in_features // 4)
+
+        # Single dropout instance
         self.dropout = nn.Dropout(p=dropout_prob)
 
         # Separate feature transformation layers for modulation and SNR tasks
-        self.modulation_transform = nn.Linear(in_features, in_features)
-        self.snr_transform = nn.Linear(in_features, in_features)
+        self.modulation_transform = nn.Linear(in_features // 4, in_features // 4)
+        self.snr_transform = nn.Linear(in_features // 4, in_features // 4)
 
         # Output heads for modulation and SNR
-        self.modulation_head = nn.Linear(in_features, num_classes)  # Modulation classification head
-        self.snr_head = nn.Linear(in_features, snr_classes)  # SNR classification head
+        self.modulation_head = nn.Linear(in_features // 4, num_classes)  # Modulation classification head
+        self.snr_head = nn.Linear(in_features // 4, snr_classes)  # SNR classification head
 
     def forward(self, x):
         """
@@ -73,18 +77,22 @@ class ConstellationResNet(nn.Module):
         # Extract shared features using ResNet
         features = self.model(x)
 
-        # Apply batch normalization to the shared features
-        features = self.batch_norm(features)
-
-        # Apply shared transformation and activation
-        features = self.shared_activation(self.shared_transform(features))
-
-        # Apply dropout for regularization
+        # First shared feature layer
+        features = self.relu(self.shared_transform1(features))
+        features = self.batch_norm1(features)
         features = self.dropout(features)
 
-        # Separate transformations for modulation and SNR tasks with activation
-        modulation_features = self.shared_activation(self.modulation_transform(features))
-        snr_features = self.shared_activation(self.snr_transform(features))
+        # Second shared feature layer
+        features = self.relu(self.shared_transform2(features))
+        features = self.batch_norm2(features)
+        features = self.dropout(features)
+
+        # Separate transformations for modulation and SNR tasks
+        modulation_features = self.relu(self.modulation_transform(features))
+        modulation_features = self.dropout(modulation_features)
+
+        snr_features = self.relu(self.snr_transform(features))
+        snr_features = self.dropout(snr_features)
 
         # Output heads
         modulation_output = self.modulation_head(modulation_features)  # Predict modulation class

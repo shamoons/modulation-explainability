@@ -86,7 +86,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
     # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.000001)
+    optimizer = optim.Adam(model.parameters(), lr=0.000001, weight_decay=1e-5)
 
     # Calculate the number of batches per epoch
     batches_per_epoch = len(train_loader)
