@@ -119,7 +119,8 @@ def generate_and_save_images(
 
 def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_names=None, output_dir=None):
     """
-    Plot and save a normalized confusion matrix, showing accuracy per box.
+    Plot and save a normalized confusion matrix, showing accuracy per box. 
+    Normalization is done by dividing each cell by the expected number of true labels for that class.
 
     Args:
         true_labels (list of int): True class labels.
@@ -140,35 +141,36 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     # Compute the confusion matrix
     cm = confusion_matrix(true_labels, pred_labels)
 
-    # Get the total number of true labels per class (row sum)
-    total_true_per_class = cm.sum(axis=1, keepdims=True)
+    # Normalize the confusion matrix by dividing each element by the number of true instances of the corresponding class
+    true_label_counts = np.bincount(true_labels)
 
-    # To avoid division by zero, we handle rows with zero sums
-    total_true_per_class[total_true_per_class == 0] = 1
+    # To avoid division by zero, ensure no row has zero true labels
+    true_label_counts[true_label_counts == 0] = 1  # Avoid division by zero
 
-    # Calculate accuracy per box (cell) by dividing each cell by the total number of true labels for that class
-    cm_accuracy_per_box = cm.astype('float') / total_true_per_class
+    # Normalize by dividing each entry in the confusion matrix by the number of true instances in that row
+    cm_normalized = cm.astype('float') / true_label_counts[:, np.newaxis]
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Check if label names are provided, otherwise use numeric labels
     if label_names is None:
-        sns.heatmap(cm_accuracy_per_box, annot=True, fmt=".2f", cmap="Blues", ax=ax)
+        sns.heatmap(cm_normalized, annot=True, fmt=".2f", cmap="Blues", ax=ax)
         ax.set_xticks([])
         ax.set_yticks([])
     else:
-        sns.heatmap(cm_accuracy_per_box, annot=True, fmt=".2f", cmap="Blues", xticklabels=label_names, yticklabels=label_names, ax=ax)
+        sns.heatmap(cm_normalized, annot=True, fmt=".2f", cmap="Blues", xticklabels=label_names, yticklabels=label_names, ax=ax)
         ax.set_xticklabels(label_names, rotation=90)
         ax.set_yticklabels(label_names, rotation=0)
 
     ax.set_xlabel(f"Predicted {label_type} Labels")
     ax.set_ylabel(f"True {label_type} Labels")
-    ax.set_title(f"{label_type} Accuracy per Box - Epoch {epoch + 1}")
+    ax.set_title(f"{label_type} Normalized Confusion Matrix - Epoch {epoch + 1}")
     fig.tight_layout()
 
-    # Save the accuracy-per-box confusion matrix
-    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_accuracy_per_box.png")
+    # Save the normalized confusion matrix
+    file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_normalized.png")
     fig.savefig(file_path)
+    plt.close(fig)
 
     return fig  # Return the figure object
 
@@ -203,5 +205,6 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
 
     file_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}.png")
     fig.savefig(file_path)
+    plt.close(fig)
 
     return fig  # Return the figure object

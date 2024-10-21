@@ -4,6 +4,7 @@ import torch
 import wandb
 from utils.image_utils import plot_f1_scores, plot_confusion_matrix
 from utils.config_utils import load_loss_config
+from utils.wandb_utils import log_weights_to_wandb
 from validate_constellation import validate
 from tqdm import tqdm
 import os
@@ -198,3 +199,6 @@ def train(
             "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation),
             "f1_scores_snr": wandb.Image(fig_f1_scores_snr)
         })
+
+        # Log weights after each epoch
+        log_weights_to_wandb(model, epoch)

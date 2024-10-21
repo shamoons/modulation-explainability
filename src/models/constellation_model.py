@@ -11,7 +11,7 @@ class ConstellationResNet(nn.Module):
     2) SNR prediction
     """
 
-    def __init__(self, num_classes=11, snr_classes=26, input_channels=3, dropout_prob=0.5):
+    def __init__(self, num_classes=11, snr_classes=26, input_channels=3, dropout_prob=0.5, model_name="resnet18"):
         """
         Initialize the ConstellationResNet model with two output heads.
 
@@ -24,8 +24,11 @@ class ConstellationResNet(nn.Module):
         super(ConstellationResNet, self).__init__()
 
         # Load a ResNet model from torchvision
-        self.model = models.resnet18(weights='DEFAULT')
-        self.model_name = "resnet18"
+        if model_name == "resnet18":
+            self.model = models.resnet18(weights='DEFAULT')
+        elif model_name == "resnet34":
+            self.model = models.resnet34(weights='DEFAULT')
+        self.model_name = model_name
 
         # Modify the first convolutional layer to accept the specified number of input channels
         if input_channels != 3:
