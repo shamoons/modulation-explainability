@@ -146,9 +146,6 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     # Normalize the confusion matrix by dividing each cell by the expected number of true labels for that class
     cm_normalized = cm.astype('float') / class_counts[:, np.newaxis]
 
-    # Normalize the confusion matrix by dividing each row by its sum
-    cm_normalized = cm.astype('float') / class_counts[:, np.newaxis]
-
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Check if label names are provided, otherwise use numeric labels
