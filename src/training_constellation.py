@@ -23,7 +23,10 @@ def train(
     save_dir="checkpoints",
     mod_list=None,
     snr_list=None,
-    use_snr_buckets=False
+    use_snr_buckets=False,
+    base_lr=None,
+    max_lr=None,
+    weight_decay=None
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -48,6 +51,9 @@ def train(
         "alpha": alpha,
         "beta": beta,
         "model": model.model_name,
+        "base_lr": base_lr,
+        "max_lr": max_lr,
+        "weight_decay": weight_decay
     })
 
     # Ensure save directory exists

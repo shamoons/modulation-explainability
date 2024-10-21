@@ -85,14 +85,18 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
+    base_lr = 0.000001
+    max_lr = 0.01
+    weight_decay = 1e-5
+
     # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.000001, weight_decay=1e-5)
+    optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
 
     # Calculate the number of batches per epoch
     batches_per_epoch = len(train_loader)
 
     # Define number of cycles
-    num_cycles = 8
+    num_cycles = 10
 
     # Total number of batches over all epochs
     total_batches = batches_per_epoch * epochs
@@ -101,7 +105,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     step_size_up_down = total_batches // (num_cycles * 2)
 
     # Add learning rate scheduler with dynamic step_size_up
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.000001, max_lr=0.001, step_size_up=step_size_up_down, step_size_down=step_size_up_down, mode='triangular2', cycle_momentum=False)
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=base_lr, max_lr=max_lr, step_size_up=step_size_up_down, step_size_down=step_size_up_down, mode='triangular2', cycle_momentum=False)
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
@@ -119,7 +123,10 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         epochs=epochs,
         mod_list=mods_to_process,
         snr_list=snr_list,
-        use_snr_buckets=use_snr_buckets
+        use_snr_buckets=use_snr_buckets,
+        base_lr=base_lr,
+        max_lr=max_lr,
+        weight_decay=weight_decay
     )
 
 
