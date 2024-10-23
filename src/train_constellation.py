@@ -85,8 +85,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
-    base_lr = 0.000001
-    max_lr = 0.01
+    base_lr = 0.0000001
+    max_lr = 0.0001
     weight_decay = 1e-5
 
     # Initialize optimizer
@@ -96,7 +96,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     batches_per_epoch = len(train_loader)
 
     # Define number of cycles
-    num_cycles = 10
+    num_cycles = 4
 
     # Total number of batches over all epochs
     total_batches = batches_per_epoch * epochs
