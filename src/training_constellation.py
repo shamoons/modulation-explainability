@@ -207,4 +207,4 @@ def train(
         })
 
         # Log weights after each epoch
-        log_weights_to_wandb(model, epoch)
+        # log_weights_to_wandb(model, epoch)
