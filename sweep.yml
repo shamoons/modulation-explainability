@@ -1,7 +1,7 @@
 program: src/train_constellation.py
 method: bayes
 metric:
-  name: validation_loss
+  name: val_loss
   goal: minimize
 parameters:
   batch_size:
@@ -23,11 +23,6 @@ parameters:
     min: 1e-6
     max: 1e-4
 
-  epochs:
-    distribution: int_uniform
-    min: 10
-    max: 100
-
   use_snr_buckets:
     value: "True"
 
@@ -35,6 +30,11 @@ parameters:
     distribution: int_uniform
     min: 2
     max: 10
+  
+  test_size:
+    distribution: uniform
+    min: 0.1
+    max: 0.3
 
   # Fixed value for mods_to_process
   mods_to_process:

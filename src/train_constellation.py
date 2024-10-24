@@ -29,12 +29,13 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False, num_cycles=4, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False, num_cycles=4, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2):
     # Load data
     print("Loading data...")
 
     image_type = 'grayscale'
     root_dir = "constellation"
+    torch.random.manual_seed(42)
 
     # Parse snr_list and mods_to_process if provided
     if snr_list is not None:
@@ -52,7 +53,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
-    train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
+    train_idx, val_idx = train_test_split(indices, test_size=test_size, random_state=42)
 
     # Print the number of training and validation samples
     print(f"Number of training samples: {len(train_idx)}")
@@ -147,6 +148,7 @@ if __name__ == "__main__":
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=None)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer', default=None)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=None)
+    parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
 
     args = parser.parse_args()
 
