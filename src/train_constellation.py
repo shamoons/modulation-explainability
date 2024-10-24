@@ -85,9 +85,9 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
-    base_lr = 0.0000001
-    max_lr = 0.0001
-    weight_decay = 1e-5
+    base_lr = 1e-7
+    max_lr = 1e-4
+    weight_decay = 1e-4
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
@@ -96,7 +96,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     batches_per_epoch = len(train_loader)
 
     # Define number of cycles
-    num_cycles = 4
+    num_cycles = 3
 
     # Total number of batches over all epochs
     total_batches = batches_per_epoch * epochs
@@ -126,7 +126,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         use_snr_buckets=use_snr_buckets,
         base_lr=base_lr,
         max_lr=max_lr,
-        weight_decay=weight_decay
+        weight_decay=weight_decay,
+        num_cycles=num_cycles
     )
 
 

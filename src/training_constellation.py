@@ -26,7 +26,8 @@ def train(
     use_snr_buckets=False,
     base_lr=None,
     max_lr=None,
-    weight_decay=None
+    weight_decay=None,
+    num_cycles=1
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -53,7 +54,8 @@ def train(
         "model": model.model_name,
         "base_lr": base_lr,
         "max_lr": max_lr,
-        "weight_decay": weight_decay
+        "weight_decay": weight_decay,
+        "num_cycles": num_cycles
     })
 
     # Ensure save directory exists
