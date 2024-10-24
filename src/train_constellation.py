@@ -119,7 +119,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         use_snr_buckets=use_snr_buckets,
         base_lr=base_lr,
         max_lr=max_lr,
-        weight_decay=weight_decay
+        weight_decay=weight_decay,
+        num_cycles=num_cycles
     )
 
 
