@@ -18,6 +18,17 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False, num_cycles=4, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5):
     # Load data
     print("Loading data...")
@@ -131,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
-    parser.add_argument('--use_snr_buckets', action='store_true', help='Flag to use SNR buckets instead of actual SNR values')
+    parser.add_argument('--use_snr_buckets', type=str2bool, help='Flag to use SNR buckets instead of actual SNR values', default=False)
     parser.add_argument('--num_cycles', type=int, help='Number of cycles for learning rate scheduler', default=4)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=None)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer', default=None)
