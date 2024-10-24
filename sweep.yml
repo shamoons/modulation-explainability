@@ -40,9 +40,6 @@ parameters:
   mods_to_process:
     value: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
 
-  snr_list:
-    value: None
-
 early_terminate:
   type: hyperband
   min_iter: 3
