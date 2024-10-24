@@ -9,17 +9,17 @@ parameters:
     values: [64, 128, 256, 512]
   
   base_lr:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-7
     max: 1e-3
 
   max_lr:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-5
     max: 1e-2
 
   weight_decay:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-6
     max: 1e-4
 
@@ -37,9 +37,12 @@ parameters:
     min: 2
     max: 10
 
-# Fixed value for mods_to_process
-mods_to_process: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
-snr_list: None
+  # Fixed value for mods_to_process
+  mods_to_process:
+    value: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
+
+  snr_list:
+    value: None
 
 early_terminate:
   type: hyperband
