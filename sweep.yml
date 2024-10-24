@@ -29,8 +29,7 @@ parameters:
     max: 100
 
   use_snr_buckets:
-    distribution: categorical
-    values: [true, false]
+    value: True
 
   num_cycles:
     distribution: int_uniform
