@@ -1,0 +1,45 @@
+program: src/train_constellation.py
+method: bayes
+metric:
+  name: validation_loss
+  goal: minimize
+parameters:
+  batch_size:
+    distribution: categorical
+    values: [32, 64, 128]
+  
+  base_lr:
+    distribution: log_uniform
+    min: 1e-7
+    max: 1e-3
+
+  max_lr:
+    distribution: log_uniform
+    min: 1e-5
+    max: 1e-2
+
+  weight_decay:
+    distribution: log_uniform
+    min: 1e-6
+    max: 1e-4
+
+  epochs:
+    distribution: int_uniform
+    min: 10
+    max: 100
+
+  snr_list:
+    distribution: categorical
+    values: ["-20, 0, 10, 30", "-10, 0, 20, 30", None]
+
+  mods_to_process:
+    distribution: categorical
+    values: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
+
+  use_snr_buckets:
+    distribution: categorical
+    values: [true, false]
+  
+early_terminate:
+  type: hyperband
+  min_iter: 3

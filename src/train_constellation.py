@@ -18,7 +18,7 @@ import os
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False, num_cycles=4, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5):
     # Load data
     print("Loading data...")
 
@@ -85,18 +85,11 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
     criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
 
-    base_lr = 0.0000001
-    max_lr = 0.0001
-    weight_decay = 1e-5
-
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
 
     # Calculate the number of batches per epoch
     batches_per_epoch = len(train_loader)
-
-    # Define number of cycles
-    num_cycles = 4
 
     # Total number of batches over all epochs
     total_batches = batches_per_epoch * epochs
@@ -138,6 +131,11 @@ if __name__ == "__main__":
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
     parser.add_argument('--use_snr_buckets', action='store_true', help='Flag to use SNR buckets instead of actual SNR values')
+    parser.add_argument('--num_cycles', type=int, help='Number of cycles for learning rate scheduler', default=4)
+    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=None)
+    parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer', default=None)
+    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=None)
+
     args = parser.parse_args()
 
     main(
@@ -146,5 +144,9 @@ if __name__ == "__main__":
         snr_list=args.snr_list,
         mods_to_process=args.mods_to_process,
         epochs=args.epochs,
-        use_snr_buckets=args.use_snr_buckets
+        use_snr_buckets=args.use_snr_buckets,
+        num_cycles=args.num_cycles,
+        base_lr=args.base_lr,
+        max_lr=args.max_lr,
+        weight_decay=args.weight_decay
     )
