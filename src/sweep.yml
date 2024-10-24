@@ -6,7 +6,7 @@ metric:
 parameters:
   batch_size:
     distribution: categorical
-    values: [32, 64, 128]
+    values: [64, 128, 256, 512]
   
   base_lr:
     distribution: log_uniform
@@ -28,18 +28,19 @@ parameters:
     min: 10
     max: 100
 
-  snr_list:
-    distribution: categorical
-    values: ["-20, 0, 10, 30", "-10, 0, 20, 30", None]
-
-  mods_to_process:
-    distribution: categorical
-    values: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
-
   use_snr_buckets:
     distribution: categorical
     values: [true, false]
-  
+
+  num_cycles:
+    distribution: int_uniform
+    min: 2
+    max: 10
+
+# Fixed value for mods_to_process
+mods_to_process: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
+snr_list: None
+
 early_terminate:
   type: hyperband
   min_iter: 3
