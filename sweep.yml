@@ -11,11 +11,11 @@ parameters:
   base_lr:
     distribution: log_uniform_values
     min: 1e-7
-    max: 1e-3
+    max: 1e-5
 
   max_lr:
     distribution: log_uniform_values
-    min: 1e-5
+    min: 5e-5
     max: 1e-2
 
   weight_decay:
