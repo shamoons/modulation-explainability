@@ -1,3 +1,8 @@
+# src/models/constellation_model.py
+import torch.nn as nn
+from torchvision import models
+
+
 class ConstellationResNet(nn.Module):
     def __init__(self, num_classes=11, snr_classes=26, input_channels=3, dropout_prob=0.6, model_name="resnet18"):
         super(ConstellationResNet, self).__init__()
