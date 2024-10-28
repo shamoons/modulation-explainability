@@ -21,9 +21,7 @@ parameters:
     value: "True"
 
   num_cycles:
-    distribution: int_uniform
-    min: 2
-    max: 4
+    values: [2, 4]
   
   test_size:
     value: 0.2
@@ -37,4 +35,4 @@ parameters:
 
 early_terminate:
   type: hyperband
-  min_iter: 5
+  min_iter: 12
