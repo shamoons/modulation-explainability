@@ -147,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_cycles', type=int, help='Number of cycles for learning rate scheduler', default=4)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=None)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer', default=None)
-    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=None)
+    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
 
     args = parser.parse_args()
