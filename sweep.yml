@@ -5,14 +5,10 @@ metric:
   goal: minimize
 parameters:
   base_lr:
-    distribution: log_uniform_values
-    min: 1e-7
-    max: 1e-6
+    values: [1e-6, 1e-7]
 
   max_lr:
-    distribution: log_uniform_values
-    min: 1e-4
-    max: 1e-2
+    values: [1e-2, 1e-4]
 
   weight_decay:
     value: 1e-5
@@ -31,7 +27,7 @@ parameters:
     value: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
   
   batch_size:
-    value: 512
+    value: 768
 
 early_terminate:
   type: hyperband
