@@ -6,10 +6,10 @@ metric:
   goal: minimize
 parameters:
   base_lr:
-    values: [1e-6, 1e-7, 1e-5]
+    values: [1e-7, 1e-4]
 
   max_lr:
-    values: [1e-2, 1e-3, 1e-4]
+    values: [1e-2, 1e-4]
 
   weight_decay:
     value: 1e-5
@@ -18,7 +18,7 @@ parameters:
     value: "True"
 
   num_cycles:
-    values: [2, 4, 8]
+    values: [2, 8]
   
   test_size:
     value: 0.2
