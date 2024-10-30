@@ -5,10 +5,10 @@ metric:
   goal: minimize
 parameters:
   base_lr:
-    values: [1e-6, 1e-7]
+    values: [1e-6, 1e-7, 1e-5]
 
   max_lr:
-    values: [1e-2, 1e-4]
+    values: [1e-2, 1e-3, 1e-4]
 
   weight_decay:
     value: 1e-5
@@ -17,17 +17,17 @@ parameters:
     value: "True"
 
   num_cycles:
-    values: [2, 4]
+    values: [2, 4, 8]
   
   test_size:
     value: 0.2
 
   # Fixed value for mods_to_process
-  mods_to_process:
-    value: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
+  # mods_to_process:
+    # value: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
   
   batch_size:
-    value: 768
+    value: 512
 
 early_terminate:
   type: hyperband
