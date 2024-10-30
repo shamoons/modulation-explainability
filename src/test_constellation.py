@@ -1,143 +1,85 @@
 # src/test_constellation.py
 import torch
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, Subset, SubsetRandomSampler
-from tqdm import tqdm
-from models.constellation_model import ConstellationResNet
+from torch.utils.data import DataLoader
+from models.constellation_model import ConstellationResNet  # or your VisionTransformer
+from loaders.perturbation_loader import PerturbationDataset
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
-from validate_constellation import validate
-from utils.image_utils import plot_confusion_matrix, plot_f1_scores
-from sklearn.metrics import classification_report
-import os
+import argparse
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
-def validate_across_conditions(model, device, criterion_modulation, criterion_snr, val_loader, snr_list, mod_list):
-    """
-    Validate across all conditions: overall, by SNR, and by modulation type.
-    Output confusion matrices and F1 scores in the 'test' directory.
-    """
-    # Create a 'test' directory for outputs
-    os.makedirs('test', exist_ok=True)
+def test_model(model, dataloader, criterion, device):
+    model.eval()
+    correct_mod = 0
+    correct_snr = 0
+    total = 0
+    total_loss = 0
 
-    # Overall validation
-    print("Validating across all SNRs and Modulation types")
-    val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader)
+    with torch.no_grad():
+        for images, mod_labels, snr_labels in dataloader:
+            images, mod_labels, snr_labels = images.to(device), mod_labels.to(device), snr_labels.to(device)
 
-    # Unpack the new values (modulation loss and snr loss)
-    val_loss, modulation_loss, snr_loss, val_mod_accuracy, val_snr_accuracy, val_combined_accuracy, all_true_mod_labels, all_pred_mod_labels, all_true_snr_labels, all_pred_snr_labels = val_results
+            mod_outputs, snr_outputs = model(images)
+            mod_loss = criterion(mod_outputs, mod_labels)
+            snr_loss = criterion(snr_outputs, snr_labels)
+            loss = mod_loss + snr_loss
 
-    print(f"Overall Validation Loss: {val_loss}")
-    print(f"Modulation Loss: {modulation_loss}")
-    print(f"SNR Loss: {snr_loss}")
+            total_loss += loss.item()
+            _, mod_predicted = torch.max(mod_outputs, 1)
+            _, snr_predicted = torch.max(snr_outputs, 1)
 
-    # Plot confusion matrices and F1 scores for overall results
-    plot_confusion_matrix(
-        all_true_mod_labels,
-        all_pred_mod_labels,
-        label_type='Modulation',
-        epoch=0,
-        label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()],
-        output_dir='test'
-    )
-    plot_confusion_matrix(
-        all_true_snr_labels,
-        all_pred_snr_labels,
-        label_type='SNR',
-        epoch=0,
-        label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
-        output_dir='test'
-    )
+            correct_mod += (mod_predicted == mod_labels).sum().item()
+            correct_snr += (snr_predicted == snr_labels).sum().item()
+            total += mod_labels.size(0)
 
-    # F1 scores
-    print("\nOverall F1 Scores (Modulation)")
-    report_modulation = classification_report(all_true_mod_labels, all_pred_mod_labels, target_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()])
-    print(report_modulation)
-    with open('test/f1_modulation_report.txt', 'w') as f:
-        f.write(report_modulation)
+    avg_loss = total_loss / total
+    mod_accuracy = 100 * correct_mod / total
+    snr_accuracy = 100 * correct_snr / total
+    logging.info(f"Loss: {avg_loss:.4f}, Modulation Accuracy: {mod_accuracy:.2f}%, SNR Accuracy: {snr_accuracy:.2f}%")
+    return mod_accuracy, snr_accuracy
 
-    print("\nOverall F1 Scores (SNR)")
-    report_snr = classification_report(all_true_snr_labels, all_pred_snr_labels, target_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()])
-    print(report_snr)
-    with open('test/f1_snr_report.txt', 'w') as f:
-        f.write(report_snr)
 
-    # Validation per SNR
-    for snr in snr_list:
-        print(f"\nValidating for SNR: {snr}")
-        snr_idx = [i for i, (_, _, snr_label) in enumerate(val_loader.dataset) if snr_label == val_loader.dataset.snr_labels[snr]]
-        snr_subset = Subset(val_loader.dataset, snr_idx)
-        snr_loader = DataLoader(snr_subset, batch_size=val_loader.batch_size, num_workers=val_loader.num_workers, pin_memory=True)
-        val_results_snr = validate(model, device, criterion_modulation, criterion_snr, snr_loader)
-        _, _, _, _, _, _, all_true_mod_labels_snr, all_pred_mod_labels_snr = val_results_snr
+def main(args):
+    device = get_device()
 
-        # Plot confusion matrix and F1 scores for this SNR
-        plot_confusion_matrix(
-            all_true_mod_labels_snr,
-            all_pred_mod_labels_snr,
-            label_type=f'Modulation_SNR_{snr}',
-            epoch=0,
-            label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()],
-            output_dir='test'
-        )
+    # Load model and criterion
+    model = ConstellationResNet(num_classes=args.num_mod_classes, snr_classes=args.num_snr_classes)
+    model.load_state_dict(torch.load(args.model_checkpoint, map_location=device))
+    model.to(device)
+    criterion = torch.nn.CrossEntropyLoss()
 
-        print(f"\nF1 Scores for SNR: {snr}")
-        report_snr_mod = classification_report(all_true_mod_labels_snr, all_pred_mod_labels_snr, target_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()])
-        print(report_snr_mod)
-        with open(f'test/f1_modulation_snr_{snr}_report.txt', 'w') as f:
-            f.write(report_snr_mod)
+    # Test on non-perturbed data
+    logging.info("Testing on non-perturbed data")
+    non_perturbed_dataset = ConstellationDataset(root_dir=args.data_dir, snr_list=args.snr_list, mods_to_process=args.mods_to_process)
+    non_perturbed_loader = DataLoader(non_perturbed_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    test_model(model, non_perturbed_loader, criterion, device)
 
-    # Validation per modulation type
-    for mod in mod_list:
-        print(f"\nValidating for Modulation Type: {mod}")
-        mod_idx = [i for i, (_, mod_label, _) in enumerate(val_loader.dataset) if mod_label == val_loader.dataset.modulation_labels[mod]]
-        mod_subset = Subset(val_loader.dataset, mod_idx)
-        mod_loader = DataLoader(mod_subset, batch_size=val_loader.batch_size, num_workers=val_loader.num_workers, pin_memory=True)
-        val_results_mod = validate(model, device, criterion_modulation, criterion_snr, mod_loader)
-        _, _, _, _, _, _, all_true_snr_labels_mod, all_pred_snr_labels_mod = val_results_mod
+    # Test on perturbed data (brightest pixels)
+    logging.info("Testing on perturbed data (brightest pixels)")
+    perturb_brightest_dataset = PerturbationDataset(root_dir=args.data_dir, snr_list=args.snr_list, mods_to_process=args.mods_to_process, perturb_type='brightest', top_n_percent=args.top_n_percent)
+    perturb_brightest_loader = DataLoader(perturb_brightest_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    test_model(model, perturb_brightest_loader, criterion, device)
 
-        # Plot confusion matrix and F1 scores for this modulation
-        plot_confusion_matrix(
-            all_true_snr_labels_mod,
-            all_pred_snr_labels_mod,
-            label_type=f'SNR_Modulation_{mod}',
-            epoch=0,
-            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
-            output_dir='test'
-        )
-
-        print(f"\nF1 Scores for Modulation Type: {mod}")
-        report_mod_snr = classification_report(all_true_snr_labels_mod, all_pred_snr_labels_mod, target_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()])
-        print(report_mod_snr)
-        with open(f'test/f1_snr_modulation_{mod}_report.txt', 'w') as f:
-            f.write(report_mod_snr)
+    # Test on perturbed data (dimmest pixels)
+    logging.info("Testing on perturbed data (dimmest pixels)")
+    perturb_dimmest_dataset = PerturbationDataset(root_dir=args.data_dir, snr_list=args.snr_list, mods_to_process=args.mods_to_process, perturb_type='dimmest', top_n_percent=args.top_n_percent)
+    perturb_dimmest_loader = DataLoader(perturb_dimmest_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    test_model(model, perturb_dimmest_loader, criterion, device)
 
 
 if __name__ == "__main__":
-    # Parameters
-    image_type = 'grayscale'
-    root_dir = "constellation"
-    batch_size = 256
-    snr_list = [-10, 0, 6, 10, 20, 30]
-    mod_list = ['OOK', '4ASK', '8ASK', 'BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '32QAM', '64QAM', '128QAM', '256QAM']
+    parser = argparse.ArgumentParser(description="Test constellation model on perturbed and non-perturbed data")
+    parser.add_argument('--model_checkpoint', type=str, required=True, help="Path to the model checkpoint")
+    parser.add_argument('--data_dir', type=str, required=True, help="Root directory of the dataset")
+    parser.add_argument('--batch_size', type=int, default=64, help="Batch size for testing")
+    parser.add_argument('--snr_list', type=str, default=None, help="Comma-separated list of SNR values to load")
+    parser.add_argument('--mods_to_process', type=str, default=None, help="Comma-separated list of modulation types to load")
+    parser.add_argument('--num_mod_classes', type=int, default=10, help="Number of modulation classes")
+    parser.add_argument('--num_snr_classes', type=int, default=20, help="Number of SNR classes")
+    parser.add_argument('--top_n_percent', type=float, default=5.0, help="Percentage of top brightest/dimmest pixels to perturb")
 
-    # Load dataset
-    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list)
-
-    # Ensure consistent train/validation split
-    indices = list(range(len(dataset)))
-    _, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
-    val_sampler = SubsetRandomSampler(val_idx)
-    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
-
-    # Load model
-    model = ConstellationResNet(num_classes=len(mod_list), snr_classes=len(snr_list), input_channels=1 if image_type == 'grayscale' else 3)
-    model.load_state_dict(torch.load("checkpoints/best_model_epoch_1.pth"))
-    device = get_device()
-    model.to(device)
-
-    criterion_modulation = torch.nn.CrossEntropyLoss()
-    criterion_snr = torch.nn.CrossEntropyLoss()
-
-    # Validate across all SNRs and Modulation Types
-    validate_across_conditions(model, device, criterion_modulation, criterion_snr, val_loader, snr_list, mod_list)
+    args = parser.parse_args()
+    main(args)

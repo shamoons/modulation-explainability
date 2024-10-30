@@ -5,7 +5,7 @@ from torchvision.models import vit_b_16
 
 class ConstellationVisionTransformer(nn.Module):
     """
-    A wrapper around a Vision Transformer (ViT) model from torchvision, customized for the constellation classification task.
+    A simplified wrapper around a Vision Transformer (ViT) model from torchvision, customized for constellation classification.
     The model outputs two things:
     1) Modulation classification
     2) SNR prediction
@@ -17,7 +17,7 @@ class ConstellationVisionTransformer(nn.Module):
 
         Args:
             num_classes (int): Number of output classes for modulation.
-            snr_classes (int): Number of possible SNR classes (26 in your case).
+            snr_classes (int): Number of possible SNR classes.
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
             dropout_prob (float): Probability of dropout (defaults to 0.5).
         """
@@ -36,7 +36,7 @@ class ConstellationVisionTransformer(nn.Module):
                 kernel_size=conv_proj.kernel_size,
                 stride=conv_proj.stride,
                 padding=conv_proj.padding,
-                bias=conv_proj.bias is not None,  # Ensure bias is handled correctly as a boolean
+                bias=conv_proj.bias is not None,
             )
 
         # Extract the number of input features to the final fully connected (fc) layer
@@ -45,23 +45,15 @@ class ConstellationVisionTransformer(nn.Module):
         # Remove the existing fully connected layer
         self.model.heads.head = nn.Identity()
 
-        # Shared feature transformation
-        self.shared_transform = nn.Linear(in_features, in_features)
-        self.shared_activation = nn.ReLU()
-
-        # Batch normalization
-        self.batch_norm = nn.BatchNorm1d(in_features)
-
-        # Dropout layer for regularization
+        # Shared feature transformation layer
+        self.shared_transform = nn.Linear(in_features, in_features // 4)
+        self.relu = nn.ReLU()
+        self.batch_norm = nn.BatchNorm1d(in_features // 4)
         self.dropout = nn.Dropout(p=dropout_prob)
 
-        # Separate feature transformation layers for modulation and SNR tasks
-        self.modulation_transform = nn.Linear(in_features, in_features)
-        self.snr_transform = nn.Linear(in_features, in_features)
-
         # Output heads for modulation and SNR
-        self.modulation_head = nn.Linear(in_features, num_classes)  # Modulation classification head
-        self.snr_head = nn.Linear(in_features, snr_classes)  # SNR classification head
+        self.modulation_head = nn.Linear(in_features // 4, num_classes)
+        self.snr_head = nn.Linear(in_features // 4, snr_classes)
 
     def forward(self, x):
         """
@@ -73,24 +65,16 @@ class ConstellationVisionTransformer(nn.Module):
         Returns:
             tuple: (modulation output, snr output)
         """
-        # Extract shared features using Vision Transformer
+        # Extract features using Vision Transformer
         features = self.model(x)
 
-        # Apply batch normalization to the shared features
+        # Apply shared transformation, activation, batch normalization, and dropout
+        features = self.relu(self.shared_transform(features))
         features = self.batch_norm(features)
-
-        # Apply shared transformation and activation
-        features = self.shared_activation(self.shared_transform(features))
-
-        # Apply dropout for regularization
         features = self.dropout(features)
 
-        # Separate transformations for modulation and SNR tasks with activation
-        modulation_features = self.shared_activation(self.modulation_transform(features))
-        snr_features = self.shared_activation(self.snr_transform(features))
-
         # Output heads
-        modulation_output = self.modulation_head(modulation_features)  # Predict modulation class
-        snr_output = self.snr_head(snr_features)  # Predict SNR class
+        modulation_output = self.modulation_head(features)  # Predict modulation class
+        snr_output = self.snr_head(features)  # Predict SNR class
 
         return modulation_output, snr_output
