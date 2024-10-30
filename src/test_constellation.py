@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Subset, SubsetRandomSampler
 from tqdm import tqdm
 from models.constellation_model import ConstellationResNet
-from constellation_loader import ConstellationDataset
+from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from validate_constellation import validate
 from utils.image_utils import plot_confusion_matrix, plot_f1_scores

@@ -1,7 +1,7 @@
 # src/save_samples.py
 import os
 import matplotlib.pyplot as plt
-from data_loader import get_dataloaders
+from loaders.data_loader import get_dataloaders
 
 
 def save_all_constellation_diagrams(train_loader, mod2int, output_dir='output'):

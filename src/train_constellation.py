@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from models.constellation_model import ConstellationResNet
 from models.vision_transformer_model import ConstellationVisionTransformer
-from constellation_loader import ConstellationDataset
+from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
 import argparse
