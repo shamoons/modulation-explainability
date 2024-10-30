@@ -28,7 +28,7 @@ parameters:
     # value: "BPSK,QPSK,8PSK,OOK,8ASK,16QAM,256QAM,FM,GMSK,OQPSK"
   
   batch_size:
-    value: 128
+    value: 192
 
 early_terminate:
   type: hyperband
