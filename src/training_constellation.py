@@ -183,7 +183,7 @@ def train(
             epoch=epoch
         )
 
-        print(f"Validation Results:")
+        print("Validation Results:")
         print(f"  Validation Loss (mod/snr): {val_loss:.4g} ({modulation_loss_total:.4g}/{snr_loss_total:.4g})")
         print(f"  Modulation Accuracy: {val_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
@@ -206,6 +206,3 @@ def train(
             "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation),
             "f1_scores_snr": wandb.Image(fig_f1_scores_snr)
         })
-
-        # Log weights after each epoch
-        # log_weights_to_wandb(model, epoch)
