@@ -1,4 +1,5 @@
 program: src/train_constellation.py
+name: modulation-explainability
 method: bayes
 metric:
   name: train_loss
