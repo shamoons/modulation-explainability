@@ -63,7 +63,7 @@ if __name__ == "__main__":
     if args.mod_list is not None:
         mods_to_process = args.mod_list.split(',')
     else:
-        mods_to_process = ['OOK', '4ASK', '8ASK', 'BPSK', 'QPSK', '8PSK', '16PSK', '32PSK', '16QAM', '32QAM', '64QAM', '128QAM', '256QAM']
+        mods_to_process = ['16APSK', '32APSK', '64APSK', '128APSK', '32QAM', 'AM_SSB_WC', 'AM_SSB_SC', 'AM_DSB_WC', 'AM_DSB_SC', 'FM', 'GMSK', 'OQPSK']
 
     # Define image types, including "raw"
     image_types = args.image_types.split(',')
