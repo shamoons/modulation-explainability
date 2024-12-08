@@ -82,17 +82,17 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     print(f"Number of modulation classes: {num_modulation_classes}")
     print(f"Number of SNR classes: {num_snr_classes}")
 
-    # model = ConstellationVisionTransformer(
-    #     num_classes=num_modulation_classes,
-    #     snr_classes=num_snr_classes,
-    #     input_channels=input_channels
-    # )
-    model = ConstellationResNet(
+    model = ConstellationVisionTransformer(
         num_classes=num_modulation_classes,
         snr_classes=num_snr_classes,
-        input_channels=input_channels,
-        model_name="resnet34"
+        input_channels=input_channels
     )
+    # model = ConstellationResNet(
+    #     num_classes=num_modulation_classes,
+    #     snr_classes=num_snr_classes,
+    #     input_channels=input_channels,
+    #     model_name="resnet34"
+    # )
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
