@@ -29,7 +29,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=False, num_cycles=4, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=True, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
     # Load data
     print("Loading data...")
 
@@ -49,7 +49,13 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         mods_to_process = None  # Load all modulation types
 
     # Load full dataset (with modulation types and SNRs filtering)
-    dataset = ConstellationDataset(root_dir=root_dir, image_type=image_type, snr_list=snr_list, mods_to_process=mods_to_process, use_snr_buckets=use_snr_buckets)
+    dataset = ConstellationDataset(
+        root_dir=root_dir,
+        image_type=image_type,
+        snr_list=snr_list,
+        mods_to_process=mods_to_process,
+        use_snr_buckets=use_snr_buckets
+    )
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
@@ -96,27 +102,33 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
-    criterion_snr = nn.CrossEntropyLoss()  # Custom SNR loss
+    criterion_snr = nn.CrossEntropyLoss()  # SNR classification loss
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
 
-    # Calculate the number of batches per epoch
-    batches_per_epoch = len(train_loader)
-
-    # Total number of batches over all epochs
-    total_batches = batches_per_epoch * epochs
-
-    # Step size for each phase (up and down) in each cycle
-    step_size_up_down = total_batches // (num_cycles * 2)
-
-    # Add learning rate scheduler with dynamic step_size_up
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=base_lr, max_lr=max_lr, step_size_up=step_size_up_down, step_size_down=step_size_up_down, mode='triangular2', cycle_momentum=False)
+    # Instead of CyclicLR, use ReduceLROnPlateau
+    # ReduceLROnPlateau reduces the learning rate when a metric has stopped improving.
+    # Here, we assume we'll call scheduler.step(val_loss) after each epoch in the train() function.
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode='min',      # since we'll monitor validation loss, which we want to minimize
+        factor=0.1,      # reduce LR by a factor of 10
+        patience=patience,     # wait 10 epochs without improvement before reducing LR
+        threshold=0.0001,
+        threshold_mode='rel',
+        cooldown=0,
+        min_lr=0,
+        eps=1e-08,
+        verbose=True
+    )
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
 
     # Train and validate the model
+    # IMPORTANT: Ensure that in your train() function in training_constellation.py, after computing val_loss each epoch,
+    # you call: scheduler.step(val_loss)
     train(
         model,
         device,
@@ -131,9 +143,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         snr_list=snr_list,
         use_snr_buckets=use_snr_buckets,
         base_lr=base_lr,
-        max_lr=max_lr,
         weight_decay=weight_decay,
-        num_cycles=num_cycles
+        patience=patience
     )
 
 
@@ -145,11 +156,12 @@ if __name__ == "__main__":
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
     parser.add_argument('--use_snr_buckets', type=str2bool, help='Flag to use SNR buckets instead of actual SNR values', default=False)
-    parser.add_argument('--num_cycles', type=int, help='Number of cycles for learning rate scheduler', default=4)
-    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=None)
-    parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer', default=None)
+    parser.add_argument('--num_cycles', type=int, help='Number of cycles (unused now, but kept for compatibility)', default=4)
+    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0000001)
+    parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
+    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing', default=5)
 
     args = parser.parse_args()
 
@@ -163,5 +175,6 @@ if __name__ == "__main__":
         num_cycles=args.num_cycles,
         base_lr=args.base_lr,
         max_lr=args.max_lr,
-        weight_decay=args.weight_decay
+        weight_decay=args.weight_decay,
+        patience=args.patience
     )
