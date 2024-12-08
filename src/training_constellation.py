@@ -97,9 +97,6 @@ def train(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
 
-                # Adjust learning rate using scheduler
-                scheduler.step()
-
                 running_loss += total_loss.item()
 
                 _, predicted_modulation = modulation_output.max(1)
@@ -144,6 +141,8 @@ def train(
             all_true_snr_labels,
             all_pred_snr_labels
         ) = val_results
+
+        scheduler.step(val_loss)
 
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
