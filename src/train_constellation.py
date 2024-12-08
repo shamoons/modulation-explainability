@@ -64,8 +64,8 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     val_sampler = SubsetRandomSampler(val_idx)
 
     # Data loaders for training and validation
-    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True)
-    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True)
+    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
+    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
 
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
