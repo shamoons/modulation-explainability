@@ -172,7 +172,6 @@ if __name__ == "__main__":
         mods_to_process=args.mods_to_process,
         epochs=args.epochs,
         use_snr_buckets=args.use_snr_buckets,
-        num_cycles=args.num_cycles,
         base_lr=args.base_lr,
         max_lr=args.max_lr,
         weight_decay=args.weight_decay,
