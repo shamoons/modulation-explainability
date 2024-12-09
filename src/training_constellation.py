@@ -1,10 +1,13 @@
 # src/training_constellation.py
 
+from sklearn.model_selection import train_test_split
 import torch
 import wandb
 from utils.image_utils import plot_f1_scores, plot_confusion_matrix
 from utils.config_utils import load_loss_config
 from validate_constellation import validate
+from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os
 
@@ -16,8 +19,9 @@ def train(
     criterion_snr,
     optimizer,
     scheduler,
-    train_loader,
-    val_loader,
+    dataset,
+    batch_size=64,
+    test_size=0.2,
     epochs=10,
     save_dir="checkpoints",
     mod_list=None,
@@ -36,8 +40,8 @@ def train(
     save_dir = 'checkpoints'
 
     # Get the number of training and validation samples
-    num_train_samples = len(train_loader.sampler)
-    num_val_samples = len(val_loader.sampler)
+    # num_train_samples = len(train_loader.sampler)
+    # num_val_samples = len(val_loader.sampler)
 
     # Initialize WandB project
     wandb.init(project="modulation-explainability", config={
@@ -45,8 +49,8 @@ def train(
         "mod_list": mod_list,
         "snr_list": snr_list,
         "use_snr_buckets": use_snr_buckets,
-        "num_train_samples": num_train_samples,
-        "num_val_samples": num_val_samples,
+        # "num_train_samples": num_train_samples,
+        # "num_val_samples": num_val_samples,
         "alpha": alpha,
         "beta": beta,
         "model": model.model_name,
@@ -63,6 +67,15 @@ def train(
     model.to(device)
 
     for epoch in range(epochs):
+        indices = list(range(len(dataset)))
+        train_idx, val_idx = train_test_split(indices, test_size=test_size, shuffle=True)
+
+        train_sampler = SubsetRandomSampler(train_idx)
+        val_sampler = SubsetRandomSampler(val_idx)
+
+        train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True, prefetch_factor=4)
+        val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True, prefetch_factor=4)
+
         model.train()
         running_loss = 0.0
         correct_modulation = 0
