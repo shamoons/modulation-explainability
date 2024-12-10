@@ -1,7 +1,6 @@
 # src/loaders/perturbation_loader.py
 
 import os
-from torchvision import transforms
 from loaders.constellation_loader import ConstellationDataset
 from PIL import Image
 
@@ -33,33 +32,17 @@ class PerturbationDataset(ConstellationDataset):
             mods_to_process (list, optional): List of modulation types to include.
             use_snr_buckets (bool): Whether to use SNR buckets.
         """
+        super().__init__(root_dir, snr_list, mods_to_process, image_type, use_snr_buckets)
+
         self.root_dir = perturbation_dir  # Use the perturbed images directory
-        self.image_type = image_type
-        self.snr_list = snr_list
-        self.mods_to_process = mods_to_process
-        self.use_snr_buckets = use_snr_buckets
         self.perturbation_type = perturbation_type
 
-        # Initialize the image paths and labels
+        # Initialize the image paths and labels for perturbed images
         self.image_paths = []
         self.mod_labels = []
         self.snr_labels = []
-        self.mod2int = {}
-        self.snr2int = {}
 
         self._load_image_paths_and_labels()
-
-        # Define the transformation
-        if self.image_type == "grayscale":
-            self.transform = transforms.Compose([
-                transforms.ToTensor(),  # Converts to [C, H, W] with values in [0, 1]
-            ])
-        elif self.image_type == "RGB":
-            self.transform = transforms.Compose([
-                transforms.ToTensor(),
-            ])
-        else:
-            raise ValueError(f"Unsupported image type: {self.image_type}")
 
     def _load_image_paths_and_labels(self):
         """
@@ -67,38 +50,26 @@ class PerturbationDataset(ConstellationDataset):
         """
         mods = self.mods_to_process if self.mods_to_process else os.listdir(self.root_dir)
 
-        # Build modulation label mapping
-        for idx, mod in enumerate(sorted(mods)):
-            self.mod2int[mod] = idx
-
-        snrs = self.snr_list if self.snr_list else []
-
         for mod in mods:
             mod_dir = os.path.join(self.root_dir, mod)
             if not os.path.isdir(mod_dir):
                 continue  # Skip if not a directory
 
-            snr_dirs = os.listdir(mod_dir)
-            for snr_dir in snr_dirs:
+            for snr_dir in os.listdir(mod_dir):
                 snr_value = int(snr_dir.split('_')[1])  # Extract SNR value from 'SNR_xx' directory
-                if snrs and snr_value not in snrs:
+                if self.snr_list and snr_value not in self.snr_list:
                     continue  # Skip SNRs not in the list
 
                 snr_dir_full = os.path.join(mod_dir, snr_dir)
                 if not os.path.isdir(snr_dir_full):
                     continue  # Skip if not a directory
 
-                # Build SNR label mapping
-                if snr_value not in self.snr2int:
-                    self.snr2int[snr_value] = len(self.snr2int)
-
-                # List all images with the specified perturbation type
                 for file_name in os.listdir(snr_dir_full):
                     if file_name.endswith(f"_{self.perturbation_type}.png"):
                         image_path = os.path.join(snr_dir_full, file_name)
                         self.image_paths.append(image_path)
-                        self.mod_labels.append(self.mod2int[mod])
-                        self.snr_labels.append(self.snr2int[snr_value])
+                        self.mod_labels.append(self.modulation_labels[mod])
+                        self.snr_labels.append(self.snr_labels[snr_value])
 
     def __len__(self):
         return len(self.image_paths)

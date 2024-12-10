@@ -1,6 +1,5 @@
 # src/utils/constellation_data_processing_utils.py
 from typing import Dict, List, Tuple
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 import os
