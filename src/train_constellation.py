@@ -59,19 +59,19 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 
     # Get train/validation split indices
     indices = list(range(len(dataset)))
-    train_idx, val_idx = train_test_split(indices, test_size=test_size, random_state=42)
+    # train_idx, val_idx = train_test_split(indices, test_size=test_size, random_state=42)
 
     # Print the number of training and validation samples
-    print(f"Number of training samples: {len(train_idx)}")
-    print(f"Number of validation samples: {len(val_idx)}")
+    # print(f"Number of training samples: {len(train_idx)}")
+    # print(f"Number of validation samples: {len(val_idx)}")
 
-    # Create samplers for train and validation sets
-    train_sampler = SubsetRandomSampler(train_idx)
-    val_sampler = SubsetRandomSampler(val_idx)
+    # # Create samplers for train and validation sets
+    # train_sampler = SubsetRandomSampler(train_idx)
+    # val_sampler = SubsetRandomSampler(val_idx)
 
-    # Data loaders for training and validation
-    train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
-    val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
+    # # Data loaders for training and validation
+    # train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
+    # val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
 
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
@@ -82,17 +82,17 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     print(f"Number of modulation classes: {num_modulation_classes}")
     print(f"Number of SNR classes: {num_snr_classes}")
 
-    model = ConstellationVisionTransformer(
-        num_classes=num_modulation_classes,
-        snr_classes=num_snr_classes,
-        input_channels=input_channels
-    )
-    # model = ConstellationResNet(
+    # model = ConstellationVisionTransformer(
     #     num_classes=num_modulation_classes,
     #     snr_classes=num_snr_classes,
-    #     input_channels=input_channels,
-    #     model_name="resnet34"
+    #     input_channels=input_channels
     # )
+    model = ConstellationResNet(
+        num_classes=num_modulation_classes,
+        snr_classes=num_snr_classes,
+        input_channels=input_channels,
+        model_name="resnet18"
+    )
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -113,7 +113,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode='min',      # since we'll monitor validation loss, which we want to minimize
-        factor=0.1,      # reduce LR by a factor of 10
+        factor=0.5,      # reduce LR by a factor of 2
         patience=patience,     # wait 10 epochs without improvement before reducing LR
         threshold=0.0001,
         threshold_mode='rel',
@@ -136,8 +136,9 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         criterion_snr,
         optimizer,
         scheduler,
-        train_loader,
-        val_loader,
+        dataset,
+        batch_size=batch_size,
+        test_size=test_size,
         epochs=epochs,
         mod_list=mods_to_process,
         snr_list=snr_list,
@@ -160,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0000001)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
-    parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
+    parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing', default=5)
 
     args = parser.parse_args()
@@ -175,5 +176,6 @@ if __name__ == "__main__":
         base_lr=args.base_lr,
         max_lr=args.max_lr,
         weight_decay=args.weight_decay,
-        patience=args.patience
+        patience=args.patience,
+        test_size=args.test_size
     )
