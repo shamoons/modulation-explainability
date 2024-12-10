@@ -4,9 +4,14 @@ import os
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
+import argparse
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Perturb constellation images by blacking out top and bottom percentage of pixels.')
+    parser.add_argument('--percent', type=float, default=5.0, help='Percentage of pixels to blackout (top and bottom). Default is 5.')
+    args = parser.parse_args()
+
     source_dir = 'constellation'
     output_dir = 'perturbed_constellations'
 
@@ -34,31 +39,32 @@ def main():
         image = image.convert('L')
         image_array = np.array(image)
 
-        # Version 1: Blackout top 5% most intense pixels
-        top5_threshold = np.percentile(image_array, 95)
-        mask_top5 = image_array >= top5_threshold
-        image_array_top5_perturbed = image_array.copy()
-        image_array_top5_perturbed[mask_top5] = 0
+        # Top X% blackout
+        top_threshold = 100 - args.percent
+        topX_threshold = np.percentile(image_array, top_threshold)
+        mask_topX = image_array >= topX_threshold
+        image_array_topX_perturbed = image_array.copy()
+        image_array_topX_perturbed[mask_topX] = 0
 
-        # Version 2: Blackout bottom 5% least intense (non-zero) pixels
+        # Bottom X% blackout (non-zero pixels)
         non_zero_pixels = image_array[image_array > 0]
         if non_zero_pixels.size > 0:
-            bottom5_threshold = np.percentile(non_zero_pixels, 5)
-            mask_bottom5 = (image_array > 0) & (image_array <= bottom5_threshold)
-            image_array_bottom5_perturbed = image_array.copy()
-            image_array_bottom5_perturbed[mask_bottom5] = 0
+            bottomX_threshold = np.percentile(non_zero_pixels, args.percent)
+            mask_bottomX = (image_array > 0) & (image_array <= bottomX_threshold)
+            image_array_bottomX_perturbed = image_array.copy()
+            image_array_bottomX_perturbed[mask_bottomX] = 0
         else:
-            image_array_bottom5_perturbed = image_array.copy()
+            image_array_bottomX_perturbed = image_array.copy()
 
         # Save Version 1
-        filename_top5 = os.path.splitext(os.path.basename(image_path))[0] + '_top5_blackout.png'
-        output_path_top5 = os.path.join(output_subdir, filename_top5)
-        Image.fromarray(image_array_top5_perturbed).save(output_path_top5)
+        filename_topX = os.path.splitext(os.path.basename(image_path))[0] + f'_top{args.percent}_blackout.png'
+        output_path_topX = os.path.join(output_subdir, filename_topX)
+        Image.fromarray(image_array_topX_perturbed).save(output_path_topX)
 
         # Save Version 2
-        filename_bottom5 = os.path.splitext(os.path.basename(image_path))[0] + '_bottom5_blackout.png'
-        output_path_bottom5 = os.path.join(output_subdir, filename_bottom5)
-        Image.fromarray(image_array_bottom5_perturbed).save(output_path_bottom5)
+        filename_bottomX = os.path.splitext(os.path.basename(image_path))[0] + f'_bottom{args.percent}_blackout.png'
+        output_path_bottomX = os.path.join(output_subdir, filename_bottomX)
+        Image.fromarray(image_array_bottomX_perturbed).save(output_path_bottomX)
 
 
 if __name__ == '__main__':
