@@ -3,11 +3,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data.sampler import SubsetRandomSampler
-from torch.utils.data import DataLoader
-from sklearn.model_selection import train_test_split
 from models.constellation_model import ConstellationResNet
-from models.vision_transformer_model import ConstellationVisionTransformer
+# from models.vision_transformer_model import ConstellationVisionTransformer
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
@@ -58,7 +55,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     )
 
     # Get train/validation split indices
-    indices = list(range(len(dataset)))
+    # indices = list(range(len(dataset)))
     # train_idx, val_idx = train_test_split(indices, test_size=test_size, random_state=42)
 
     # Print the number of training and validation samples

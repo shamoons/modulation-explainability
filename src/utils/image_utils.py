@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import torch
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, f1_score
-import wandb
 
 
 def save_image(image: np.ndarray, file_path: str, cmap: str = 'gray', background: str = 'white') -> None:
@@ -194,7 +193,7 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
 
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.barh(label_names, f1_scores, color='blue')
-    ax.set_xlabel(f"F1 Score")
+    ax.set_xlabel("F1 Score")
     ax.set_title(f"{label_type} F1 Scores - Epoch {epoch + 1}")
     fig.tight_layout()
 
