@@ -91,7 +91,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         num_classes=num_modulation_classes,
         snr_classes=num_snr_classes,
         input_channels=input_channels,
-        model_name="resnet34"
+        model_name="resnet18"
     )
 
     # If checkpoint is provided, load the existing model state
