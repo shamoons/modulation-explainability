@@ -178,6 +178,63 @@ def main(args):
     plot_f1_scores(true_mod_pd, pred_mod_pd, modulation_label_names, f"{scenario_name_dimmest} Modulation", 2, output_dir='f1_scores')
     plot_f1_scores(true_snr_pd, pred_snr_pd, snr_label_names, f"{scenario_name_dimmest} SNR", 2, output_dir='f1_scores')
 
+    scenario_name_brightest = "Top 1% Brightest"
+    logging.info(f"Testing on {scenario_name_brightest.lower()} data")
+    perturb_brightest_dataset = PerturbationDataset(
+        root_dir=None,
+        perturbation_dir=args.perturbation_dir,
+        perturbation_type='top1_blackout',
+        image_type=args.image_type,
+        snr_list=args.snr_list,
+        mods_to_process=args.mods_to_process,
+        use_snr_buckets=True
+    )
+    perturb_brightest_subset = create_subset(perturb_brightest_dataset, test_size=0.2)
+    perturb_brightest_loader = DataLoader(
+        perturb_brightest_subset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=4
+    )
+    mod_acc_pb, snr_acc_pb, true_mod_pb, pred_mod_pb, true_snr_pb, pred_snr_pb = test_model(
+        model, perturb_brightest_loader, criterion, device, description=f"Testing {scenario_name_brightest.lower()} data"
+    )
+
+    # Plot and save confusion matrix and f1 scores for top 5% brightest
+    plot_confusion_matrix(true_mod_pb, pred_mod_pb, f"{scenario_name_brightest} Modulation", 1, label_names=modulation_label_names, output_dir='confusion_matrices')
+    plot_confusion_matrix(true_snr_pb, pred_snr_pb, f"{scenario_name_brightest} SNR", 1, label_names=snr_label_names, output_dir='confusion_matrices')
+    plot_f1_scores(true_mod_pb, pred_mod_pb, modulation_label_names, f"{scenario_name_brightest} Modulation", 1, output_dir='f1_scores')
+    plot_f1_scores(true_snr_pb, pred_snr_pb, snr_label_names, f"{scenario_name_brightest} SNR", 1, output_dir='f1_scores')
+
+    # Test on perturbed data (bottom 5% dimmest non-zero pixels blacked out, 20% subset)
+    scenario_name_dimmest = "Bottom 1% Dimmest"
+    logging.info(f"Testing on {scenario_name_dimmest.lower()} data")
+    perturb_dimmest_dataset = PerturbationDataset(
+        root_dir=None,
+        perturbation_dir=args.perturbation_dir,
+        perturbation_type='bottom1_blackout',
+        image_type=args.image_type,
+        snr_list=args.snr_list,
+        mods_to_process=args.mods_to_process,
+        use_snr_buckets=True
+    )
+    perturb_dimmest_subset = create_subset(perturb_dimmest_dataset, test_size=0.2)
+    perturb_dimmest_loader = DataLoader(
+        perturb_dimmest_subset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=4
+    )
+    mod_acc_pd, snr_acc_pd, true_mod_pd, pred_mod_pd, true_snr_pd, pred_snr_pd = test_model(
+        model, perturb_dimmest_loader, criterion, device, description=f"Testing {scenario_name_dimmest.lower()} data"
+    )
+
+    # Plot and save confusion matrix and f1 scores for bottom 5% dimmest
+    plot_confusion_matrix(true_mod_pd, pred_mod_pd, f"{scenario_name_dimmest} Modulation", 2, label_names=modulation_label_names, output_dir='confusion_matrices')
+    plot_confusion_matrix(true_snr_pd, pred_snr_pd, f"{scenario_name_dimmest} SNR", 2, label_names=snr_label_names, output_dir='confusion_matrices')
+    plot_f1_scores(true_mod_pd, pred_mod_pd, modulation_label_names, f"{scenario_name_dimmest} Modulation", 2, output_dir='f1_scores')
+    plot_f1_scores(true_snr_pd, pred_snr_pd, snr_label_names, f"{scenario_name_dimmest} SNR", 2, output_dir='f1_scores')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test constellation model on perturbed and non-perturbed data")
