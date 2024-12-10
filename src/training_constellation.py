@@ -7,6 +7,7 @@ from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from tqdm import tqdm
 import os
+from torch.cuda.amp import autocast, GradScaler  # Import autocast and GradScaler
 
 
 def train(
@@ -59,8 +60,10 @@ def train(
     os.makedirs(save_dir, exist_ok=True)
 
     best_val_loss = float('inf')  # Initialize best validation loss
-
     model.to(device)
+
+    # Initialize GradScaler for mixed-precision training
+    scaler = GradScaler()
 
     for epoch in range(epochs):
         model.train()
@@ -80,22 +83,31 @@ def train(
                 inputs = inputs.to(device)
                 modulation_labels = modulation_labels.to(device)
                 snr_labels = snr_labels.to(device)
+
                 optimizer.zero_grad()
 
-                # Forward pass
-                modulation_output, snr_output = model(inputs)
+                # Forward pass under autocast for mixed precision
+                with autocast():
+                    modulation_output, snr_output = model(inputs)
 
-                # Compute loss for both outputs
-                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                loss_snr = criterion_snr(snr_output, snr_labels)
+                    # Compute loss for both outputs
+                    loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                    loss_snr = criterion_snr(snr_output, snr_labels)
 
-                # Combine both losses
-                total_loss = alpha * loss_modulation + beta * loss_snr
-                total_loss.backward()
+                    # Combine both losses
+                    total_loss = alpha * loss_modulation + beta * loss_snr
 
-                # Gradient clipping to prevent exploding gradients
+                # Backpropagation with scaled gradients
+                scaler.scale(total_loss).backward()
+
+                # Unscale the gradients before gradient clipping
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                optimizer.step()
+
+                # Step the optimizer using scaled gradients
+                scaler.step(optimizer)
+                # Update the scaler for next iteration
+                scaler.update()
 
                 running_loss += total_loss.item()
 
@@ -128,7 +140,8 @@ def train(
         print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
-        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=use_snr_buckets)
+        # Use autocast also in validation to speed up inference
+        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=use_snr_buckets, use_autocast=True)
         (
             val_loss,
             modulation_loss_total,

@@ -3,9 +3,12 @@
 import torch
 from tqdm import tqdm
 from utils.config_utils import load_loss_config
+from torch.cuda.amp import autocast
 
 
-def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=False):
+# src/validate_constellation.py
+
+def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=False, use_autocast=False):
     model.eval()
 
     alpha, beta = load_loss_config()
@@ -22,46 +25,50 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
     all_true_snr_labels = []
     all_pred_snr_labels = []
 
+    # Choose autocast context based on use_autocast flag
+    autocast_context = autocast() if use_autocast else torch.no_grad()
+
     with torch.no_grad():
-        with tqdm(val_loader, desc="Validation", leave=False) as progress:
-            for inputs, modulation_labels, snr_labels in progress:
-                inputs = inputs.to(device)
-                modulation_labels = modulation_labels.to(device)
-                snr_labels = snr_labels.to(device)
+        with autocast_context:
+            with tqdm(val_loader, desc="Validation", leave=False) as progress:
+                for inputs, modulation_labels, snr_labels in progress:
+                    inputs = inputs.to(device)
+                    modulation_labels = modulation_labels.to(device)
+                    snr_labels = snr_labels.to(device)
 
-                # Forward pass through the model
-                modulation_output, snr_output = model(inputs)
+                    # Forward pass through the model
+                    modulation_output, snr_output = model(inputs)
 
-                # Compute losses for both modulation and SNR classification
-                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                loss_snr = criterion_snr(snr_output, snr_labels)
-                total_loss = alpha * loss_modulation + beta * loss_snr
-                val_loss += total_loss.item()
-                modulation_loss_total += loss_modulation.item()
-                snr_loss_total += loss_snr.item()
+                    # Compute losses for both modulation and SNR classification
+                    loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                    loss_snr = criterion_snr(snr_output, snr_labels)
+                    total_loss = alpha * loss_modulation + beta * loss_snr
+                    val_loss += total_loss.item()
+                    modulation_loss_total += loss_modulation.item()
+                    snr_loss_total += loss_snr.item()
 
-                # Predict labels
-                _, predicted_modulation = modulation_output.max(1)
-                _, predicted_snr = snr_output.max(1)
+                    # Predict labels
+                    _, predicted_modulation = modulation_output.max(1)
+                    _, predicted_snr = snr_output.max(1)
 
-                total += modulation_labels.size(0)
-                correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                correct_snr += predicted_snr.eq(snr_labels).sum().item()
-                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
+                    total += modulation_labels.size(0)
+                    correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
+                    correct_snr += predicted_snr.eq(snr_labels).sum().item()
+                    correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
 
-                # Collect true and predicted labels for confusion matrix and F1 score computation
-                all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
-                all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
-                all_true_snr_labels.extend(snr_labels.cpu().numpy())
-                all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
+                    # Collect true and predicted labels for confusion matrix and F1 score computation
+                    all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
+                    all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
+                    all_true_snr_labels.extend(snr_labels.cpu().numpy())
+                    all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
 
-                # Update progress bar with current metrics
-                progress.set_postfix(
-                    loss=total_loss.item(),
-                    mod_accuracy=100.0 * correct_modulation / total,
-                    snr_accuracy=100.0 * correct_snr / total,
-                    combined_accuracy=100.0 * correct_both / total
-                )
+                    # Update progress bar with current metrics
+                    progress.set_postfix(
+                        loss=total_loss.item(),
+                        mod_accuracy=100.0 * correct_modulation / total,
+                        snr_accuracy=100.0 * correct_snr / total,
+                        combined_accuracy=100.0 * correct_both / total
+                    )
 
     # Compute final validation accuracies and loss
     val_modulation_accuracy = 100.0 * correct_modulation / total
