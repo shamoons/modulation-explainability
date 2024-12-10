@@ -12,7 +12,7 @@ from utils.image_utils import plot_confusion_matrix, plot_f1_scores
 from validate_constellation import validate
 from sklearn.model_selection import train_test_split
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
 def create_subset(dataset, test_size=0.2, random_state=42):
@@ -22,8 +22,12 @@ def create_subset(dataset, test_size=0.2, random_state=42):
     return Subset(dataset, test_idx)
 
 
-def evaluate_and_plot(model, loader, device, criterion_modulation, criterion_snr, scenario_name, modulation_label_names, snr_label_names, epoch):
+def evaluate_and_plot(model, loader, device, criterion_modulation, criterion_snr, scenario_name, epoch):
     """Run validation and plot results for the given data loader."""
+
+    total_samples = len(loader.dataset)
+    logging.info(f"Total number of samples in {scenario_name}: {total_samples}")
+
     val_loss, modulation_loss_total, snr_loss_total, mod_acc, snr_acc, combined_acc, true_mod, pred_mod, true_snr, pred_snr = validate(
         model,
         device,
@@ -33,6 +37,11 @@ def evaluate_and_plot(model, loader, device, criterion_modulation, criterion_snr
         use_snr_buckets=True,
         use_autocast=False
     )
+
+    original_dataset = loader.dataset.dataset
+
+    snr_label_names = [str(label) for label in original_dataset.inverse_snr_labels.values()]
+    modulation_label_names = [label for label in original_dataset.inverse_modulation_labels.values()]
 
     # Log results
     logging.info(f"{scenario_name} Results:")
@@ -61,17 +70,17 @@ def evaluate_and_plot(model, loader, device, criterion_modulation, criterion_snr
     plot_f1_scores(
         true_mod,
         pred_mod,
-        modulation_label_names,
-        f"{scenario_name} Modulation",
-        epoch,
+        label_names=modulation_label_names,
+        label_type=f"{scenario_name} Modulation",
+        epoch=epoch,
         output_dir='f1_scores'
     )
     plot_f1_scores(
         true_snr,
         pred_snr,
-        snr_label_names,
-        f"{scenario_name} SNR",
-        epoch,
+        label_names=snr_label_names,
+        label_type=f"{scenario_name} SNR",
+        epoch=epoch,
         output_dir='f1_scores'
     )
 
@@ -92,9 +101,6 @@ def main(args):
     criterion_modulation = torch.nn.CrossEntropyLoss()
     criterion_snr = torch.nn.CrossEntropyLoss()
 
-    # Define SNR categories if using buckets
-    snr_label_names = ["Low", "Medium", "High"]
-
     # Test on non-perturbed data
     scenario_name_unperturbed = "Unperturbed"
     logging.info(f"Testing {scenario_name_unperturbed} dataset")
@@ -112,7 +118,6 @@ def main(args):
         shuffle=False,
         num_workers=4
     )
-    modulation_label_names = list(non_perturbed_dataset.inverse_modulation_labels.values())
 
     evaluate_and_plot(
         model,
@@ -121,8 +126,6 @@ def main(args):
         criterion_modulation,
         criterion_snr,
         scenario_name_unperturbed,
-        modulation_label_names,
-        snr_label_names,
         epoch=0
     )
 
@@ -159,8 +162,6 @@ def main(args):
             criterion_modulation,
             criterion_snr,
             scenario_name,
-            modulation_label_names,
-            snr_label_names,
             epoch
         )
 

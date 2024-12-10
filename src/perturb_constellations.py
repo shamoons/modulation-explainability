@@ -1,4 +1,4 @@
-# perturb_constellations.py
+# src/perturb_constellations.py
 
 import os
 import numpy as np
@@ -7,9 +7,24 @@ from tqdm import tqdm
 import argparse
 
 
+def parse_modulation_and_snr(filepath):
+    """
+    Parse the modulation type and SNR from the file path.
+    Assumes folder structure: 'modulation/SNR/image.png'.
+    """
+    parts = filepath.split(os.sep)
+    if len(parts) >= 3:
+        modulation_type = parts[-3]  # Parent folder of the SNR folder
+        snr = parts[-2].replace("SNR_", "")  # Remove "SNR_" prefix
+    else:
+        modulation_type = "Unknown"
+        snr = "Unknown"
+    return modulation_type, snr
+
+
 def main():
     parser = argparse.ArgumentParser(description='Perturb constellation images by blacking out top and bottom percentage of pixels.')
-    parser.add_argument('--percent', type=float, default=5.0, help='Percentage of pixels to blackout (top and bottom). Default is 5.')
+    parser.add_argument('--percent', type=int, default=5, help='Percentage of pixels to blackout (top and bottom). Default is 5.')
     args = parser.parse_args()
 
     source_dir = 'constellation'
@@ -26,7 +41,12 @@ def main():
             if file.endswith('.png'):
                 image_paths.append(os.path.join(root, file))
 
-    for image_path in tqdm(image_paths, desc='Processing images'):
+    # Process each image
+    progress = tqdm(image_paths, desc='Processing images')
+    for image_path in progress:
+        # Parse modulation type and SNR
+        modulation_type, snr = parse_modulation_and_snr(image_path)
+
         # Compute relative path to preserve directory structure
         relative_path = os.path.relpath(os.path.dirname(image_path), source_dir)
         output_subdir = os.path.join(output_dir, relative_path)
@@ -65,6 +85,12 @@ def main():
         filename_bottomX = os.path.splitext(os.path.basename(image_path))[0] + f'_bottom{args.percent}_blackout.png'
         output_path_bottomX = os.path.join(output_subdir, filename_bottomX)
         Image.fromarray(image_array_bottomX_perturbed).save(output_path_bottomX)
+
+        # Update progress bar with current modulation type and SNR
+        progress.set_postfix({
+            'Modulation': modulation_type,
+            'SNR': snr
+        })
 
 
 if __name__ == '__main__':
