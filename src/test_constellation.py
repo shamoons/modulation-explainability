@@ -38,7 +38,10 @@ def evaluate_and_plot(model, loader, device, criterion_modulation, criterion_snr
         use_autocast=False
     )
 
-    original_dataset = loader.dataset
+    if isinstance(loader.dataset, Subset):
+        original_dataset = loader.dataset.dataset  # Access the original dataset
+    else:
+        original_dataset = loader.dataset
 
     snr_label_names = [str(label) for label in original_dataset.inverse_snr_labels.values()]
     modulation_label_names = [label for label in original_dataset.inverse_modulation_labels.values()]
@@ -102,39 +105,41 @@ def main(args):
     criterion_snr = torch.nn.CrossEntropyLoss()
 
     # Test on non-perturbed data
-    # scenario_name_unperturbed = "Unperturbed"
-    # logging.info(f"Testing {scenario_name_unperturbed} dataset")
-    # non_perturbed_dataset = ConstellationDataset(
-    #     root_dir=args.data_dir,
-    #     image_type=args.image_type,
-    #     snr_list=args.snr_list,
-    #     mods_to_process=args.mods_to_process,
-    #     use_snr_buckets=True
-    # )
-    # non_perturbed_subset = create_subset(non_perturbed_dataset, test_size=0.2)
-    # non_perturbed_loader = DataLoader(
-    #     non_perturbed_subset,
-    #     batch_size=args.batch_size,
-    #     shuffle=False,
-    #     num_workers=4
-    # )
+    scenario_name_unperturbed = "Unperturbed"
+    logging.info(f"Testing {scenario_name_unperturbed} dataset")
+    non_perturbed_dataset = ConstellationDataset(
+        root_dir=args.data_dir,
+        image_type=args.image_type,
+        snr_list=args.snr_list,
+        mods_to_process=args.mods_to_process,
+        use_snr_buckets=True
+    )
+    non_perturbed_subset = create_subset(non_perturbed_dataset, test_size=0.2)
+    non_perturbed_loader = DataLoader(
+        non_perturbed_subset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=4
+    )
 
-    # evaluate_and_plot(
-    #     model,
-    #     non_perturbed_loader,
-    #     device,
-    #     criterion_modulation,
-    #     criterion_snr,
-    #     scenario_name_unperturbed,
-    #     epoch=0
-    # )
+    evaluate_and_plot(
+        model,
+        non_perturbed_loader,
+        device,
+        criterion_modulation,
+        criterion_snr,
+        scenario_name_unperturbed,
+        epoch=0
+    )
 
     # Test on perturbed datasets
     perturbations = [
         ("Top 5% Brightest", "top5_blackout", 1),
         ("Bottom 5% Dimmest", "bottom5_blackout", 2),
         ("Top 1% Brightest", "top1_blackout", 3),
-        ("Bottom 1% Dimmest", "bottom1_blackout", 4)
+        ("Bottom 1% Dimmest", "bottom1_blackout", 4),
+        ("Top 2% Brightest", "top2_blackout", 5),
+        ("Bottom 2% Dimmest", "bottom2_blackout", 6),
     ]
 
     for scenario_name, perturbation_type, epoch in perturbations:

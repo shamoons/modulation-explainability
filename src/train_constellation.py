@@ -54,22 +54,6 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         use_snr_buckets=use_snr_buckets
     )
 
-    # Get train/validation split indices
-    # indices = list(range(len(dataset)))
-    # train_idx, val_idx = train_test_split(indices, test_size=test_size, random_state=42)
-
-    # Print the number of training and validation samples
-    # print(f"Number of training samples: {len(train_idx)}")
-    # print(f"Number of validation samples: {len(val_idx)}")
-
-    # # Create samplers for train and validation sets
-    # train_sampler = SubsetRandomSampler(train_idx)
-    # val_sampler = SubsetRandomSampler(val_idx)
-
-    # # Data loaders for training and validation
-    # train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
-    # val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
-
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
