@@ -140,6 +140,8 @@ def main(args):
         ("Bottom 1% Dimmest", "bottom1_blackout", 4),
         ("Top 2% Brightest", "top2_blackout", 5),
         ("Bottom 2% Dimmest", "bottom2_blackout", 6),
+        ("Top 10% Brightest", "top10_blackout", 5),
+        ("Bottom 10% Dimmest", "bottom10_blackout", 6),
     ]
 
     for scenario_name, perturbation_type, epoch in perturbations:
