@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 import argparse
+import random
 
 
 def parse_modulation_and_snr(filepath):
@@ -23,8 +24,9 @@ def parse_modulation_and_snr(filepath):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Perturb constellation images by blacking out top and bottom percentage of pixels.')
-    parser.add_argument('--percent', type=int, default=5, help='Percentage of pixels to blackout (top and bottom). Default is 5.')
+    parser = argparse.ArgumentParser(description='Perturb constellation images by blacking out top, bottom, and random percentage of pixels.')
+    parser.add_argument('--percents', type=int, nargs='+', default=[5], help='List of percentages of pixels to blackout. Default is [5].')
+    parser.add_argument('--random', action='store_true', help='Enable random pixel blackout.')
     args = parser.parse_args()
 
     source_dir = 'constellation'
@@ -59,32 +61,50 @@ def main():
         image = image.convert('L')
         image_array = np.array(image)
 
-        # Top X% blackout
-        top_threshold = 100 - args.percent
-        topX_threshold = np.percentile(image_array, top_threshold)
-        mask_topX = image_array >= topX_threshold
-        image_array_topX_perturbed = image_array.copy()
-        image_array_topX_perturbed[mask_topX] = 0
+        for percent in args.percents:
+            # Top X% blackout
+            top_threshold = 100 - percent
+            topX_threshold = np.percentile(image_array, top_threshold)
+            mask_topX = image_array >= topX_threshold
+            image_array_topX_perturbed = image_array.copy()
+            image_array_topX_perturbed[mask_topX] = 0
 
-        # Bottom X% blackout (non-zero pixels)
-        non_zero_pixels = image_array[image_array > 0]
-        if non_zero_pixels.size > 0:
-            bottomX_threshold = np.percentile(non_zero_pixels, args.percent)
-            mask_bottomX = (image_array > 0) & (image_array <= bottomX_threshold)
-            image_array_bottomX_perturbed = image_array.copy()
-            image_array_bottomX_perturbed[mask_bottomX] = 0
-        else:
-            image_array_bottomX_perturbed = image_array.copy()
+            # Bottom X% blackout (non-zero pixels)
+            non_zero_pixels = image_array[image_array > 0]
+            if non_zero_pixels.size > 0:
+                bottomX_threshold = np.percentile(non_zero_pixels, percent)
+                mask_bottomX = (image_array > 0) & (image_array <= bottomX_threshold)
+                image_array_bottomX_perturbed = image_array.copy()
+                image_array_bottomX_perturbed[mask_bottomX] = 0
+            else:
+                image_array_bottomX_perturbed = image_array.copy()
 
-        # Save Version 1
-        filename_topX = os.path.splitext(os.path.basename(image_path))[0] + f'_top{args.percent}_blackout.png'
-        output_path_topX = os.path.join(output_subdir, filename_topX)
-        Image.fromarray(image_array_topX_perturbed).save(output_path_topX)
+            # Random X% blackout
+            if args.random:
+                total_pixels = image_array.size
+                num_random_pixels = int((percent / 100) * total_pixels)
+                random_indices = np.unravel_index(
+                    np.random.choice(total_pixels, num_random_pixels, replace=False),
+                    image_array.shape
+                )
+                image_array_random_perturbed = image_array.copy()
+                image_array_random_perturbed[random_indices] = 0
 
-        # Save Version 2
-        filename_bottomX = os.path.splitext(os.path.basename(image_path))[0] + f'_bottom{args.percent}_blackout.png'
-        output_path_bottomX = os.path.join(output_subdir, filename_bottomX)
-        Image.fromarray(image_array_bottomX_perturbed).save(output_path_bottomX)
+            # Save Version 1
+            filename_topX = os.path.splitext(os.path.basename(image_path))[0] + f'_top{percent}_blackout.png'
+            output_path_topX = os.path.join(output_subdir, filename_topX)
+            Image.fromarray(image_array_topX_perturbed).save(output_path_topX)
+
+            # Save Version 2
+            filename_bottomX = os.path.splitext(os.path.basename(image_path))[0] + f'_bottom{percent}_blackout.png'
+            output_path_bottomX = os.path.join(output_subdir, filename_bottomX)
+            Image.fromarray(image_array_bottomX_perturbed).save(output_path_bottomX)
+
+            # Save Version 3 (random)
+            if args.random:
+                filename_random = os.path.splitext(os.path.basename(image_path))[0] + f'_random{percent}_blackout.png'
+                output_path_random = os.path.join(output_subdir, filename_random)
+                Image.fromarray(image_array_random_perturbed).save(output_path_random)
 
         # Update progress bar with current modulation type and SNR
         progress.set_postfix({

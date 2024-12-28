@@ -134,14 +134,16 @@ def main(args):
 
     # Test on perturbed datasets
     perturbations = [
-        ("Top 5% Brightest", "top5_blackout", 1),
-        ("Bottom 5% Dimmest", "bottom5_blackout", 2),
-        ("Top 1% Brightest", "top1_blackout", 3),
-        ("Bottom 1% Dimmest", "bottom1_blackout", 4),
-        ("Top 2% Brightest", "top2_blackout", 5),
-        ("Bottom 2% Dimmest", "bottom2_blackout", 6),
-        ("Top 10% Brightest", "top10_blackout", 5),
-        ("Bottom 10% Dimmest", "bottom10_blackout", 6),
+        # ("Top 5% Brightest", "top5_blackout", 1),
+        # ("Bottom 5% Dimmest", "bottom5_blackout", 2),
+        # ("Top 1% Brightest", "top1_blackout", 3),
+        # ("Bottom 1% Dimmest", "bottom1_blackout", 4),
+        # ("Top 2% Brightest", "top2_blackout", 5),
+        # ("Bottom 2% Dimmest", "bottom2_blackout", 6),
+        # ("Top 10% Brightest", "top10_blackout", 5),
+        # ("Bottom 10% Dimmest", "bottom10_blackout", 6),
+        ("Top 50% Brightest", "top50_blackout", 7),
+        ("Bottom 50% Dimmest", "bottom50_blackout", 8),
     ]
 
     for scenario_name, perturbation_type, epoch in perturbations:
