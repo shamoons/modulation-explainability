@@ -7,6 +7,7 @@ from models.constellation_model import ConstellationResNet
 # from models.vision_transformer_model import ConstellationVisionTransformer
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
+from utils.loss_utils import WeightedSNRLoss
 from training_constellation import train
 import argparse
 import warnings
@@ -26,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=True, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
     # Load data
     print("Loading data...")
 
@@ -50,31 +51,24 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         root_dir=root_dir,
         image_type=image_type,
         snr_list=snr_list,
-        mods_to_process=mods_to_process,
-        use_snr_buckets=use_snr_buckets
+        mods_to_process=mods_to_process
     )
 
-    # Get train/validation split indices
-    # indices = list(range(len(dataset)))
-    # train_idx, val_idx = train_test_split(indices, test_size=test_size, random_state=42)
-
-    # Print the number of training and validation samples
-    # print(f"Number of training samples: {len(train_idx)}")
-    # print(f"Number of validation samples: {len(val_idx)}")
-
-    # # Create samplers for train and validation sets
-    # train_sampler = SubsetRandomSampler(train_idx)
-    # val_sampler = SubsetRandomSampler(val_idx)
-
-    # # Data loaders for training and validation
-    # train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
-    # val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True,  prefetch_factor=4)
+    # Print dataset information
+    print("\nDataset Information:")
+    print("===================")
+    print("Modulation Classes:")
+    for idx, mod in enumerate(dataset.modulation_labels.keys()):
+        print(f"  {idx}: {mod}")
+    print("\nSNR Values:")
+    print("  ", list(dataset.snr_labels.keys()))
+    print("===================\n")
 
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
 
-    num_snr_classes = len(dataset.snr_labels)
     num_modulation_classes = len(dataset.modulation_labels)
+    num_snr_classes = len(dataset.snr_labels)
 
     print(f"Number of modulation classes: {num_modulation_classes}")
     print(f"Number of SNR classes: {num_snr_classes}")
@@ -99,7 +93,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
-    criterion_snr = nn.CrossEntropyLoss()  # SNR classification loss
+    criterion_snr = WeightedSNRLoss(list(dataset.snr_labels.keys()))  # Custom weighted SNR loss
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
@@ -123,6 +117,11 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
 
+    # Move model and loss functions to device
+    model = model.to(device)
+    criterion_modulation = criterion_modulation.to(device)
+    criterion_snr = criterion_snr.to(device)
+
     # Train and validate the model
     # IMPORTANT: Ensure that in your train() function in training_constellation.py, after computing val_loss each epoch,
     # you call: scheduler.step(val_loss)
@@ -139,7 +138,6 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         epochs=epochs,
         mod_list=mods_to_process,
         snr_list=snr_list,
-        use_snr_buckets=use_snr_buckets,
         base_lr=base_lr,
         weight_decay=weight_decay,
         patience=patience
@@ -153,8 +151,6 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
-    parser.add_argument('--use_snr_buckets', type=str2bool, help='Flag to use SNR buckets instead of actual SNR values', default=False)
-    parser.add_argument('--num_cycles', type=int, help='Number of cycles (unused now, but kept for compatibility)', default=4)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0000001)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
@@ -169,7 +165,6 @@ if __name__ == "__main__":
         snr_list=args.snr_list,
         mods_to_process=args.mods_to_process,
         epochs=args.epochs,
-        use_snr_buckets=args.use_snr_buckets,
         base_lr=args.base_lr,
         max_lr=args.max_lr,
         weight_decay=args.weight_decay,

@@ -10,7 +10,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os
-from torch.cuda.amp import autocast, GradScaler  # Import autocast and GradScaler
+from torch.amp import autocast, GradScaler  # Import autocast and GradScaler from torch.amp
 
 
 def train(
@@ -27,7 +27,6 @@ def train(
     save_dir="checkpoints",
     mod_list=None,
     snr_list=None,
-    use_snr_buckets=False,
     base_lr=None,
     weight_decay=None,
     patience=1
@@ -35,23 +34,16 @@ def train(
     """
     Train the model and save the best one based on validation loss.
     Log metrics after validation and plot confusion matrices and F1 scores.
-    If use_snr_buckets is True, SNR values will be classified into buckets (low, medium, high).
+    SNR is treated as a weighted classification problem.
     """
     alpha, beta = load_loss_config()
     save_dir = 'checkpoints'
-
-    # Get the number of training and validation samples
-    # num_train_samples = len(train_loader.sampler)
-    # num_val_samples = len(val_loader.sampler)
 
     # Initialize WandB project
     wandb.init(project="modulation-explainability", config={
         "epochs": epochs,
         "mod_list": mod_list,
         "snr_list": snr_list,
-        "use_snr_buckets": use_snr_buckets,
-        # "num_train_samples": num_train_samples,
-        # "num_val_samples": num_val_samples,
         "alpha": alpha,
         "beta": beta,
         "model": model.model_name,
@@ -64,10 +56,9 @@ def train(
     os.makedirs(save_dir, exist_ok=True)
 
     best_val_loss = float('inf')  # Initialize best validation loss
-    model.to(device)
 
     # Initialize GradScaler for mixed-precision training
-    scaler = GradScaler()
+    scaler = GradScaler('cuda' if torch.cuda.is_available() else 'cpu')
 
     for epoch in range(epochs):
         indices = list(range(len(dataset)))
@@ -82,8 +73,7 @@ def train(
         model.train()
         running_loss = 0.0
         correct_modulation = 0
-        correct_snr = 0
-        correct_both = 0  # For combined accuracy
+        snr_mae = 0.0  # Mean Absolute Error for SNR
         total = 0
 
         # Get current learning rate
@@ -100,7 +90,7 @@ def train(
                 optimizer.zero_grad()
 
                 # Forward pass under autocast for mixed precision
-                with autocast():
+                with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
                     modulation_output, snr_output = model(inputs)
 
                     # Compute loss for both outputs
@@ -125,43 +115,38 @@ def train(
                 running_loss += total_loss.item()
 
                 _, predicted_modulation = modulation_output.max(1)
-                _, predicted_snr = snr_output.max(1)
-
                 total += modulation_labels.size(0)
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                correct_snr += predicted_snr.eq(snr_labels).sum().item()
-
-                # Calculate combined accuracy
-                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
+                
+                # Calculate SNR MAE using the expected value from probabilities
+                probs = torch.softmax(snr_output, dim=1)
+                expected_snr = torch.sum(probs * criterion_snr.snr_values.to(device), dim=1)
+                snr_mae += torch.abs(expected_snr - criterion_snr.snr_values[snr_labels].to(device)).mean().item()
 
                 # Update progress bar
                 progress.set_postfix({
                     'Loss': f"{total_loss.item():.4g}",
                     'Mod Acc': f"{100.0 * correct_modulation / total:.2f}%",
-                    'SNR Acc': f"{100.0 * correct_snr / total:.2f}%"
+                    'SNR MAE': f"{snr_mae / (progress.n + 1):.2f} dB"
                 })
 
         train_modulation_accuracy = 100.0 * correct_modulation / total
-        train_snr_accuracy = 100.0 * correct_snr / total
-        train_combined_accuracy = 100.0 * correct_both / total
+        train_snr_mae = snr_mae / len(train_loader)
         train_loss = running_loss / len(train_loader)
 
         print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
         print(f"  Train Loss (mod/snr): {train_loss:.4g} ({loss_modulation:.4g}/{loss_snr:.4g})")
         print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")
-        print(f"  SNR Accuracy: {train_snr_accuracy:.2f}%")
-        print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
+        print(f"  SNR MAE: {train_snr_mae:.2f} dB")
 
         # Perform validation at the end of each epoch
-        # Use autocast also in validation to speed up inference
-        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=use_snr_buckets, use_autocast=True)
+        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=True)
         (
             val_loss,
             modulation_loss_total,
             snr_loss_total,
             val_modulation_accuracy,
-            val_snr_accuracy,
-            val_combined_accuracy,
+            val_snr_mae,
             all_true_modulation_labels,
             all_pred_modulation_labels,
             all_true_snr_labels,
@@ -184,13 +169,6 @@ def train(
             label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
         )
 
-        fig_confusion_matrix_snr = plot_confusion_matrix(
-            all_true_snr_labels,
-            all_pred_snr_labels,
-            'SNR',
-            epoch,
-            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
-        )
         fig_f1_scores_modulation = plot_f1_scores(
             all_true_modulation_labels,
             all_pred_modulation_labels,
@@ -198,34 +176,22 @@ def train(
             label_type='Modulation',
             epoch=epoch
         )
-        fig_f1_scores_snr = plot_f1_scores(
-            all_true_snr_labels,
-            all_pred_snr_labels,
-            label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
-            label_type='SNR',
-            epoch=epoch
-        )
 
         print("Validation Results:")
         print(f"  Validation Loss (mod/snr): {val_loss:.4g} ({modulation_loss_total:.4g}/{snr_loss_total:.4g})")
         print(f"  Modulation Accuracy: {val_modulation_accuracy:.2f}%")
-        print(f"  SNR Accuracy: {val_snr_accuracy:.2f}%")
-        print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")
+        print(f"  SNR MAE: {val_snr_mae:.2f} dB")
 
-        # Log other metrics to WandB
+        # Log metrics to WandB
         wandb.log({
             "epoch": epoch + 1,
             "learning_rate": current_lr,
             "train_loss": train_loss,
             "train_modulation_accuracy": train_modulation_accuracy,
-            "train_snr_accuracy": train_snr_accuracy,
-            "train_combined_accuracy": train_combined_accuracy,
+            "train_snr_mae": train_snr_mae,
             "val_loss": val_loss,
             "val_modulation_accuracy": val_modulation_accuracy,
-            "val_snr_accuracy": val_snr_accuracy,
-            "val_combined_accuracy": val_combined_accuracy,
+            "val_snr_mae": val_snr_mae,
             "confusion_matrix_modulation": wandb.Image(fig_confusion_matrix_modulation),
-            "confusion_matrix_snr": wandb.Image(fig_confusion_matrix_snr),
-            "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation),
-            "f1_scores_snr": wandb.Image(fig_f1_scores_snr)
+            "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation)
         })

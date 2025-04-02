@@ -39,7 +39,7 @@ class ConstellationResNet(nn.Module):
 
         # Separate transformation and output heads for modulation and SNR tasks
         self.modulation_head = nn.Linear(in_features // 4, num_classes)
-        self.snr_head = nn.Linear(in_features // 4, snr_classes)
+        self.snr_head = nn.Linear(in_features // 4, snr_classes)  # Output probabilities for each SNR class
 
     def forward(self, x):
         features = self.model(x)
@@ -51,6 +51,6 @@ class ConstellationResNet(nn.Module):
 
         # Output heads
         modulation_output = self.modulation_head(features)
-        snr_output = self.snr_head(features)
+        snr_output = self.snr_head(features)  # This will output probabilities for each SNR class
 
         return modulation_output, snr_output
