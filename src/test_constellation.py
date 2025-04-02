@@ -147,7 +147,7 @@ def main(args):
     ]
 
     for scenario_name, perturbation_type, epoch in perturbations:
-        logging.info(f"Testing {scenario_name} dataset")
+        logging.info(f"\n\nTesting {scenario_name} dataset")
         perturbed_dataset = PerturbationDataset(
             root_dir=None,
             perturbation_dir=args.perturbation_dir,
