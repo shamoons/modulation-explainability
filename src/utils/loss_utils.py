@@ -11,7 +11,10 @@ class WeightedSNRLoss(nn.Module):
             snr_values (list): List of SNR values in order (e.g., [-20, -18, ..., 30])
         """
         super(WeightedSNRLoss, self).__init__()
+        # Scale SNR values to [0, 1] range for better numerical stability
         self.register_buffer('snr_values', torch.tensor(snr_values, dtype=torch.float32))
+        self.snr_min = min(snr_values)
+        self.snr_max = max(snr_values)
         
     def forward(self, predictions, targets):
         """
@@ -33,8 +36,12 @@ class WeightedSNRLoss(nn.Module):
         # Compute expected SNR value from predictions
         expected_snr = torch.sum(probs * self.snr_values.to(predictions.device), dim=1)
         
+        # Scale SNR values to [0, 1] range
+        scaled_true = (true_snr_values - self.snr_min) / (self.snr_max - self.snr_min)
+        scaled_pred = (expected_snr - self.snr_min) / (self.snr_max - self.snr_min)
+        
         # Compute absolute difference between expected and true SNR
-        abs_diff = torch.abs(expected_snr - true_snr_values)
+        abs_diff = torch.abs(scaled_pred - scaled_true)
         
         # Weight the cross-entropy loss by the absolute difference
         # This means predictions that are further from the true value get higher loss
@@ -46,4 +53,17 @@ class WeightedSNRLoss(nn.Module):
         # Apply weights to the cross-entropy loss
         weighted_loss = weights * ce_loss
         
-        return weighted_loss.mean() 
+        return weighted_loss.mean()
+
+class DynamicWeightedLoss(nn.Module):
+    def __init__(self, num_tasks):
+        super(DynamicWeightedLoss, self).__init__()
+        self.num_tasks = num_tasks
+        self.weights = nn.Parameter(torch.ones(num_tasks) / num_tasks)
+        
+    def forward(self, losses):
+        weights = F.softmax(self.weights, dim=0)
+        return sum(w * l for w, l in zip(weights, losses))
+    
+    def get_weights(self):
+        return F.softmax(self.weights, dim=0).detach().cpu().numpy() 

@@ -18,6 +18,7 @@ def train(
     device,
     criterion_modulation,
     criterion_snr,
+    criterion_dynamic,
     optimizer,
     scheduler,
     dataset,
@@ -36,7 +37,6 @@ def train(
     Log metrics after validation and plot confusion matrices and F1 scores.
     SNR is treated as a weighted classification problem.
     """
-    alpha, beta = load_loss_config()
     save_dir = 'checkpoints'
 
     # Initialize WandB project
@@ -44,8 +44,6 @@ def train(
         "epochs": epochs,
         "mod_list": mod_list,
         "snr_list": snr_list,
-        "alpha": alpha,
-        "beta": beta,
         "model": model.model_name,
         "base_lr": base_lr,
         "weight_decay": weight_decay,
@@ -76,6 +74,10 @@ def train(
         snr_mae = 0.0  # Mean Absolute Error for SNR
         total = 0
 
+        # Track individual losses for monitoring
+        modulation_losses = []
+        snr_losses = []
+
         # Get current learning rate
         current_lr = optimizer.param_groups[0]['lr']
         print(f"\nEpoch {epoch+1}/{epochs} - Learning Rate: {current_lr}")
@@ -97,8 +99,12 @@ def train(
                     loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                     loss_snr = criterion_snr(snr_output, snr_labels)
 
-                    # Combine both losses
-                    total_loss = alpha * loss_modulation + beta * loss_snr
+                    # Store individual losses for monitoring
+                    modulation_losses.append(loss_modulation.item())
+                    snr_losses.append(loss_snr.item())
+
+                    # Combine losses using dynamic weighting
+                    total_loss = criterion_dynamic([loss_modulation, loss_snr])
 
                 # Backpropagation with scaled gradients
                 scaler.scale(total_loss).backward()
@@ -123,24 +129,33 @@ def train(
                 expected_snr = torch.sum(probs * criterion_snr.snr_values.to(device), dim=1)
                 snr_mae += torch.abs(expected_snr - criterion_snr.snr_values[snr_labels].to(device)).mean().item()
 
+                # Get current task weights
+                task_weights = criterion_dynamic.get_weights()
+
                 # Update progress bar
                 progress.set_postfix({
                     'Loss': f"{total_loss.item():.4g}",
                     'Mod Acc': f"{100.0 * correct_modulation / total:.2f}%",
-                    'SNR MAE': f"{snr_mae / (progress.n + 1):.2f} dB"
+                    'SNR MAE': f"{snr_mae / (progress.n + 1):.2f} dB",
+                    'Mod W': f"{task_weights[0]:.2f}",
+                    'SNR W': f"{task_weights[1]:.2f}"
                 })
 
+        # Calculate average losses
+        avg_modulation_loss = sum(modulation_losses) / len(modulation_losses)
+        avg_snr_loss = sum(snr_losses) / len(snr_losses)
         train_modulation_accuracy = 100.0 * correct_modulation / total
         train_snr_mae = snr_mae / len(train_loader)
         train_loss = running_loss / len(train_loader)
 
         print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
-        print(f"  Train Loss (mod/snr): {train_loss:.4g} ({loss_modulation:.4g}/{loss_snr:.4g})")
+        print(f"  Train Loss (mod/snr): {train_loss:.4g} ({avg_modulation_loss:.4g}/{avg_snr_loss:.4g})")
         print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")
         print(f"  SNR MAE: {train_snr_mae:.2f} dB")
+        print(f"  Task Weights (Mod/SNR): {task_weights[0]:.2f}/{task_weights[1]:.2f}")
 
         # Perform validation at the end of each epoch
-        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=True)
+        val_results = validate(model, device, criterion_modulation, criterion_snr, criterion_dynamic, val_loader, use_autocast=True)
         (
             val_loss,
             modulation_loss_total,
@@ -194,9 +209,13 @@ def train(
             "train_loss": train_loss,
             "train_modulation_accuracy": train_modulation_accuracy,
             "train_snr_mae": train_snr_mae,
+            "train_modulation_loss": avg_modulation_loss,
+            "train_snr_loss": avg_snr_loss,
             "val_loss": val_loss,
             "val_modulation_accuracy": val_modulation_accuracy,
             "val_snr_mae": val_snr_mae,
+            "modulation_weight": task_weights[0],
+            "snr_weight": task_weights[1],
             "confusion_matrix_modulation": wandb.Image(fig_confusion_matrix_modulation),
             "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation)
         })

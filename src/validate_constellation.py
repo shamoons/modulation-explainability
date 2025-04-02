@@ -12,7 +12,7 @@ from utils.config_utils import load_loss_config
 
 # src/validate_constellation.py
 
-def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=False):
+def validate(model, device, criterion_modulation, criterion_snr, criterion_dynamic, val_loader, use_autocast=False):
     """
     Validate the model on the validation set.
     Returns validation loss, accuracies, and predictions for plotting.
@@ -42,12 +42,12 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
                     modulation_output, snr_output = model(inputs)
                     loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                     loss_snr = criterion_snr(snr_output, snr_labels)
-                    loss = loss_modulation + loss_snr
+                    loss = criterion_dynamic([loss_modulation, loss_snr])
             else:
                 modulation_output, snr_output = model(inputs)
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                 loss_snr = criterion_snr(snr_output, snr_labels)
-                loss = loss_modulation + loss_snr
+                loss = criterion_dynamic([loss_modulation, loss_snr])
 
             val_loss += loss.item()
             modulation_loss_total += loss_modulation.item()

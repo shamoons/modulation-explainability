@@ -7,7 +7,7 @@ from models.constellation_model import ConstellationResNet
 # from models.vision_transformer_model import ConstellationVisionTransformer
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
-from utils.loss_utils import WeightedSNRLoss
+from utils.loss_utils import WeightedSNRLoss, DynamicWeightedLoss
 from training_constellation import train
 import argparse
 import warnings
@@ -94,6 +94,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
     criterion_snr = WeightedSNRLoss(list(dataset.snr_labels.keys()))  # Custom weighted SNR loss
+    criterion_dynamic = DynamicWeightedLoss(num_tasks=2)  # Dynamic weighted loss for MTL
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
@@ -120,6 +121,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     model = model.to(device)
     criterion_modulation = criterion_modulation.to(device)
     criterion_snr = criterion_snr.to(device)
+    criterion_dynamic = criterion_dynamic.to(device)
 
     # Train and validate the model
     # IMPORTANT: Ensure that in your train() function in training_constellation.py, after computing val_loss each epoch,
@@ -129,6 +131,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         device,
         criterion_modulation,
         criterion_snr,
+        criterion_dynamic,
         optimizer,
         scheduler,
         dataset,
@@ -146,7 +149,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train constellation model with optional checkpoint loading')
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
-    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=64)
+    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=1024)
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
