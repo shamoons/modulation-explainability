@@ -4,53 +4,56 @@ from torchvision import models
 
 
 class ConstellationResNet(nn.Module):
-    def __init__(self, num_classes=11, snr_classes=26, input_channels=3, dropout_prob=0.6, model_name="resnet18"):
+    def __init__(self, num_classes, snr_classes, input_channels=1, model_name="resnet18"):
         super(ConstellationResNet, self).__init__()
-
-        # Load a ResNet model from torchvision
-        if model_name == "resnet18":
-            self.model = models.resnet18(weights='DEFAULT')
-        elif model_name == "resnet34":
-            self.model = models.resnet34(weights='DEFAULT')
         self.model_name = model_name
-
-        # Modify the first convolutional layer to accept the specified number of input channels
-        if input_channels != 3:
-            self.model.conv1 = nn.Conv2d(
-                input_channels,
-                self.model.conv1.out_channels,
-                kernel_size=self.model.conv1.kernel_size,
-                stride=self.model.conv1.stride,
-                padding=self.model.conv1.padding,
-                bias=self.model.conv1.bias,
-            )
-
-        # Remove the fully connected layer of ResNet
-        in_features = self.model.fc.in_features
-        self.model.fc = nn.Identity()
-
-        # Shared feature transformation layer
-        self.shared_transform = nn.Linear(in_features, in_features // 4)
-
-        # Single ReLU, BatchNorm, and Dropout layers
-        self.relu = nn.ReLU()
-        self.batch_norm = nn.BatchNorm1d(in_features // 4)
-        self.dropout = nn.Dropout(p=dropout_prob)
-
-        # Separate transformation and output heads for modulation and SNR tasks
-        self.modulation_head = nn.Linear(in_features // 4, num_classes)
-        self.snr_head = nn.Linear(in_features // 4, snr_classes)  # Output probabilities for each SNR class
-
+        
+        # Load pre-trained ResNet model
+        if model_name == "resnet18":
+            self.resnet = models.resnet18(pretrained=False)
+        elif model_name == "resnet50":
+            self.resnet = models.resnet50(pretrained=False)
+        else:
+            raise ValueError(f"Unsupported model name: {model_name}")
+        
+        # Modify first layer to accept single channel input
+        self.resnet.conv1 = nn.Conv2d(input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        
+        # Get the number of features from the last layer
+        num_features = self.resnet.fc.in_features
+        
+        # Remove the last fully connected layer
+        self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
+        
+        # Add dropout
+        self.dropout = nn.Dropout(0.5)
+        
+        # Add modulation classification head
+        self.modulation_head = nn.Sequential(
+            nn.Linear(num_features, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+        
+        # Add SNR classification head
+        self.snr_head = nn.Sequential(
+            nn.Linear(num_features, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, snr_classes)
+        )
+        
     def forward(self, x):
-        features = self.model(x)
-
-        # Shared layer processing
-        features = self.relu(self.shared_transform(features))
-        features = self.batch_norm(features)
+        # Get features from ResNet
+        features = self.resnet(x)
+        features = features.view(features.size(0), -1)
+        
+        # Apply dropout to features
         features = self.dropout(features)
-
-        # Output heads
+        
+        # Get predictions from both heads
         modulation_output = self.modulation_head(features)
-        snr_output = self.snr_head(features)  # This will output probabilities for each SNR class
-
+        snr_output = self.snr_head(features)
+        
         return modulation_output, snr_output

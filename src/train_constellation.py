@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
+def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-4, test_size=0.2, patience=5):
     # Load data
     print("Loading data...")
 
@@ -96,22 +96,15 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_snr = WeightedSNRLoss(list(dataset.snr_labels.keys()))  # Custom weighted SNR loss
     criterion_dynamic = DynamicWeightedLoss(num_tasks=2)  # Dynamic weighted loss for MTL
 
-    # Initialize optimizer
+    # Initialize optimizer with increased weight decay
     optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
 
-    # Instead of CyclicLR, use ReduceLROnPlateau
-    # ReduceLROnPlateau reduces the learning rate when a metric has stopped improving.
-    # Here, we assume we'll call scheduler.step(val_loss) after each epoch in the train() function.
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+    # Use CosineAnnealingWarmRestarts instead of ReduceLROnPlateau
+    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer,
-        mode='min',      # since we'll monitor validation loss, which we want to minimize
-        factor=0.5,      # reduce LR by a factor of 2
-        patience=patience,     # wait for specified epochs without improvement before reducing LR
-        threshold=0.0001,
-        threshold_mode='rel',
-        cooldown=0,
-        min_lr=0,
-        eps=1e-08
+        T_0=10,  # Number of iterations for the first restart
+        T_mult=2,  # Factor to increase T_0 after a restart
+        eta_min=base_lr/10  # Minimum learning rate
     )
 
     # Determine device (CUDA, MPS, or CPU)
@@ -124,8 +117,6 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_dynamic = criterion_dynamic.to(device)
     
     # Train and validate the model
-    # IMPORTANT: Ensure that in your train() function in training_constellation.py, after computing val_loss each epoch,
-    # you call: scheduler.step(val_loss)
     train(
         model,
         device,
@@ -155,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0000001)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
-    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
+    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-4)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing', default=5)
 

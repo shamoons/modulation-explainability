@@ -39,7 +39,7 @@ def train(
     # Create save directory if it doesn't exist
     os.makedirs(save_dir, exist_ok=True)
     
-    # Split dataset into train and validation sets
+    # Split dataset into train and validation sets (outside the training loop)
     train_size = int((1 - test_size) * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
