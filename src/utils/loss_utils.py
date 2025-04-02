@@ -59,26 +59,29 @@ class DynamicWeightedLoss(nn.Module):
     def __init__(self, num_tasks):
         super(DynamicWeightedLoss, self).__init__()
         self.num_tasks = num_tasks
-        # Initialize log variances for each task
-        self.log_vars = nn.Parameter(torch.zeros(num_tasks))
+        # Initialize weights to be equal
+        self.weights = nn.Parameter(torch.ones(num_tasks) / num_tasks)
         
     def forward(self, losses):
-        # Convert losses to tensor if they aren't already and ensure they're on the same device as log_vars
-        losses = [torch.tensor(l, device=self.log_vars.device) if not isinstance(l, torch.Tensor) else l.to(self.log_vars.device) for l in losses]
+        # Convert losses to tensor if they aren't already and ensure they're on the same device as weights
+        losses = [torch.tensor(l, device=self.weights.device) if not isinstance(l, torch.Tensor) else l.to(self.weights.device) for l in losses]
         
-        # Kendall's formula: loss = sum(0.5*exp(-s_i)*L_i + 0.5*s_i)
-        # where s_i are log variances and L_i are task losses
-        weighted_loss = 0
-        for i, loss in enumerate(losses):
-            # 0.5 * exp(-s_i) * L_i
-            weighted_loss += 0.5 * torch.exp(-self.log_vars[i]) * loss
-            # 0.5 * s_i
-            weighted_loss += 0.5 * self.log_vars[i]
+        # Update weights based on loss magnitudes
+        # Higher loss = lower weight
+        loss_magnitudes = torch.tensor([l.item() for l in losses], device=self.weights.device)
+        # Add small epsilon to avoid division by zero
+        loss_magnitudes = loss_magnitudes + 1e-8
+        # Inverse of loss magnitudes
+        new_weights = 1.0 / loss_magnitudes
+        # Normalize weights
+        new_weights = new_weights / new_weights.sum()
         
-        return weighted_loss
+        # Update weights directly
+        with torch.no_grad():
+            self.weights.data = new_weights
+        
+        # Compute weighted loss
+        return sum(w * l for w, l in zip(self.weights, losses))
     
     def get_weights(self):
-        # For monitoring: convert log variances to weights
-        # w_i = exp(-s_i) / sum(exp(-s_i))
-        weights = torch.exp(-self.log_vars)
-        return (weights / weights.sum()).detach().cpu().numpy() 
+        return self.weights.detach().cpu().numpy() 
