@@ -122,7 +122,10 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
     criterion_modulation = criterion_modulation.to(device)
     criterion_snr = criterion_snr.to(device)
     criterion_dynamic = criterion_dynamic.to(device)
-
+    
+    # Add log_vars to optimizer
+    optimizer.add_param_group({'params': criterion_dynamic.log_vars})
+    
     # Train and validate the model
     # IMPORTANT: Ensure that in your train() function in training_constellation.py, after computing val_loss each epoch,
     # you call: scheduler.step(val_loss)
