@@ -105,13 +105,12 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         optimizer,
         mode='min',      # since we'll monitor validation loss, which we want to minimize
         factor=0.5,      # reduce LR by a factor of 2
-        patience=patience,     # wait 10 epochs without improvement before reducing LR
+        patience=patience,     # wait for specified epochs without improvement before reducing LR
         threshold=0.0001,
         threshold_mode='rel',
         cooldown=0,
         min_lr=0,
-        eps=1e-08,
-        verbose=True
+        eps=1e-08
     )
 
     # Determine device (CUDA, MPS, or CPU)

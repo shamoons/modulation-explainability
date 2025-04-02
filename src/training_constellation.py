@@ -155,6 +155,11 @@ def train(
 
         scheduler.step(val_loss)
 
+        # Print learning rate change if it was updated
+        new_lr = optimizer.param_groups[0]['lr']
+        if new_lr != current_lr:
+            print(f"Learning rate decreased to {new_lr:.2e}")
+
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
             best_val_loss = val_loss
