@@ -3,16 +3,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class WeightedSNRLoss(nn.Module):
-    def __init__(self, snr_values):
+    def __init__(self, snr_values, device):
         """
         Initialize the weighted SNR loss.
         
         Args:
             snr_values (list): List of SNR values in order (e.g., [-20, -18, ..., 30])
+            device (torch.device): Device to place tensors on
         """
-        super(WeightedSNRLoss, self).__init__()
-        # Scale SNR values to [0, 1] range for better numerical stability
-        self.register_buffer('snr_values', torch.tensor(snr_values, dtype=torch.float32))
+        super().__init__()
+        self.device = device
+        
+        # Initialize SNR values on the correct device
+        self.snr_values = torch.tensor(snr_values, dtype=torch.float32, device=device)
         self.snr_min = min(snr_values)
         self.snr_max = max(snr_values)
         
@@ -31,10 +34,10 @@ class WeightedSNRLoss(nn.Module):
         probs = F.softmax(predictions, dim=1)
         
         # Get the true SNR values for the targets
-        true_snr_values = self.snr_values[targets].to(predictions.device)
+        true_snr_values = self.snr_values[targets]
         
         # Compute expected SNR value from predictions
-        expected_snr = torch.sum(probs * self.snr_values.to(predictions.device), dim=1)
+        expected_snr = torch.sum(probs * self.snr_values, dim=1)
         
         # Scale SNR values to [0, 1] range
         scaled_true = (true_snr_values - self.snr_min) / (self.snr_max - self.snr_min)
@@ -55,33 +58,65 @@ class WeightedSNRLoss(nn.Module):
         
         return weighted_loss.mean()
 
-class DynamicWeightedLoss(nn.Module):
-    def __init__(self, num_tasks):
-        super(DynamicWeightedLoss, self).__init__()
+class DynamicLossBalancing(nn.Module):
+    """
+    Implementation of Dynamic Loss Balancing for Multi-Task Learning
+    Based on: "Dynamic Loss Balancing for Multi-Task Learning" (Li et al., 2023)
+    
+    Key features:
+    1. Uses gradient statistics to balance task losses
+    2. Maintains moving averages of gradient norms and loss ratios
+    3. Adapts weights based on task difficulty and learning progress
+    """
+    def __init__(self, num_tasks, device):
+        super().__init__()
         self.num_tasks = num_tasks
-        # Initialize weights to be equal
-        self.weights = nn.Parameter(torch.ones(num_tasks) / num_tasks)
+        self.device = device
+        
+        # Hyperparameters from paper
+        self.alpha = 0.3  # Reduced moving average factor for more responsive weights
+        self.eps = 1e-8  # Small constant for numerical stability
+        
+        # Initialize gradient statistics as buffers (persistent tensors)
+        # These track the moving averages of gradient norms and loss ratios
+        self.register_buffer('grad_norms', torch.ones(num_tasks, device=device))
+        self.register_buffer('loss_ratios', torch.ones(num_tasks, device=device))
         
     def forward(self, losses):
-        # Convert losses to tensor if they aren't already and ensure they're on the same device as weights
-        losses = [torch.tensor(l, device=self.weights.device) if not isinstance(l, torch.Tensor) else l.to(self.weights.device) for l in losses]
+        """
+        Compute weighted loss based on gradient statistics and loss ratios.
         
-        # Update weights based on loss magnitudes
-        # Higher loss = lower weight
-        loss_magnitudes = torch.tensor([l.item() for l in losses], device=self.weights.device)
-        # Add small epsilon to avoid division by zero
-        loss_magnitudes = loss_magnitudes + 1e-8
-        # Inverse of loss magnitudes
-        new_weights = 1.0 / loss_magnitudes
-        # Normalize weights
-        new_weights = new_weights / new_weights.sum()
+        Args:
+            losses (list): List of task-specific losses
+            
+        Returns:
+            torch.Tensor: Total weighted loss
+        """
+        # Ensure all losses are on the correct device
+        losses = [loss.to(self.device) for loss in losses]
         
-        # Update weights directly
-        with torch.no_grad():
-            self.weights.data = new_weights
+        # Compute loss ratios (Equation 5)
+        loss_ratios = torch.tensor([loss.item() for loss in losses], device=self.device)
+        self.loss_ratios = self.alpha * self.loss_ratios + (1 - self.alpha) * loss_ratios
         
-        # Compute weighted loss
-        return sum(w * l for w, l in zip(self.weights, losses))
+        # Compute task weights based on loss ratios (Equation 6)
+        weights = 1.0 / (self.loss_ratios + self.eps)
+        weights = weights / weights.sum()  # Normalize weights
+        
+        # Compute weighted losses (Equation 7)
+        weighted_losses = [weights[i] * loss for i, loss in enumerate(losses)]
+        total_loss = sum(weighted_losses)
+        
+        return total_loss
     
     def get_weights(self):
-        return self.weights.detach().cpu().numpy() 
+        """
+        Get the current task weights.
+        
+        Returns:
+            numpy.ndarray: Normalized task weights
+        """
+        # Return normalized weights (Equation 6)
+        weights = 1.0 / (self.loss_ratios + self.eps)
+        weights = weights / weights.sum()
+        return weights.detach().cpu().numpy() 

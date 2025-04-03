@@ -12,6 +12,7 @@ from tqdm import tqdm
 import os
 from torch.amp import autocast, GradScaler  # Import autocast and GradScaler from torch.amp
 from torch.utils.data import random_split
+import torch.nn.functional as F
 
 
 def train(
@@ -37,152 +38,218 @@ def train(
     Train the model with dynamic weighted loss.
     """
     # Create save directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    
+    # Initialize GradScaler for mixed precision training
+    scaler = GradScaler('cuda' if torch.cuda.is_available() else 'cpu')
     
     # Split dataset into train and validation sets (outside the training loop)
     train_size = int((1 - test_size) * len(dataset))
     val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
     
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
     
     # Initialize wandb
     wandb.init(
         project="constellation-classification",
         config={
-            "model": "ConstellationResNet",
+            "architecture": model.__class__.__name__,
             "batch_size": batch_size,
             "learning_rate": base_lr,
             "weight_decay": weight_decay,
             "epochs": epochs,
             "mod_list": mod_list,
             "snr_list": snr_list,
+            "test_size": test_size,
             "patience": patience
         }
     )
     
     # Training loop
     best_val_loss = float('inf')
-    best_model_path = None
     patience_counter = 0
     
     for epoch in range(epochs):
         model.train()
-        train_loss = 0.0
+        total_loss = 0
         correct_modulation = 0
-        total = 0
+        total_modulation = 0
+        snr_mae = 0
+        snr_correct = 0
+        total_snr = 0
         modulation_losses = []
         snr_losses = []
         
-        # Training loop
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}")
-        for inputs, modulation_labels, snr_labels in progress_bar:
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False)
+        
+        for batch_idx, (inputs, modulation_targets, snr_targets) in enumerate(progress_bar):
             inputs = inputs.to(device)
-            modulation_labels = modulation_labels.to(device)
-            snr_labels = snr_labels.to(device)
+            modulation_targets = modulation_targets.to(device)
+            snr_targets = snr_targets.to(device)
             
-            # Zero gradients
             optimizer.zero_grad()
             
-            # Forward pass
-            modulation_output, snr_output = model(inputs)
+            with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
+                modulation_output, snr_output = model(inputs)
+                
+                # Calculate individual losses
+                loss_modulation = criterion_modulation(modulation_output, modulation_targets)
+                loss_snr = criterion_snr(snr_output, snr_targets)
+                
+                # Combine losses using dynamic loss balancing
+                total_loss = criterion_dynamic([loss_modulation, loss_snr])
+                
+                # Track individual losses
+                modulation_losses.append(loss_modulation.item())
+                snr_losses.append(loss_snr.item())
+
+            scaler.scale(total_loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             
-            # Compute individual losses
-            loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-            loss_snr = criterion_snr(snr_output, snr_labels)
+            # Calculate modulation accuracy
+            _, predicted_modulation = torch.max(modulation_output.data, 1)
+            total_modulation += modulation_targets.size(0)
+            correct_modulation += (predicted_modulation == modulation_targets).sum().item()
             
-            # Store individual losses for monitoring
-            modulation_losses.append(loss_modulation.item())
-            snr_losses.append(loss_snr.item())
+            # Calculate SNR metrics
+            snr_probs = F.softmax(snr_output, dim=1)
+            snr_values = torch.tensor(list(dataset.snr_labels.keys()), device=device)
+            predicted_snr = torch.sum(snr_probs * snr_values, dim=1)
+            true_snr = snr_values[snr_targets]
             
-            # Compute total loss using dynamic weighting
-            total_loss = criterion_dynamic([loss_modulation, loss_snr])
+            # SNR MAE
+            snr_mae += torch.abs(predicted_snr - true_snr).sum().item()
             
-            # Backward pass
-            total_loss.backward()
-            
-            # Update model parameters
-            optimizer.step()
-            
-            # Update progress bar
-            _, predicted_modulation = modulation_output.max(1)
-            total += modulation_labels.size(0)
-            correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-            
+            # SNR accuracy (within ±2 dB)
+            snr_correct += (torch.abs(predicted_snr - true_snr) <= 2).sum().item()
+            total_snr += snr_targets.size(0)
+
             # Get current weights for display
             weights = criterion_dynamic.get_weights()
             
             # Update progress bar with current metrics
             progress_bar.set_postfix({
                 'Loss': f"{total_loss.item():.3f}",
-                'Mod Acc': f"{100.0 * correct_modulation / total:.2f}%",
-                'SNR MAE': f"{loss_snr.item():.2f} dB",
+                'Mod Acc': f"{100.0 * correct_modulation / total_modulation:.2f}%",
+                'SNR MAE': f"{snr_mae / total_snr:.2f} dB",
+                'SNR Acc': f"{100.0 * snr_correct / total_snr:.2f}%",
                 'Mod W': f"{weights[0]:.2f}",
                 'SNR W': f"{weights[1]:.2f}"
             })
-            
-            # Log metrics to wandb
-            wandb.log({
-                'train_loss': total_loss.item(),
-                'train_modulation_loss': loss_modulation.item(),
-                'train_snr_loss': loss_snr.item(),
-                'train_modulation_accuracy': 100.0 * correct_modulation / total,
-                'modulation_weight': weights[0],
-                'snr_weight': weights[1]
-            })
+            progress_bar.update(1)
         
-        # Compute average losses for this epoch
+        # Calculate average metrics for the epoch
+        avg_loss = total_loss / len(train_loader)
+        modulation_accuracy = 100 * correct_modulation / total_modulation
+        snr_mae = snr_mae / total_snr
+        snr_accuracy = 100 * snr_correct / total_snr
         avg_modulation_loss = sum(modulation_losses) / len(modulation_losses)
         avg_snr_loss = sum(snr_losses) / len(snr_losses)
         
         # Validation
-        val_loss, val_modulation_loss, val_snr_loss, val_modulation_accuracy, val_snr_mae, \
-        all_true_modulation_labels, all_pred_modulation_labels, \
-        all_true_snr_labels, all_pred_snr_labels = validate(
-            model, device, criterion_modulation, criterion_snr, criterion_dynamic, val_loader
-        )
+        model.eval()
+        val_loss = 0
+        val_correct_modulation = 0
+        val_total_modulation = 0
+        val_snr_mae = 0
+        val_snr_correct = 0
+        val_total_snr = 0
+        val_modulation_losses = []
+        val_snr_losses = []
         
-        # Log validation metrics
-        wandb.log({
-            'val_loss': val_loss,
-            'val_modulation_loss': val_modulation_loss,
-            'val_snr_loss': val_snr_loss,
-            'val_modulation_accuracy': val_modulation_accuracy,
-            'val_snr_mae': val_snr_mae,
-            'epoch': epoch
-        })
+        with torch.no_grad():
+            for inputs, modulation_targets, snr_targets in val_loader:
+                inputs = inputs.to(device)
+                modulation_targets = modulation_targets.to(device)
+                snr_targets = snr_targets.to(device)
+                
+                modulation_output, snr_output = model(inputs)
+                
+                # Calculate individual losses
+                loss_modulation = criterion_modulation(modulation_output, modulation_targets)
+                loss_snr = criterion_snr(snr_output, snr_targets)
+                
+                # Combine losses using dynamic loss balancing
+                total_val_loss = criterion_dynamic([loss_modulation, loss_snr])
+                val_loss += total_val_loss.item()
+                
+                # Track individual losses
+                val_modulation_losses.append(loss_modulation.item())
+                val_snr_losses.append(loss_snr.item())
+                
+                # Calculate modulation accuracy
+                _, predicted_modulation = torch.max(modulation_output.data, 1)
+                val_total_modulation += modulation_targets.size(0)
+                val_correct_modulation += (predicted_modulation == modulation_targets).sum().item()
+                
+                # Calculate SNR metrics
+                snr_probs = F.softmax(snr_output, dim=1)
+                snr_values = torch.tensor(list(dataset.snr_labels.keys()), device=device)
+                predicted_snr = torch.sum(snr_probs * snr_values, dim=1)
+                true_snr = snr_values[snr_targets]
+                
+                # SNR MAE
+                val_snr_mae += torch.abs(predicted_snr - true_snr).sum().item()
+                
+                # SNR accuracy (within ±2 dB)
+                val_snr_correct += (torch.abs(predicted_snr - true_snr) <= 2).sum().item()
+                val_total_snr += snr_targets.size(0)
+        
+        # Calculate average validation metrics
+        val_loss = val_loss / len(val_loader)
+        val_modulation_accuracy = 100 * val_correct_modulation / val_total_modulation
+        val_snr_mae = val_snr_mae / val_total_snr
+        val_snr_accuracy = 100 * val_snr_correct / val_total_snr
+        val_avg_modulation_loss = sum(val_modulation_losses) / len(val_modulation_losses)
+        val_avg_snr_loss = sum(val_snr_losses) / len(val_snr_losses)
         
         # Print epoch summary
         print(f"\nEpoch {epoch+1}/{epochs} Summary:")
-        print(f"Training Loss: {total_loss.item():.4f}")
-        print(f"Training Modulation Loss: {avg_modulation_loss:.4f}")
-        print(f"Training SNR Loss: {avg_snr_loss:.4f}")
-        print(f"Training Modulation Accuracy: {100.0 * correct_modulation / total:.2f}%")
-        print(f"Validation Loss: {val_loss:.4f}")
-        print(f"Validation Modulation Accuracy: {val_modulation_accuracy:.2f}%")
-        print(f"Validation SNR MAE: {val_snr_mae:.2f} dB")
-        print(f"Current Weights - Modulation: {weights[0]:.4f}, SNR: {weights[1]:.4f}")
+        print(f"Training - Loss: {avg_loss:.4f}, Mod Acc: {modulation_accuracy:.2f}%, SNR MAE: {snr_mae:.2f} dB, SNR Acc: {snr_accuracy:.2f}%")
+        print(f"Validation - Loss: {val_loss:.4f}, Mod Acc: {val_modulation_accuracy:.2f}%, SNR MAE: {val_snr_mae:.2f} dB, SNR Acc: {val_snr_accuracy:.2f}%")
+        print(f"Training Losses - Mod: {avg_modulation_loss:.4f}, SNR: {avg_snr_loss:.4f}")
+        print(f"Validation Losses - Mod: {val_avg_modulation_loss:.4f}, SNR: {val_avg_snr_loss:.4f}")
+        print(f"Task Weights - Modulation: {weights[0]:.4f}, SNR: {weights[1]:.4f}")
         
-        # Learning rate scheduling
-        scheduler.step(val_loss)
+        # Log metrics to wandb
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": avg_loss,
+            "train_modulation_accuracy": modulation_accuracy,
+            "train_snr_mae": snr_mae,
+            "train_snr_accuracy": snr_accuracy,
+            "train_modulation_loss": avg_modulation_loss,
+            "train_snr_loss": avg_snr_loss,
+            "val_loss": val_loss,
+            "val_modulation_accuracy": val_modulation_accuracy,
+            "val_snr_mae": val_snr_mae,
+            "val_snr_accuracy": val_snr_accuracy,
+            "val_modulation_loss": val_avg_modulation_loss,
+            "val_snr_loss": val_avg_snr_loss,
+            "learning_rate": optimizer.param_groups[0]['lr']
+        })
         
         # Save best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            best_model_path = os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth")
-            torch.save(model.state_dict(), best_model_path)
             patience_counter = 0
+            torch.save(model.state_dict(), os.path.join(save_dir, 'best_model.pth'))
         else:
             patience_counter += 1
+            if patience_counter >= patience:
+                print(f"Early stopping triggered after {epoch+1} epochs")
+                break
         
-        # Early stopping
-        if patience_counter >= patience:
-            print(f"\nEarly stopping triggered after {epoch+1} epochs")
-            break
+        # Update learning rate
+        scheduler.step()
     
     # Close wandb
     wandb.finish()
     
-    return best_model_path
+    return os.path.join(save_dir, 'best_model.pth')
