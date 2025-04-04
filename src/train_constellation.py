@@ -7,7 +7,7 @@ from models.constellation_model import ConstellationResNet
 from models.vision_transformer_model import ConstellationVisionTransformer
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
-from utils.loss_utils import WeightedSNRLoss, DynamicLossBalancing
+from utils.loss_utils import WeightedSNRLoss, DynamicLossBalancing, SNRRegressionLoss
 from training_constellation import train
 import argparse
 import warnings
@@ -104,10 +104,10 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     # Move model and loss functions to device
     model = model.to(device)
 
-    # Initialize loss functions
-    criterion_modulation = nn.CrossEntropyLoss()
-    criterion_snr = WeightedSNRLoss(list(dataset.snr_labels.keys()), device=device)
-    criterion_dynamic = DynamicLossBalancing(num_tasks=2, device=device)
+    # Initialize loss functions and dynamic loss balancing
+    criterion_modulation = nn.CrossEntropyLoss().to(device)
+    criterion_snr = SNRRegressionLoss(device=device)
+    criterion_dynamic = DynamicLossBalancing(num_tasks=2)
 
     # Initialize optimizer with separate learning rates for model and loss weights
     optimizer = optim.Adam([

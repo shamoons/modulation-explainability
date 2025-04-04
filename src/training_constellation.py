@@ -16,6 +16,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 
 def train(
@@ -80,92 +81,89 @@ def train(
         }
     )
     
+    # Get the SNR mapping from dataset
+    snr_index_to_value = {idx: snr for snr, idx in dataset.snr_labels.items()}
+    
     # Training loop
     best_val_loss = float('inf')
     
     for epoch in range(epochs):
         model.train()
-        total_loss = 0.0  # Initialize as float
-        correct_modulation = 0
-        total_modulation = 0
-        snr_mae = 0.0  # Initialize as float
-        snr_correct = 0
-        total_snr = 0
-        modulation_losses = []
-        snr_losses = []
+        total_loss = 0.0
+        total_mod_loss = 0.0
+        total_snr_loss = 0.0
+        correct_mod = 0
+        total_samples = 0
+        snr_mae_sum = 0.0
+        snr_acc_count = 0
         
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False)
+        # Create progress bar
+        pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{epochs}')
         
-        for batch_idx, (inputs, modulation_targets, snr_targets) in enumerate(progress_bar):
-            inputs = inputs.to(device)
-            modulation_targets = modulation_targets.to(device)
-            snr_targets = snr_targets.to(device)
+        for batch_idx, (data, mod_target, snr_target) in enumerate(pbar):
+            data, mod_target, snr_target = data.to(device), mod_target.to(device), snr_target.to(device)
+            
+            # Convert SNR target indices to actual SNR values
+            snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_target], 
+                                     device=device, dtype=torch.float32)
             
             optimizer.zero_grad()
             
-            with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
-                modulation_output, snr_output = model(inputs)
-                
-                # Calculate individual losses
-                loss_modulation = criterion_modulation(modulation_output, modulation_targets)
-                loss_snr = criterion_snr(snr_output, snr_targets)
-                
-                # Combine losses using dynamic loss balancing
-                batch_loss = criterion_dynamic([loss_modulation, loss_snr])
-                total_loss += batch_loss.item()  # Accumulate loss
-                
-                # Track individual losses
-                modulation_losses.append(loss_modulation.item())
-                snr_losses.append(loss_snr.item())
-
-            scaler.scale(batch_loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            # Forward pass
+            mod_output, snr_output = model(data)
+            
+            # Calculate individual losses
+            mod_loss = criterion_modulation(mod_output, mod_target)
+            snr_loss = criterion_snr(snr_output, snr_values)
+            
+            # Combine losses using dynamic balancing
+            loss, weights = criterion_dynamic([mod_loss, snr_loss])
+            mod_weight, snr_weight = weights
+            
+            loss.backward()
+            optimizer.step()
+            
+            # Update metrics
+            total_loss += loss.item()
+            total_mod_loss += mod_loss.item()
+            total_snr_loss += snr_loss.item()
             
             # Calculate modulation accuracy
-            _, predicted_modulation = torch.max(modulation_output.data, 1)
-            total_modulation += modulation_targets.size(0)
-            correct_modulation += (predicted_modulation == modulation_targets).sum().item()
+            pred_mod = mod_output.argmax(dim=1)
+            correct_mod += (pred_mod == mod_target).sum().item()
+            total_samples += mod_target.size(0)
             
             # Calculate SNR metrics
-            snr_probs = F.softmax(snr_output, dim=1)
-            snr_values = torch.tensor(list(dataset.snr_labels.keys()), device=device)
-            predicted_snr = torch.sum(snr_probs * snr_values, dim=1)
-            true_snr = snr_values[snr_targets]
+            pred_snr = criterion_snr.scale_to_snr(snr_output)
+            snr_mae_sum += torch.abs(pred_snr - snr_values.unsqueeze(1)).sum().item()
+            snr_acc_count += torch.abs(pred_snr - snr_values.unsqueeze(1)).le(2.0).sum().item()
             
-            # SNR MAE
-            snr_mae += torch.abs(predicted_snr - true_snr).sum().item()
-            
-            # SNR accuracy (within ±2 dB)
-            snr_correct += (torch.abs(predicted_snr - true_snr) <= 2).sum().item()
-            total_snr += snr_targets.size(0)
-
-            # Get current weights for display
-            weights = criterion_dynamic.get_weights()
-            
-            # Calculate average loss so far
+            # Update progress bar
             avg_loss = total_loss / (batch_idx + 1)
+            avg_mod_loss = total_mod_loss / (batch_idx + 1)
+            avg_snr_loss = total_snr_loss / (batch_idx + 1)
+            mod_acc = 100. * correct_mod / total_samples
+            snr_mae = snr_mae_sum / total_samples
+            snr_acc = 100. * snr_acc_count / total_samples
             
-            # Update progress bar with current metrics
-            progress_bar.set_postfix({
-                'Loss': f"{avg_loss:.3f}",
-                'Mod Loss': f"{loss_modulation.item():.3f}",
-                'SNR Loss': f"{loss_snr.item():.3f}",
-                'Mod Acc': f"{100.0 * correct_modulation / total_modulation:.2f}%",
-                'SNR MAE': f"{snr_mae / total_snr:.2f} dB",
-                'SNR Acc': f"{100.0 * snr_correct / total_snr:.2f}%",
-                'Mod W': f"{weights[0]:.2f}",
-                'SNR W': f"{weights[1]:.2f}"
+            pbar.set_postfix({
+                'Loss': f'{avg_loss:.3f}',
+                'Mod Loss': f'{avg_mod_loss:.3f}',
+                'SNR Loss': f'{avg_snr_loss:.3f}',
+                'Mod Acc': f'{mod_acc:.2f}%',
+                'SNR MAE': f'{snr_mae:.2f} dB',
+                'SNR Acc': f'{snr_acc:.2f}%',
+                'Mod W': f'{mod_weight:.2f}',
+                'SNR W': f'{snr_weight:.2f}'
             })
-            progress_bar.update(1)
         
         # Calculate average metrics for the epoch
         avg_loss = total_loss / len(train_loader)
-        modulation_accuracy = 100 * correct_modulation / total_modulation
-        snr_mae = snr_mae / total_snr
-        snr_accuracy = 100 * snr_correct / total_snr
-        avg_modulation_loss = sum(modulation_losses) / len(modulation_losses)
-        avg_snr_loss = sum(snr_losses) / len(snr_losses)
+        modulation_accuracy = 100 * correct_mod / total_samples
+        snr_mae = snr_mae_sum / total_samples
+        snr_accuracy = 100 * snr_acc_count / total_samples
+        avg_modulation_loss = total_mod_loss / len(train_loader)
+        avg_snr_loss = total_snr_loss / len(train_loader)
         
         # Validation
         model.eval()
@@ -184,14 +182,18 @@ def train(
                 modulation_targets = modulation_targets.to(device)
                 snr_targets = snr_targets.to(device)
                 
+                # Convert SNR target indices to actual SNR values
+                snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets], 
+                                         device=device, dtype=torch.float32)
+                
                 modulation_output, snr_output = model(inputs)
                 
                 # Calculate individual losses
                 loss_modulation = criterion_modulation(modulation_output, modulation_targets)
-                loss_snr = criterion_snr(snr_output, snr_targets)
+                loss_snr = criterion_snr(snr_output, snr_values)
                 
                 # Combine losses using dynamic loss balancing
-                total_val_loss = criterion_dynamic([loss_modulation, loss_snr])
+                total_val_loss, _ = criterion_dynamic([loss_modulation, loss_snr])
                 val_loss += total_val_loss.item()
                 
                 # Track individual losses
@@ -204,16 +206,14 @@ def train(
                 val_correct_modulation += (predicted_modulation == modulation_targets).sum().item()
                 
                 # Calculate SNR metrics
-                snr_probs = F.softmax(snr_output, dim=1)
-                snr_values = torch.tensor(list(dataset.snr_labels.keys()), device=device)
-                predicted_snr = torch.sum(snr_probs * snr_values, dim=1)
-                true_snr = snr_values[snr_targets]
+                # Convert bounded [0,1] predictions to SNR range [-20, 30]
+                predicted_snr = criterion_snr.scale_to_snr(snr_output)
                 
                 # SNR MAE
-                val_snr_mae += torch.abs(predicted_snr - true_snr).sum().item()
+                val_snr_mae += torch.abs(predicted_snr - snr_values.unsqueeze(1)).sum().item()
                 
                 # SNR accuracy (within ±2 dB)
-                val_snr_correct += (torch.abs(predicted_snr - true_snr) <= 2).sum().item()
+                val_snr_correct += torch.abs(predicted_snr - snr_values.unsqueeze(1)).le(2.0).sum().item()
                 val_total_snr += snr_targets.size(0)
         
         # Calculate average validation metrics
@@ -230,7 +230,7 @@ def train(
         print(f"Validation - Loss: {val_loss:.4f}, Mod Acc: {val_modulation_accuracy:.2f}%, SNR MAE: {val_snr_mae:.2f} dB, SNR Acc: {val_snr_accuracy:.2f}%")
         print(f"Training Losses - Mod: {avg_modulation_loss:.4f}, SNR: {avg_snr_loss:.4f}")
         print(f"Validation Losses - Mod: {val_avg_modulation_loss:.4f}, SNR: {val_avg_snr_loss:.4f}")
-        print(f"Task Weights - Modulation: {weights[0]:.4f}, SNR: {weights[1]:.4f}")
+        print(f"Task Weights - Modulation: {mod_weight:.4f}, SNR: {snr_weight:.4f}\n")
         
         # Log metrics to wandb
         wandb.log({
@@ -268,6 +268,10 @@ def train(
                 modulation_targets = modulation_targets.to(device)
                 snr_targets = snr_targets.to(device)
                 
+                # Convert SNR target indices to actual SNR values
+                snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets], 
+                                         device=device, dtype=torch.float32)
+                
                 modulation_output, snr_output = model(inputs)
                 
                 # Get predicted modulation
@@ -276,11 +280,10 @@ def train(
                 all_true_modulation.extend(modulation_targets.cpu().numpy())
                 
                 # Get predicted SNR
-                snr_probs = F.softmax(snr_output, dim=1)
-                snr_values = torch.tensor(list(dataset.snr_labels.keys()), device=device)
-                predicted_snr = torch.sum(snr_probs * snr_values, dim=1)
+                # Convert bounded [0,1] predictions to SNR range [-20, 30]
+                predicted_snr = criterion_snr.scale_to_snr(snr_output)
                 all_pred_snr.extend(predicted_snr.cpu().numpy())
-                all_true_snr.extend(snr_values[snr_targets].cpu().numpy())
+                all_true_snr.extend(snr_values.cpu().numpy())
         
         # Plot and save modulation confusion matrix
         plt.figure(figsize=(10, 8))
@@ -294,18 +297,30 @@ def train(
         
         # Plot and save SNR confusion matrix
         plt.figure(figsize=(10, 8))
-        # Convert SNR values to class indices for confusion matrix
-        snr_values = torch.tensor(list(dataset.snr_labels.keys()), device=device)
-        # Ensure all tensors are on the same device
-        true_snr_tensor = torch.tensor(all_true_snr, device=device)
-        pred_snr_tensor = torch.tensor(all_pred_snr, device=device)
-        snr_class_indices = torch.searchsorted(snr_values, true_snr_tensor).cpu().numpy()
-        pred_snr_class_indices = torch.searchsorted(snr_values, pred_snr_tensor).cpu().numpy()
-        cm_snr = confusion_matrix(snr_class_indices, pred_snr_class_indices)
-        sns.heatmap(cm_snr, annot=True, fmt='d', cmap='Blues')
+        
+        # Round SNR values for better visualization
+        true_snr_rounded = np.round(np.array(all_true_snr))
+        pred_snr_rounded = np.round(np.array(all_pred_snr))
+        
+        # Create unique sorted SNR values
+        unique_snrs = np.sort(np.unique(np.concatenate([true_snr_rounded, pred_snr_rounded])))
+        
+        # Create a mapping from SNR values to indices
+        snr_to_idx = {snr: i for i, snr in enumerate(unique_snrs)}
+        
+        # Map SNR values to indices
+        true_snr_indices = np.array([snr_to_idx[snr] for snr in true_snr_rounded])
+        pred_snr_indices = np.array([snr_to_idx[snr] for snr in pred_snr_rounded])
+        
+        # Create confusion matrix
+        cm_snr = confusion_matrix(true_snr_indices, pred_snr_indices)
+        
+        # Plot heatmap
+        sns.heatmap(cm_snr, annot=True, fmt='d', cmap='Blues',
+                    xticklabels=unique_snrs, yticklabels=unique_snrs)
         plt.title(f'SNR Confusion Matrix - Epoch {epoch+1}')
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
+        plt.xlabel('Predicted SNR (dB)')
+        plt.ylabel('True SNR (dB)')
         plt.savefig(os.path.join(results_dir, f'snr_cm_epoch_{epoch+1}.png'))
         plt.close()
         

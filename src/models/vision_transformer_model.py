@@ -16,7 +16,7 @@ class ConstellationVisionTransformer(nn.Module):
 
         Args:
             num_classes (int): Number of modulation classes.
-            snr_classes (int): Number of SNR classes.
+            snr_classes (int): Not used anymore - kept for compatibility.
             input_channels (int): Number of input channels (1 for grayscale).
             dropout_prob (float): Dropout probability.
         """
@@ -51,8 +51,13 @@ class ConstellationVisionTransformer(nn.Module):
         # Modulation classification head
         self.modulation_head = nn.Linear(256, num_classes)
         
-        # SNR classification head
-        self.snr_head = nn.Linear(256, snr_classes)
+        # SNR regression head with bounded output
+        self.snr_head = nn.Sequential(
+            nn.Linear(256, 64),
+            nn.GELU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid()  # Bounds output between 0 and 1
+        )
     
     def forward(self, x):
         """
@@ -63,6 +68,8 @@ class ConstellationVisionTransformer(nn.Module):
             
         Returns:
             tuple: (modulation_output, snr_output)
+            - modulation_output: class logits [batch_size, num_classes]
+            - snr_output: regression values [batch_size, 1] scaled between 0 and 1
         """
         # Get features from the ViT model
         # First, get the patch embedding
@@ -86,12 +93,10 @@ class ConstellationVisionTransformer(nn.Module):
         shared_features = self.shared_layer(features)  # Shape: [batch_size, 256]
         
         # Classification heads
-        modulation_logits = self.modulation_head(shared_features)  # Shape: [batch_size, num_classes]
-        snr_logits = self.snr_head(shared_features)  # Shape: [batch_size, snr_classes]
+        modulation_output = self.modulation_head(shared_features)  # Shape: [batch_size, num_classes]
         
-        # Apply softmax to get probabilities
-        modulation_output = torch.nn.functional.softmax(modulation_logits, dim=1)
-        snr_output = torch.nn.functional.softmax(snr_logits, dim=1)
+        # SNR regression (bounded between 0 and 1)
+        snr_output = self.snr_head(shared_features)  # Shape: [batch_size, 1]
         
         return modulation_output, snr_output
     
