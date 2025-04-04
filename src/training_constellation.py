@@ -143,9 +143,14 @@ def train(
             # Get current weights for display
             weights = criterion_dynamic.get_weights()
             
+            # Calculate average loss so far
+            avg_loss = total_loss / (batch_idx + 1)
+            
             # Update progress bar with current metrics
             progress_bar.set_postfix({
-                'Loss': f"{total_loss:.3f}",
+                'Loss': f"{avg_loss:.3f}",
+                'Mod Loss': f"{loss_modulation.item():.3f}",
+                'SNR Loss': f"{loss_snr.item():.3f}",
                 'Mod Acc': f"{100.0 * correct_modulation / total_modulation:.2f}%",
                 'SNR MAE': f"{snr_mae / total_snr:.2f} dB",
                 'SNR Acc': f"{100.0 * snr_correct / total_snr:.2f}%",
