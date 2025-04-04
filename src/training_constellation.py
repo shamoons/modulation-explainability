@@ -17,6 +17,7 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from validate_constellation import plot_validation_confusion_matrices
 
 
 def train(
@@ -255,7 +256,7 @@ def train(
             best_val_loss = val_loss
             torch.save(model.state_dict(), os.path.join(save_dir, 'best_model.pth'))
         
-        # Save confusion matrices after each epoch
+        # Get validation predictions and plot confusion matrices
         # Get predictions for validation set
         all_pred_modulation = []
         all_true_modulation = []
@@ -285,44 +286,17 @@ def train(
                 all_pred_snr.extend(predicted_snr.cpu().numpy())
                 all_true_snr.extend(snr_values.cpu().numpy())
         
-        # Plot and save modulation confusion matrix
-        plt.figure(figsize=(10, 8))
-        cm_mod = confusion_matrix(all_true_modulation, all_pred_modulation)
-        sns.heatmap(cm_mod, annot=True, fmt='d', cmap='Blues')
-        plt.title(f'Modulation Confusion Matrix - Epoch {epoch+1}')
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
-        plt.savefig(os.path.join(results_dir, f'modulation_cm_epoch_{epoch+1}.png'))
-        plt.close()
-        
-        # Plot and save SNR confusion matrix
-        plt.figure(figsize=(10, 8))
-        
-        # Round SNR values for better visualization
-        true_snr_rounded = np.round(np.array(all_true_snr))
-        pred_snr_rounded = np.round(np.array(all_pred_snr).squeeze())  # Add squeeze to make it 1D
-        
-        # Create unique sorted SNR values
-        unique_snrs = np.sort(np.unique(np.concatenate([true_snr_rounded, pred_snr_rounded])))
-        
-        # Create a mapping from SNR values to indices
-        snr_to_idx = {snr: i for i, snr in enumerate(unique_snrs)}
-        
-        # Map SNR values to indices
-        true_snr_indices = np.array([snr_to_idx[snr] for snr in true_snr_rounded])
-        pred_snr_indices = np.array([snr_to_idx[snr] for snr in pred_snr_rounded])
-        
-        # Create confusion matrix
-        cm_snr = confusion_matrix(true_snr_indices, pred_snr_indices)
-        
-        # Plot heatmap
-        sns.heatmap(cm_snr, annot=True, fmt='d', cmap='Blues',
-                    xticklabels=unique_snrs, yticklabels=unique_snrs)
-        plt.title(f'SNR Confusion Matrix - Epoch {epoch+1}')
-        plt.xlabel('Predicted SNR (dB)')
-        plt.ylabel('True SNR (dB)')
-        plt.savefig(os.path.join(results_dir, f'snr_cm_epoch_{epoch+1}.png'))
-        plt.close()
+        # Plot and save confusion matrices
+        modulation_class_names = list(dataset.modulation_labels.keys())
+        plot_validation_confusion_matrices(
+            all_true_modulation, 
+            all_pred_modulation, 
+            all_true_snr, 
+            all_pred_snr,
+            mod_classes=modulation_class_names, 
+            save_dir=results_dir, 
+            epoch=epoch+1
+        )
         
         # Update learning rate
         scheduler.step()

@@ -86,3 +86,121 @@ def validate(model, device, criterion_modulation, criterion_snr, criterion_dynam
         all_true_snr_labels,
         all_pred_snr_labels
     )
+
+def plot_validation_confusion_matrices(true_mod_labels, pred_mod_labels, true_snr_values, pred_snr_values, 
+                                      mod_classes=None, save_dir=None, epoch=None):
+    """
+    Plot and optionally save confusion matrices for modulation classification and SNR prediction.
+    
+    Args:
+        true_mod_labels: True modulation class indices
+        pred_mod_labels: Predicted modulation class indices
+        true_snr_values: True SNR values in dB
+        pred_snr_values: Predicted SNR values in dB
+        mod_classes: List of modulation class names (optional)
+        save_dir: Directory to save plots (if None, just display)
+        epoch: Current epoch for naming saved files
+    """
+    # Convert inputs to numpy arrays if they're not already
+    true_mod_labels = np.array(true_mod_labels)
+    pred_mod_labels = np.array(pred_mod_labels)
+    true_snr_values = np.array(true_snr_values)
+    pred_snr_values = np.squeeze(np.array(pred_snr_values))  # Ensure it's 1D
+    
+    # 1. Modulation Confusion Matrix
+    plt.figure(figsize=(10, 8))
+    cm_mod = confusion_matrix(true_mod_labels, pred_mod_labels)
+    
+    # Normalize by row (true labels) for better visualization
+    cm_mod_norm = cm_mod.astype('float') / cm_mod.sum(axis=1)[:, np.newaxis]
+    cm_mod_norm = np.nan_to_num(cm_mod_norm)  # Replace NaNs with zeros
+    
+    # Plot with class names if provided, otherwise use indices
+    if mod_classes:
+        sns.heatmap(cm_mod_norm, annot=True, fmt='.2f', cmap='Blues',
+                   xticklabels=mod_classes, yticklabels=mod_classes)
+    else:
+        sns.heatmap(cm_mod_norm, annot=True, fmt='.2f', cmap='Blues')
+    
+    plt.title('Modulation Classification Confusion Matrix')
+    plt.xlabel('Predicted Class')
+    plt.ylabel('True Class')
+    plt.tight_layout()
+    
+    # Save if directory is provided
+    if save_dir and epoch is not None:
+        plt.savefig(f"{save_dir}/modulation_cm_epoch_{epoch}.png")
+        plt.close()
+    else:
+        plt.show()
+    
+    # 2. SNR Confusion Matrix
+    
+    # Round SNR values to nearest dB for binning
+    true_snr_rounded = np.round(true_snr_values)
+    pred_snr_rounded = np.round(pred_snr_values)
+    
+    # Get unique sorted SNR values (using set union)
+    all_snr_values = np.sort(np.unique(np.concatenate([true_snr_rounded, pred_snr_rounded])))
+    
+    # Create mapping from SNR values to indices
+    snr_to_idx = {snr: i for i, snr in enumerate(all_snr_values)}
+    
+    # Map to indices for confusion matrix
+    true_snr_idx = np.array([snr_to_idx[snr] for snr in true_snr_rounded])
+    pred_snr_idx = np.array([snr_to_idx[snr] for snr in pred_snr_rounded])
+    
+    # Generate confusion matrix
+    plt.figure(figsize=(12, 10))
+    cm_snr = confusion_matrix(true_snr_idx, pred_snr_idx)
+    
+    # Normalize by row
+    with np.errstate(divide='ignore', invalid='ignore'):
+        cm_snr_norm = cm_snr.astype('float') / cm_snr.sum(axis=1)[:, np.newaxis]
+        cm_snr_norm = np.nan_to_num(cm_snr_norm)  # Replace NaNs with zeros
+    
+    # Plot
+    sns.heatmap(cm_snr_norm, annot=False, cmap='Blues',
+               xticklabels=all_snr_values, yticklabels=all_snr_values)
+    
+    plt.title('SNR Prediction Confusion Matrix')
+    plt.xlabel('Predicted SNR (dB)')
+    plt.ylabel('True SNR (dB)')
+    plt.tight_layout()
+    
+    # Save if directory is provided
+    if save_dir and epoch is not None:
+        plt.savefig(f"{save_dir}/snr_cm_epoch_{epoch}.png")
+        plt.close()
+    else:
+        plt.show()
+        
+    # 3. Distribution of SNR prediction errors
+    plt.figure(figsize=(10, 6))
+    
+    # Calculate errors
+    errors = pred_snr_values - true_snr_values
+    
+    # Plot histogram of errors
+    plt.hist(errors, bins=30, alpha=0.7, color='blue')
+    plt.axvline(x=0, color='r', linestyle='--')
+    
+    # Add vertical lines at +/- 2dB
+    plt.axvline(x=2, color='g', linestyle='--')
+    plt.axvline(x=-2, color='g', linestyle='--')
+    
+    # Calculate percentage of predictions within +/- 2dB
+    within_2db = np.sum(np.abs(errors) <= 2.0) / len(errors) * 100
+    
+    plt.title(f'SNR Prediction Error Distribution - {within_2db:.2f}% within ±2dB')
+    plt.xlabel('Prediction Error (dB)')
+    plt.ylabel('Count')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    # Save if directory is provided
+    if save_dir and epoch is not None:
+        plt.savefig(f"{save_dir}/snr_error_dist_epoch_{epoch}.png")
+        plt.close()
+    else:
+        plt.show()
