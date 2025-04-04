@@ -300,7 +300,7 @@ def train(
         
         # Round SNR values for better visualization
         true_snr_rounded = np.round(np.array(all_true_snr))
-        pred_snr_rounded = np.round(np.array(all_pred_snr))
+        pred_snr_rounded = np.round(np.array(all_pred_snr).squeeze())  # Add squeeze to make it 1D
         
         # Create unique sorted SNR values
         unique_snrs = np.sort(np.unique(np.concatenate([true_snr_rounded, pred_snr_rounded])))
