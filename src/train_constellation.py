@@ -139,8 +139,7 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         mod_list=mods_to_process,
         snr_list=snr_list,
         base_lr=base_lr,
-        weight_decay=weight_decay,
-        patience=patience
+        weight_decay=weight_decay
     )
 
 

@@ -46,33 +46,47 @@ class ConstellationVisionTransformer(nn.Module):
         self.modulation_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
         self.snr_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
         
-        # Transformer encoder with fewer layers
+        # Shared transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=self.embed_dim,
-            nhead=8,  # Reduced from 12
-            dim_feedforward=1536,  # Reduced from 3072
+            nhead=8,
+            dim_feedforward=1536,
             dropout=dropout_prob,
             activation='gelu',
             batch_first=True
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)  # Reduced from 12
+        self.shared_transformer = nn.TransformerEncoder(encoder_layer, num_layers=3)
+        
+        # Task-specific transformers
+        self.modulation_transformer = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.snr_transformer = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        
+        # Cross-task attention
+        self.cross_attention = nn.MultiheadAttention(
+            embed_dim=self.embed_dim,
+            num_heads=8,
+            dropout=dropout_prob,
+            batch_first=True
+        )
         
         # Layer normalization
         self.layer_norm = nn.LayerNorm(self.embed_dim)
+        self.modulation_norm = nn.LayerNorm(self.embed_dim)
+        self.snr_norm = nn.LayerNorm(self.embed_dim)
         
         # Dropout
         self.dropout = nn.Dropout(p=dropout_prob)
         
         # Classification heads with smaller hidden dimension
         self.modulation_head = nn.Sequential(
-            nn.Linear(self.embed_dim, 256),  # Reduced from 512
+            nn.Linear(self.embed_dim, 256),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
             nn.Linear(256, num_classes)
         )
         
         self.snr_head = nn.Sequential(
-            nn.Linear(self.embed_dim, 256),  # Reduced from 512
+            nn.Linear(self.embed_dim, 256),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
             nn.Linear(256, snr_classes)
@@ -105,8 +119,8 @@ class ConstellationVisionTransformer(nn.Module):
         batch_size = x.shape[0]
         
         # Patch embedding
-        x = self.patch_embedding(x)  # (batch_size, embed_dim, num_patches_h, num_patches_w)
-        x = x.flatten(2).transpose(1, 2)  # (batch_size, num_patches, embed_dim)
+        x = self.patch_embedding(x)
+        x = x.flatten(2).transpose(1, 2)
         
         # Add task tokens
         modulation_tokens = self.modulation_token.expand(batch_size, -1, -1)
@@ -116,17 +130,40 @@ class ConstellationVisionTransformer(nn.Module):
         # Add position embeddings
         x = x + self.position_embeddings
         
-        # Apply transformer
+        # Shared feature extraction
         x = self.layer_norm(x)
         x = self.dropout(x)
-        x = self.transformer(x)
+        x = self.shared_transformer(x)
         
-        # Extract task-specific tokens
-        modulation_token = x[:, 0]  # First token for modulation
-        snr_token = x[:, 1]  # Second token for SNR
+        # Split into task-specific tokens and features
+        modulation_token = x[:, 0:1]
+        snr_token = x[:, 1:2]
+        features = x[:, 2:]
+        
+        # Task-specific processing
+        modulation_features = torch.cat([modulation_token, features], dim=1)
+        snr_features = torch.cat([snr_token, features], dim=1)
+        
+        modulation_features = self.modulation_norm(modulation_features)
+        snr_features = self.snr_norm(snr_features)
+        
+        modulation_features = self.modulation_transformer(modulation_features)
+        snr_features = self.snr_transformer(snr_features)
+        
+        # Cross-task attention
+        modulation_attended, _ = self.cross_attention(
+            modulation_features[:, 0:1],
+            snr_features,
+            snr_features
+        )
+        snr_attended, _ = self.cross_attention(
+            snr_features[:, 0:1],
+            modulation_features,
+            modulation_features
+        )
         
         # Classification heads
-        modulation_output = self.modulation_head(modulation_token)
-        snr_output = self.snr_head(snr_token)
+        modulation_output = self.modulation_head(modulation_attended.squeeze(1))
+        snr_output = self.snr_head(snr_attended.squeeze(1))
         
         return modulation_output, snr_output
