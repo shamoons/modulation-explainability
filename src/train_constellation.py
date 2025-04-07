@@ -85,9 +85,7 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     elif model_type.lower() == "transformer":
         print("Using Vision Transformer model...")
         model = ConstellationVisionTransformer(
-            num_classes=num_modulation_classes,
-            snr_classes=num_snr_classes,
-            input_channels=input_channels
+            num_classes=num_modulation_classes
         )
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose 'resnet' or 'transformer'.")

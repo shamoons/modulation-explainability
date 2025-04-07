@@ -36,7 +36,8 @@ def train(
     mod_list=None,
     snr_list=None,
     base_lr=None,
-    weight_decay=None
+    weight_decay=None,
+    checkpoint=None
 ):
     """
     Train the model with dynamic weighted loss.
@@ -45,10 +46,17 @@ def train(
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     
-    # Create results directory for confusion matrices
-    results_dir = os.path.join(save_dir, "results")
+    # Create results directory for confusion matrices (at the same level as checkpoints)
+    results_dir = "results"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
+        print(f"Created results directory at {results_dir}")
+    
+    # Create confusion matrices directory
+    confusion_matrices_dir = os.path.join(results_dir, "confusion_matrices")
+    if not os.path.exists(confusion_matrices_dir):
+        os.makedirs(confusion_matrices_dir)
+        print(f"Created confusion matrices directory at {confusion_matrices_dir}")
     
     # Initialize GradScaler for mixed precision training
     scaler = GradScaler('cuda' if torch.cuda.is_available() else 'cpu')
@@ -85,9 +93,16 @@ def train(
     # Get the SNR mapping from dataset
     snr_index_to_value = {idx: snr for snr, idx in dataset.snr_labels.items()}
     
-    # Training loop
-    best_val_loss = float('inf')
+    # If checkpoint is provided, load the existing model state
+    if checkpoint is not None and os.path.isfile(checkpoint):
+        print(f"Loading checkpoint from {checkpoint}")
+        model.load_state_dict(torch.load(checkpoint))
+    else:
+        print("No checkpoint provided or checkpoint file not found, starting training from scratch.")
+        # Initialize best_val_loss to infinity for first training run
+        best_val_loss = float('inf')
     
+    # Training loop
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
@@ -137,7 +152,11 @@ def train(
             # Calculate SNR metrics
             pred_snr = criterion_snr.scale_to_snr(snr_output)
             snr_mae_sum += torch.abs(pred_snr - snr_values.unsqueeze(1)).sum().item()
-            snr_acc_count += torch.abs(pred_snr - snr_values.unsqueeze(1)).le(2.0).sum().item()
+            
+            # Round predictions and true values to nearest 2 dB
+            rounded_pred = torch.round(pred_snr / 2.0) * 2.0
+            rounded_true = torch.round(snr_values.unsqueeze(1) / 2.0) * 2.0
+            snr_acc_count += (rounded_pred == rounded_true).sum().item()
             
             # Update progress bar
             avg_loss = total_loss / (batch_idx + 1)
@@ -213,8 +232,10 @@ def train(
                 # SNR MAE
                 val_snr_mae += torch.abs(predicted_snr - snr_values.unsqueeze(1)).sum().item()
                 
-                # SNR accuracy (within ±2 dB)
-                val_snr_correct += torch.abs(predicted_snr - snr_values.unsqueeze(1)).le(2.0).sum().item()
+                # Round predictions and true values to nearest 2 dB for accuracy
+                rounded_pred = torch.round(predicted_snr / 2.0) * 2.0
+                rounded_true = torch.round(snr_values.unsqueeze(1) / 2.0) * 2.0
+                val_snr_correct += (rounded_pred == rounded_true).sum().item()
                 val_total_snr += snr_targets.size(0)
         
         # Calculate average validation metrics
@@ -233,6 +254,7 @@ def train(
         print(f"Validation Losses - Mod: {val_avg_modulation_loss:.4f}, SNR: {val_avg_snr_loss:.4f}")
         print(f"Task Weights - Modulation: {mod_weight:.4f}, SNR: {snr_weight:.4f}\n")
         
+        print("Logging metrics to wandb...")
         # Log metrics to wandb
         wandb.log({
             "epoch": epoch + 1,
@@ -251,14 +273,19 @@ def train(
             "learning_rate": optimizer.param_groups[0]['lr']
         })
         
+        print("Checking for best model...")
         # Save best model
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), os.path.join(save_dir, 'best_model.pth'))
+            model_path = os.path.join(save_dir, 'best_model.pth')
+            torch.save(model.state_dict(), model_path)
+            print(f"Saved new best model to {model_path}")
         
+        print("Updating learning rate scheduler...")
         # Update learning rate scheduler with validation loss
         scheduler.step(val_loss)
         
+        print("Gathering validation predictions for plotting...")
         # Get validation predictions and plot confusion matrices
         # Get predictions for validation set
         all_pred_modulation = []
@@ -289,6 +316,7 @@ def train(
                 all_pred_snr.extend(predicted_snr.cpu().numpy())
                 all_true_snr.extend(snr_values.cpu().numpy())
         
+        print("Plotting confusion matrices...")
         # Plot and save confusion matrices
         modulation_class_names = list(dataset.modulation_labels.keys())
         plot_validation_confusion_matrices(
@@ -297,9 +325,10 @@ def train(
             all_true_snr, 
             all_pred_snr,
             mod_classes=modulation_class_names, 
-            save_dir=results_dir, 
+            save_dir=confusion_matrices_dir,  # Use the confusion_matrices subdirectory
             epoch=epoch+1
         )
+        print(f"Saved confusion matrices to {confusion_matrices_dir}")
     
     # Close wandb
     wandb.finish()
