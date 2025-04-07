@@ -27,7 +27,8 @@ class ConstellationVisionTransformer(nn.Module):
         self.PATCH_SIZE = vit_b_16().patch_size  # Get actual patch size from model
         self.SHARED_FEATURE_DIM = 256  # Dimension of shared feature layer
         self.SNR_HIDDEN_DIM = 64  # Hidden dimension for SNR head
-        self.NUM_ATTENTION_HEADS = 8  # Number of attention heads
+        self.NUM_ATTENTION_HEADS_MOD = 8  # Number of attention heads for modulation
+        self.NUM_ATTENTION_HEADS_SNR = 12  # Number of attention heads for SNR
         
         # Load pre-trained ViT model
         self.vit = vit_b_16(weights=ViT_B_16_Weights.DEFAULT)
@@ -50,14 +51,14 @@ class ConstellationVisionTransformer(nn.Module):
         # Task-specific attention layers
         self.mod_attention = nn.MultiheadAttention(
             embed_dim=hidden_size,
-            num_heads=self.NUM_ATTENTION_HEADS,
+            num_heads=self.NUM_ATTENTION_HEADS_MOD,
             dropout=dropout_prob,
             batch_first=True
         )
         
         self.snr_attention = nn.MultiheadAttention(
             embed_dim=hidden_size,
-            num_heads=self.NUM_ATTENTION_HEADS,
+            num_heads=self.NUM_ATTENTION_HEADS_SNR,
             dropout=dropout_prob,
             batch_first=True
         )
