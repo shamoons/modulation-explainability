@@ -256,6 +256,9 @@ def train(
             best_val_loss = val_loss
             torch.save(model.state_dict(), os.path.join(save_dir, 'best_model.pth'))
         
+        # Update learning rate scheduler with validation loss
+        scheduler.step(val_loss)
+        
         # Get validation predictions and plot confusion matrices
         # Get predictions for validation set
         all_pred_modulation = []
@@ -297,9 +300,6 @@ def train(
             save_dir=results_dir, 
             epoch=epoch+1
         )
-        
-        # Update learning rate
-        scheduler.step()
     
     # Close wandb
     wandb.finish()

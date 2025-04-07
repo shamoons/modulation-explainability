@@ -173,10 +173,10 @@ class KendallUncertaintyWeighting(nn.Module):
         # Calculate precision (1/variance) terms
         precisions = torch.exp(-self.log_vars)
         
-        # Calculate weighted losses using precision and add regularization term
+        # Calculate weighted losses using precision and add absolute regularization term
         weighted_losses = []
         for i, loss in enumerate(losses):
-            weighted_losses.append(precisions[i] * loss + 0.5 * self.log_vars[i])
+            weighted_losses.append(precisions[i] * loss + 0.5 * torch.abs(self.log_vars[i]))
         
         # Sum all weighted losses
         total_loss = sum(weighted_losses)

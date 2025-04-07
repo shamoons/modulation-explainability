@@ -115,12 +115,14 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         {'params': criterion_dynamic.parameters(), 'lr': 1e-3}  # Higher LR for loss weights
     ], lr=base_lr, weight_decay=weight_decay)
 
-    # Initialize learning rate scheduler
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    # Initialize learning rate scheduler with ReduceLROnPlateau
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
-        T_0=10,  # Number of epochs for first restart
-        T_mult=2,  # Factor to increase T_0 after each restart
-        eta_min=base_lr/10  # Minimum learning rate
+        mode='min',  # Reduce LR when val_loss stops decreasing
+        factor=0.5,  # Multiply LR by this factor on plateau
+        patience=patience,  # Number of epochs to wait before reducing LR
+        verbose=True,  # Print message when LR is reduced
+        min_lr=1e-6  # Don't reduce LR below this value
     )
 
     # Train and validate the model

@@ -40,6 +40,21 @@ class ConstellationVisionTransformer(nn.Module):
         # Get the hidden size from the ViT model
         hidden_size = self.vit.hidden_dim
         
+        # Task-specific attention layers
+        self.mod_attention = nn.MultiheadAttention(
+            embed_dim=hidden_size,
+            num_heads=8,
+            dropout=dropout_prob,
+            batch_first=True
+        )
+        
+        self.snr_attention = nn.MultiheadAttention(
+            embed_dim=hidden_size,
+            num_heads=8,
+            dropout=dropout_prob,
+            batch_first=True
+        )
+        
         # Shared layer after the transformer
         self.shared_layer = nn.Sequential(
             nn.LayerNorm(hidden_size),
@@ -73,30 +88,39 @@ class ConstellationVisionTransformer(nn.Module):
         """
         # Get features from the ViT model
         # First, get the patch embedding
-        x = self.vit.conv_proj(x)
-        x = x.flatten(2).transpose(1, 2)
+        x = self.vit.conv_proj(x)  # Shape: [batch_size, 768, h/16, w/16]
+        x = x.flatten(2).transpose(1, 2)  # Shape: [batch_size, num_patches, 768]
         
         # Add the cls token
-        cls_token = self.vit.class_token.expand(x.shape[0], -1, -1)
-        x = torch.cat([cls_token, x], dim=1)
+        cls_token = self.vit.class_token.expand(x.shape[0], -1, -1)  # Shape: [batch_size, 1, 768]
+        x = torch.cat([cls_token, x], dim=1)  # Shape: [batch_size, num_patches + 1, 768]
         
         # Add position embeddings
-        x = x + self.vit.encoder.pos_embedding
+        x = x + self.vit.encoder.pos_embedding  # Shape: [batch_size, num_patches + 1, 768]
         
         # Apply transformer encoder
-        x = self.vit.encoder.layers(x)
+        features = self.vit.encoder.layers(x)  # Shape: [batch_size, num_patches + 1, 768]
         
-        # Get the cls token output (first token)
-        features = x[:, 0]  # Shape: [batch_size, hidden_size]
+        # Apply task-specific attention
+        mod_features, _ = self.mod_attention(
+            features, features, features
+        )  # Shape: [batch_size, num_patches + 1, 768]
         
-        # Apply shared layer
-        shared_features = self.shared_layer(features)  # Shape: [batch_size, 256]
+        snr_features, _ = self.snr_attention(
+            features, features, features
+        )  # Shape: [batch_size, num_patches + 1, 768]
+        
+        # Get cls token outputs (first token)
+        mod_features = mod_features[:, 0]  # Shape: [batch_size, 768]
+        snr_features = snr_features[:, 0]  # Shape: [batch_size, 768]
+        
+        # Apply shared layer to both features
+        mod_shared = self.shared_layer(mod_features)  # Shape: [batch_size, 256]
+        snr_shared = self.shared_layer(snr_features)  # Shape: [batch_size, 256]
         
         # Classification heads
-        modulation_output = self.modulation_head(shared_features)  # Shape: [batch_size, num_classes]
-        
-        # SNR regression (bounded between 0 and 1)
-        snr_output = self.snr_head(shared_features)  # Shape: [batch_size, 1]
+        modulation_output = self.modulation_head(mod_shared)  # Shape: [batch_size, num_classes]
+        snr_output = self.snr_head(snr_shared)  # Shape: [batch_size, 1]
         
         return modulation_output, snr_output
     
