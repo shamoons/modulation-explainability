@@ -109,12 +109,18 @@ class ConstellationVisionTransformer(nn.Module):
         features = self.vit.encoder.layers(x)  # Shape: [batch_size, num_patches + 1, VIT_HIDDEN_DIM]
         
         # Apply task-specific attention
+        # In multi-head attention, we pass the same features as query, key, and value
+        # This allows the model to attend to different parts of the same sequence
         mod_features, _ = self.mod_attention(
-            features, features, features
+            query=features,  # What we're looking for
+            key=features,    # Where to look for it
+            value=features   # What information to extract
         )
         
         snr_features, _ = self.snr_attention(
-            features, features, features
+            query=features,  # What we're looking for
+            key=features,    # Where to look for it
+            value=features   # What information to extract
         )  # Shape: [batch_size, num_patches + 1, VIT_HIDDEN_DIM]
         
         # Get cls token outputs (first token)
