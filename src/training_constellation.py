@@ -286,15 +286,21 @@ def train(
         scheduler.step(val_loss)
         
         print("Gathering validation predictions for plotting...")
-        # Get validation predictions and plot confusion matrices
-        # Get predictions for validation set
-        all_pred_modulation = []
-        all_true_modulation = []
-        all_pred_snr = []
-        all_true_snr = []
+        # Pre-allocate tensors for predictions
+        val_size = len(val_dataset)
+        all_pred_modulation = torch.empty(val_size, dtype=torch.long, device='cpu')
+        all_true_modulation = torch.empty(val_size, dtype=torch.long, device='cpu')
+        all_pred_snr = torch.empty(val_size, dtype=torch.float32, device='cpu')
+        all_true_snr = torch.empty(val_size, dtype=torch.float32, device='cpu')
+        
+        # Track position in output tensors
+        current_idx = 0
         
         with torch.no_grad():
             for inputs, modulation_targets, snr_targets in val_loader:
+                batch_size = inputs.size(0)
+                
+                # Process batch
                 inputs = inputs.to(device)
                 modulation_targets = modulation_targets.to(device)
                 snr_targets = snr_targets.to(device)
@@ -303,18 +309,29 @@ def train(
                 snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets], 
                                          device=device, dtype=torch.float32)
                 
+                # Get model predictions
                 modulation_output, snr_output = model(inputs)
                 
                 # Get predicted modulation
                 _, predicted_modulation = torch.max(modulation_output.data, 1)
-                all_pred_modulation.extend(predicted_modulation.cpu().numpy())
-                all_true_modulation.extend(modulation_targets.cpu().numpy())
                 
                 # Get predicted SNR
-                # Convert bounded [0,1] predictions to SNR range [-20, 30]
                 predicted_snr = criterion_snr.scale_to_snr(snr_output)
-                all_pred_snr.extend(predicted_snr.cpu().numpy())
-                all_true_snr.extend(snr_values.cpu().numpy())
+                
+                # Store in pre-allocated tensors
+                slice_idx = slice(current_idx, current_idx + batch_size)
+                all_pred_modulation[slice_idx] = predicted_modulation.cpu()
+                all_true_modulation[slice_idx] = modulation_targets.cpu()
+                all_pred_snr[slice_idx] = predicted_snr.cpu().squeeze()  # Remove extra dimension
+                all_true_snr[slice_idx] = snr_values.cpu()
+                
+                current_idx += batch_size
+        
+        # Convert to numpy arrays once at the end
+        all_pred_modulation = all_pred_modulation.numpy()
+        all_true_modulation = all_true_modulation.numpy()
+        all_pred_snr = all_pred_snr.numpy()
+        all_true_snr = all_true_snr.numpy()
         
         print("Plotting confusion matrices...")
         # Plot and save confusion matrices
@@ -325,7 +342,7 @@ def train(
             all_true_snr, 
             all_pred_snr,
             mod_classes=modulation_class_names, 
-            save_dir=confusion_matrices_dir,  # Use the confusion_matrices subdirectory
+            save_dir=confusion_matrices_dir,
             epoch=epoch+1
         )
         print(f"Saved confusion matrices to {confusion_matrices_dir}")
