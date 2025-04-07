@@ -27,7 +27,6 @@ class ConstellationDataset(Dataset):
 
         # Load image paths and labels
         self.image_paths, self.modulation_labels_list, self.snr_labels_list = self._load_image_paths_and_labels()
-
         # Default transform applied to all images
         if self.image_type == 'three_channel':
             self.transform = transforms.Compose([
@@ -36,6 +35,12 @@ class ConstellationDataset(Dataset):
                 transforms.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])
             ])
         elif self.image_type == 'grayscale':
+            self.transform = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.0], std=[1.0])
+            ])
+        elif self.image_type == 'point':
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
@@ -110,6 +115,8 @@ class ConstellationDataset(Dataset):
         if self.image_type == 'three_channel':
             image = Image.open(img_path).convert('RGB')
         elif self.image_type == 'grayscale':
+            image = Image.open(img_path).convert('L')
+        elif self.image_type == 'point':
             image = Image.open(img_path).convert('L')
         else:
             raise ValueError(f"Unsupported image_type '{self.image_type}'.")

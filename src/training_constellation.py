@@ -1,22 +1,11 @@
 # src/training_constellation.py
 
-from sklearn.model_selection import train_test_split
 import torch
 import wandb
-from utils.image_utils import plot_f1_scores, plot_confusion_matrix
-from utils.config_utils import load_loss_config
-from validate_constellation import validate
-from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os
-from torch.amp import autocast, GradScaler  # Import autocast and GradScaler from torch.amp
-from torch.utils.data import random_split
-import torch.nn.functional as F
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
+from torch.amp import GradScaler 
 from validate_constellation import plot_validation_confusion_matrices
 
 

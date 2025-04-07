@@ -44,7 +44,7 @@ def process_modulation_snr_set(modulation_type, snr_value, h5_file_path, batch_s
             batch_samples = X_data[batch_start_idx:batch_start_idx + batch_size]
             process_samples(
                 np.array(batch_samples), modulation_type, snr_value,
-                batch_start_idx, 'constellation', (224, 224), image_types
+                batch_start_idx, 'constellation_points', (224, 224), image_types
             )
 
 

@@ -11,3 +11,5 @@ confusion_matrices/
 f1_scores/
 test/
 perturbed_constellations/
+constellation_points/
+.venv/
