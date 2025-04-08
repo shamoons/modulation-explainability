@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0001, max_lr=0.001, weight_decay=1e-4, test_size=0.2, patience=5, model_type="resnet"):
+def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0001, weight_decay=1e-4, test_size=0.2, patience=5, model_type="resnet"):
     # Load data
     print("Loading data...")
 
@@ -150,8 +150,7 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNRs to process')
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to process')
     parser.add_argument('--epochs', type=int, help='Number of epochs to train', default=100)
-    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0001)
-    parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.001)
+    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.00001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-4)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing', default=5)
@@ -166,7 +165,6 @@ if __name__ == "__main__":
         mods_to_process=args.mods_to_process,
         epochs=args.epochs,
         base_lr=args.base_lr,
-        max_lr=args.max_lr,
         weight_decay=args.weight_decay,
         test_size=args.test_size,
         patience=args.patience,
