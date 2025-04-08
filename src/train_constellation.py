@@ -90,17 +90,16 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose 'resnet' or 'transformer'.")
 
-    # If checkpoint is provided, load the existing model state
-    if checkpoint is not None and os.path.isfile(checkpoint):
-        model.load_state_dict(torch.load(checkpoint))
-    else:
-        print("No checkpoint provided, starting training from scratch.")
-
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
 
     # Move model and loss functions to device
     model = model.to(device)
+
+    # Set CUDA optimizations if available
+    if device.type == 'cuda':
+        torch.backends.cudnn.benchmark = True
+        print("Enabled cuDNN benchmark mode")
 
     # Initialize loss functions and Kendall uncertainty-based loss weighting
     criterion_modulation = nn.CrossEntropyLoss().to(device)
@@ -116,11 +115,11 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     # Initialize learning rate scheduler with ReduceLROnPlateau
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
-        mode='min',  # Reduce LR when val_loss stops decreasing
-        factor=0.5,  # Multiply LR by this factor on plateau
-        patience=patience,  # Number of epochs to wait before reducing LR
-        verbose=True,  # Print message when LR is reduced
-        min_lr=1e-6  # Don't reduce LR below this value
+        mode='min',
+        factor=0.5,
+        patience=patience,
+        verbose=True,
+        min_lr=1e-6
     )
 
     # Train and validate the model
@@ -139,7 +138,8 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         mod_list=mods_to_process,
         snr_list=snr_list,
         base_lr=base_lr,
-        weight_decay=weight_decay
+        weight_decay=weight_decay,
+        checkpoint=checkpoint  # Pass checkpoint to train() but don't load it here
     )
 
 

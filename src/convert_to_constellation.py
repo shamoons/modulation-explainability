@@ -56,14 +56,22 @@ if __name__ == "__main__":
     if args.snr_list is not None:
         snrs_to_process = [int(snr) for snr in args.snr_list.split(',')]
     else:
-        snrs_to_process = [-12, -8, -6, 6, 18, 22]
         snrs_to_process = list(range(-20, 32, 2))  # Default SNR values from -20 dB to +30 dB
 
     # Convert comma-separated modulation list to a list of strings
     if args.mod_list is not None:
         mods_to_process = args.mod_list.split(',')
     else:
-        mods_to_process = ['16APSK', '32APSK', '64APSK', '128APSK', '32QAM', 'AM_SSB_WC', 'AM_SSB_SC', 'AM_DSB_WC', 'AM_DSB_SC', 'FM', 'GMSK', 'OQPSK']
+        # Process all modulation types by scanning the h5_dir
+        mods_to_process = []
+        for item in os.listdir(args.h5_dir):
+            item_path = os.path.join(args.h5_dir, item)
+            if os.path.isdir(item_path):
+                mods_to_process.append(item)
+        
+        if not mods_to_process:
+            # Fallback to default list if no directories found
+            mods_to_process = ['16APSK', '32APSK', '64APSK', '128APSK', '32QAM', 'AM_SSB_WC', 'AM_SSB_SC', 'AM_DSB_WC', 'AM_DSB_SC', 'FM', 'GMSK', 'OQPSK']
 
     # Define image types, including "raw"
     image_types = args.image_types.split(',')

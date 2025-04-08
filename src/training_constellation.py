@@ -7,6 +7,7 @@ from tqdm import tqdm
 import os
 from torch.amp import GradScaler 
 from validate_constellation import plot_validation_confusion_matrices
+from contextlib import nullcontext
 
 
 def train(
@@ -59,12 +60,29 @@ def train(
         generator=torch.Generator().manual_seed(42)  # Add fixed seed for reproducibility
     )
     
-    # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    # Create data loaders with optimized settings
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        num_workers=12,  # Increased for RTX 4090
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=3,  # Increased prefetch
+        drop_last=True  # Slightly faster and more stable training
+    )
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=batch_size*2,  # Doubled for faster validation
+        shuffle=False,
+        num_workers=12,
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=3
+    )
 
     
-    # Initialize wandb
+    # Initialize wandb with resume support
     wandb.init(
         project="constellation-classification",
         config={
@@ -76,23 +94,55 @@ def train(
             "mod_list": mod_list,
             "snr_list": snr_list,
             "test_size": test_size
-        }
+        },
+        resume=True if checkpoint else False
     )
     
     # Get the SNR mapping from dataset
     snr_index_to_value = {idx: snr for snr, idx in dataset.snr_labels.items()}
     
+    # Initialize training state
+    best_val_loss = float('inf')
+    start_epoch = 0
+    
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
-        print(f"Loading checkpoint from {checkpoint}")
-        model.load_state_dict(torch.load(checkpoint))
+        print(f"\nLoading checkpoint from {checkpoint}")
+        checkpoint_data = torch.load(checkpoint, weights_only=True)
+        if isinstance(checkpoint_data, dict) and 'model_state_dict' in checkpoint_data:
+            # Load model state
+            model.load_state_dict(checkpoint_data['model_state_dict'])
+            
+            # Load training state
+            best_val_loss = checkpoint_data.get('best_val_loss', float('inf'))
+            start_epoch = checkpoint_data.get('epoch', 0) + 1  # Start from next epoch
+            print(f"Resuming from epoch {start_epoch} (previous epoch: {start_epoch-1})")
+            print(f"Best validation loss so far: {best_val_loss:.4f}")
+            
+            # Load optimizer and scheduler states
+            if 'optimizer_state_dict' in checkpoint_data:
+                optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
+                print("Loaded optimizer state")
+            if 'scheduler_state_dict' in checkpoint_data:
+                scheduler.load_state_dict(checkpoint_data['scheduler_state_dict'])
+                print("Loaded scheduler state")
+            
+            # Load criterion dynamic state if it exists
+            if 'criterion_dynamic_state' in checkpoint_data:
+                criterion_dynamic.load_state_dict(checkpoint_data['criterion_dynamic_state'])
+                print(f"Loaded dynamic loss weights")
+                weights = criterion_dynamic.get_weights()
+                print(f"Current task weights - Mod: {weights[0]:.4f}, SNR: {weights[1]:.4f}")
+        else:
+            model.load_state_dict(checkpoint_data)
+            print("Loaded model weights only (old format checkpoint)")
+        print("Checkpoint loaded successfully.\n")
     else:
-        print("No checkpoint provided or checkpoint file not found, starting training from scratch.")
-        # Initialize best_val_loss to infinity for first training run
-        best_val_loss = float('inf')
+        print("\nNo checkpoint provided or checkpoint file not found, starting training from scratch.\n")
     
-    # Training loop
-    for epoch in range(epochs):
+    # Training loop - use start_epoch
+    for epoch in range(start_epoch, epochs):
+        print(f"\nStarting Epoch {epoch+1}/{epochs}")
         model.train()
         total_loss = 0.0
         total_mod_loss = 0.0
@@ -114,19 +164,39 @@ def train(
             
             optimizer.zero_grad()
             
-            # Forward pass
-            mod_output, snr_output = model(data)
+            # Use mixed precision training only for CUDA
+            if device.type == 'cuda':
+                with torch.amp.autocast('cuda'):
+                    # Forward pass
+                    mod_output, snr_output = model(data)
+                    
+                    # Calculate individual losses
+                    mod_loss = criterion_modulation(mod_output, mod_target)
+                    snr_loss = criterion_snr(snr_output, snr_values)
+                    
+                    # Combine losses using dynamic balancing
+                    loss, weights = criterion_dynamic([mod_loss, snr_loss])
+                
+                # Scale loss and backpropagate
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                # Forward pass without mixed precision
+                mod_output, snr_output = model(data)
+                
+                # Calculate individual losses
+                mod_loss = criterion_modulation(mod_output, mod_target)
+                snr_loss = criterion_snr(snr_output, snr_values)
+                
+                # Combine losses using dynamic balancing
+                loss, weights = criterion_dynamic([mod_loss, snr_loss])
+                
+                # Normal backward pass
+                loss.backward()
+                optimizer.step()
             
-            # Calculate individual losses
-            mod_loss = criterion_modulation(mod_output, mod_target)
-            snr_loss = criterion_snr(snr_output, snr_values)
-            
-            # Combine losses using dynamic balancing
-            loss, weights = criterion_dynamic([mod_loss, snr_loss])
             mod_weight, snr_weight = weights
-            
-            loss.backward()
-            optimizer.step()
             
             # Update metrics
             total_loss += loss.item()
@@ -153,7 +223,7 @@ def train(
             avg_snr_loss = total_snr_loss / (batch_idx + 1)
             mod_acc = 100. * correct_mod / total_samples
             snr_mae = snr_mae_sum / total_samples
-            snr_acc = 100. * snr_acc_count / total_samples
+            snr_acc = 100 * snr_acc_count / total_samples
             
             pbar.set_postfix({
                 'Loss': f'{avg_loss:.3f}',
@@ -263,59 +333,72 @@ def train(
         })
         
         print("Checking for best model...")
-        # Save best model
+        # Save best model with additional information
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             model_path = os.path.join(save_dir, 'best_model.pth')
-            torch.save(model.state_dict(), model_path)
-            print(f"Saved new best model to {model_path}")
+            checkpoint_data = {
+                'model_state_dict': model.state_dict(),
+                'best_val_loss': best_val_loss,
+                'epoch': epoch,
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'criterion_dynamic_state': criterion_dynamic.state_dict()
+            }
+            torch.save(checkpoint_data, model_path, _use_new_zipfile_serialization=True)
+            print(f"Saved new best model to {model_path} with validation loss: {best_val_loss:.4f}")
         
         print("Updating learning rate scheduler...")
         # Update learning rate scheduler with validation loss
         scheduler.step(val_loss)
         
         print("Gathering validation predictions for plotting...")
-        # Pre-allocate tensors for predictions
+        # Pre-allocate tensors for predictions on CPU to avoid memory issues
         val_size = len(val_dataset)
-        all_pred_modulation = torch.empty(val_size, dtype=torch.long, device='cpu')
-        all_true_modulation = torch.empty(val_size, dtype=torch.long, device='cpu')
-        all_pred_snr = torch.empty(val_size, dtype=torch.float32, device='cpu')
-        all_true_snr = torch.empty(val_size, dtype=torch.float32, device='cpu')
-        
-        # Track position in output tensors
+        all_pred_modulation = torch.empty(val_size, dtype=torch.long)
+        all_true_modulation = torch.empty(val_size, dtype=torch.long)
+        all_pred_snr = torch.empty(val_size, dtype=torch.float32)
+        all_true_snr = torch.empty(val_size, dtype=torch.float32)
+
+        model.eval()
         current_idx = 0
-        
+
+        # Validation prediction gathering with device-specific handling
         with torch.no_grad():
-            for inputs, modulation_targets, snr_targets in val_loader:
-                batch_size = inputs.size(0)
-                
-                # Process batch
-                inputs = inputs.to(device)
-                modulation_targets = modulation_targets.to(device)
-                snr_targets = snr_targets.to(device)
-                
-                # Convert SNR target indices to actual SNR values
-                snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets], 
-                                         device=device, dtype=torch.float32)
-                
-                # Get model predictions
-                modulation_output, snr_output = model(inputs)
-                
-                # Get predicted modulation
-                _, predicted_modulation = torch.max(modulation_output.data, 1)
-                
-                # Get predicted SNR
-                predicted_snr = criterion_snr.scale_to_snr(snr_output)
-                
-                # Store in pre-allocated tensors
-                slice_idx = slice(current_idx, current_idx + batch_size)
-                all_pred_modulation[slice_idx] = predicted_modulation.cpu()
-                all_true_modulation[slice_idx] = modulation_targets.cpu()
-                all_pred_snr[slice_idx] = predicted_snr.cpu().squeeze()  # Remove extra dimension
-                all_true_snr[slice_idx] = snr_values.cpu()
-                
-                current_idx += batch_size
-        
+            if device.type == 'cuda':
+                context = torch.amp.autocast('cuda')
+            else:
+                context = nullcontext()
+            
+            with context:
+                for inputs, modulation_targets, snr_targets in tqdm(val_loader, desc="Processing validation batches"):
+                    batch_size = inputs.size(0)
+                    
+                    # Move to device
+                    inputs = inputs.to(device)
+                    modulation_targets = modulation_targets.to(device)
+                    snr_targets = snr_targets.to(device)
+                    
+                    # Convert SNR target indices to actual SNR values
+                    snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets], 
+                                             device=device, dtype=torch.float32)
+                    
+                    # Get model predictions
+                    modulation_output, snr_output = model(inputs)
+                    
+                    # Get predicted modulation and SNR
+                    predicted_modulation = modulation_output.argmax(dim=1)
+                    predicted_snr = criterion_snr.scale_to_snr(snr_output)
+                    
+                    # Store in pre-allocated tensors (move to CPU in batches)
+                    slice_idx = slice(current_idx, current_idx + batch_size)
+                    all_pred_modulation[slice_idx] = predicted_modulation.cpu()
+                    all_true_modulation[slice_idx] = modulation_targets.cpu()
+                    all_pred_snr[slice_idx] = predicted_snr.cpu().squeeze()
+                    all_true_snr[slice_idx] = snr_values.cpu()
+                    
+                    current_idx += batch_size
+
         # Convert to numpy arrays once at the end
         all_pred_modulation = all_pred_modulation.numpy()
         all_true_modulation = all_true_modulation.numpy()
