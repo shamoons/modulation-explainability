@@ -58,6 +58,53 @@ class WeightedSNRLoss(nn.Module):
         
         return weighted_loss.mean()
 
+    def scale_to_snr(self, predictions):
+        """
+        Convert class predictions to actual SNR values.
+        For backward compatibility with the regression approach.
+        
+        Args:
+            predictions (torch.Tensor): Predictions from model [batch_size, num_classes]
+            
+        Returns:
+            torch.Tensor: Expected SNR values [batch_size, 1]
+        """
+        # Get softmax probabilities
+        probs = F.softmax(predictions, dim=1)
+        
+        # Calculate expected SNR value (weighted average)
+        expected_snr = torch.sum(probs * self.snr_values, dim=1, keepdim=True)
+        
+        return expected_snr
+
+    def get_snr_metrics(self, predictions, targets):
+        """
+        Calculate both classification accuracy and regression metrics (MAE).
+        
+        Args:
+            predictions (torch.Tensor): Predictions from model [batch_size, num_classes]
+            targets (torch.Tensor): True SNR class indices [batch_size]
+            
+        Returns:
+            tuple: (accuracy, mae)
+            - accuracy: Classification accuracy (percentage)
+            - mae: Mean absolute error between expected and true SNR values
+        """
+        # Get the predicted class (argmax)
+        pred_classes = torch.argmax(predictions, dim=1)
+        accuracy = (pred_classes == targets).float().mean().item() * 100
+        
+        # Get the expected SNR value from probabilities
+        expected_snr = self.scale_to_snr(predictions).squeeze()
+        
+        # Get the true SNR values for the targets
+        true_snr_values = self.snr_values[targets]
+        
+        # Calculate MAE
+        mae = torch.abs(expected_snr - true_snr_values).mean().item()
+        
+        return accuracy, mae
+
 class SNRRegressionLoss(nn.Module):
     """
     Loss function for SNR regression with bounded output.
@@ -106,10 +153,10 @@ class DynamicLossBalancing(nn.Module):
     Dynamic loss balancing for multi-task learning.
     Automatically adjusts weights based on loss ratios.
     """
-    def __init__(self, num_tasks=2, alpha=0.5, eps=1e-8, device='cuda'):
+    def __init__(self, num_tasks=2, alpha=0.3, eps=1e-8, device='cuda'):
         super().__init__()
         self.num_tasks = num_tasks
-        self.alpha = alpha
+        self.alpha = alpha  # Increased from 0.5 to 0.3 for faster adaptation
         self.eps = eps
         self.device = device
         self.min_weight = 0.1  # Ensure no task gets completely ignored
@@ -125,8 +172,10 @@ class DynamicLossBalancing(nn.Module):
         current_losses = torch.tensor([loss.item() for loss in losses], device=self.device)
         self.loss_ratios = (1 - self.alpha) * self.loss_ratios + self.alpha * current_losses
         
-        # Calculate weights ensuring minimum weight for each task
-        weights = 1 / (self.num_tasks * self.loss_ratios + self.eps)
+        # Calculate weights based on loss ratios
+        weights = 1.0 / (self.loss_ratios + self.eps)
+        
+        # Apply softmax to get normalized weights
         weights = F.softmax(weights, dim=0)
         
         # Apply minimum weight constraint
@@ -144,7 +193,6 @@ class DynamicLossBalancing(nn.Module):
         Returns:
             numpy.ndarray: Normalized task weights
         """
-        # Return normalized weights (Equation 6)
         weights = 1.0 / (self.loss_ratios + self.eps)
         weights = weights / weights.sum()
         return weights.detach().cpu().numpy()
@@ -162,9 +210,9 @@ class KendallUncertaintyWeighting(nn.Module):
         self.num_tasks = num_tasks
         self.device = device
         
-        # Learnable parameters: log variance for each task
-        # Initialize with equal weighting (log(1) = 0)
-        self.log_vars = nn.Parameter(torch.zeros(num_tasks, device=device))
+        # Initialize log variances with different values to break symmetry
+        # This helps prevent the weights from getting stuck at 0.5
+        self.log_vars = nn.Parameter(torch.tensor([0.0, 0.5], device=device))
         
     def forward(self, losses):
         # Ensure all losses are on the correct device

@@ -116,7 +116,8 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     elif model_type.lower() == "transformer":
         print("Using Vision Transformer model...")
         model = ConstellationVisionTransformer(
-            num_classes=num_modulation_classes
+            num_classes=num_modulation_classes,
+            num_snr_classes=num_snr_classes
         )
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose 'resnet' or 'transformer'.")
@@ -134,7 +135,13 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
 
     # Initialize loss functions and Kendall uncertainty-based loss weighting
     criterion_modulation = nn.CrossEntropyLoss().to(device)
-    criterion_snr = SNRRegressionLoss(device=device)
+    
+    # Get the SNR values list from the dataset labels
+    snr_values = list(dataset.snr_labels.keys())
+    print(f"Using SNR values for classification: {snr_values}")
+    
+    # Initialize weighted SNR loss with the SNR values
+    criterion_snr = WeightedSNRLoss(snr_values=snr_values, device=device)
     criterion_dynamic = KendallUncertaintyWeighting(num_tasks=2, device=device)
 
     # Initialize optimizer with separate learning rates for model and loss weights

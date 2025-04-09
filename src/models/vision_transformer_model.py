@@ -10,12 +10,13 @@ class ConstellationVisionTransformer(nn.Module):
     Uses a pre-trained ViT model as a base and adds task-specific heads.
     """
 
-    def __init__(self, num_classes=11, dropout_prob=0.3):
+    def __init__(self, num_classes=11, num_snr_classes=None, dropout_prob=0.3):
         """
         Initialize the ConstellationVisionTransformer model.
 
         Args:
             num_classes (int): Number of modulation classes.
+            num_snr_classes (int, optional): Number of SNR classes. If None, uses the same value as num_classes.
             dropout_prob (float): Dropout probability.
         """
         super(ConstellationVisionTransformer, self).__init__()
@@ -74,13 +75,17 @@ class ConstellationVisionTransformer(nn.Module):
         # Modulation classification head
         self.modulation_head = nn.Linear(self.SHARED_FEATURE_DIM, num_classes)
         
-        # SNR regression head with bounded output
+        # SNR classification head
         self.snr_head = nn.Sequential(
             nn.Linear(self.SHARED_FEATURE_DIM, self.SNR_HIDDEN_DIM),
             nn.GELU(),
-            nn.Linear(self.SNR_HIDDEN_DIM, 1),
-            nn.Sigmoid()  # Bounds output between 0 and 1
+            nn.Dropout(p=dropout_prob),
+            nn.Linear(self.SNR_HIDDEN_DIM, num_snr_classes)  # Output logits for each SNR class
         )
+        
+        # If num_snr_classes is not provided, use num_classes
+        if num_snr_classes is None:
+            num_snr_classes = num_classes
     
     def forward(self, x):
         """
@@ -92,7 +97,7 @@ class ConstellationVisionTransformer(nn.Module):
         Returns:
             tuple: (modulation_output, snr_output)
             - modulation_output: class logits [batch_size, num_classes]
-            - snr_output: regression values [batch_size, 1] scaled between 0 and 1
+            - snr_output: class logits [batch_size, num_classes]
         """
         # Get features from the ViT model
         x = self.vit.conv_proj(x)  # Shape: [batch_size, VIT_HIDDEN_DIM, h/PATCH_SIZE, w/PATCH_SIZE]
@@ -133,7 +138,7 @@ class ConstellationVisionTransformer(nn.Module):
         
         # Classification heads
         modulation_output = self.modulation_head(mod_shared)  # Shape: [batch_size, num_classes]
-        snr_output = self.snr_head(snr_shared)  # Shape: [batch_size, 1]
+        snr_output = self.snr_head(snr_shared)  # Shape: [batch_size, num_classes]
         
         return modulation_output, snr_output
     
