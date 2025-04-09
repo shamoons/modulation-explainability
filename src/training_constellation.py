@@ -18,9 +18,8 @@ def train(
     criterion_dynamic,
     optimizer,
     scheduler,
-    dataset,
-    batch_size=64,
-    test_size=0.2,
+    train_loader,
+    val_loader,
     epochs=10,
     save_dir="checkpoints",
     mod_list=None,
@@ -51,55 +50,23 @@ def train(
     # Initialize GradScaler for mixed precision training
     scaler = GradScaler('cuda' if torch.cuda.is_available() else 'cpu')
     
-    # Split dataset into train and validation sets (outside the training loop)
-    train_size = int((1 - test_size) * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        dataset, 
-        [train_size, val_size],
-        generator=torch.Generator().manual_seed(42)  # Add fixed seed for reproducibility
-    )
-    
-    # Create data loaders with optimized settings
-    train_loader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=True,
-        num_workers=12,  # Increased for RTX 4090
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=3,  # Increased prefetch
-        drop_last=True  # Slightly faster and more stable training
-    )
-    val_loader = DataLoader(
-        val_dataset, 
-        batch_size=batch_size*2,  # Doubled for faster validation
-        shuffle=False,
-        num_workers=12,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=3
-    )
-
-    
     # Initialize wandb with resume support
     wandb.init(
         project="constellation-classification",
         config={
             "architecture": model.__class__.__name__,
-            "batch_size": batch_size,
+            "batch_size": train_loader.batch_size,
             "learning_rate": base_lr,
             "weight_decay": weight_decay,
             "epochs": epochs,
             "mod_list": mod_list,
-            "snr_list": snr_list,
-            "test_size": test_size
+            "snr_list": snr_list
         },
         resume=True if checkpoint else False
     )
     
     # Get the SNR mapping from dataset
-    snr_index_to_value = {idx: snr for snr, idx in dataset.snr_labels.items()}
+    snr_index_to_value = {idx: snr for snr, idx in train_loader.dataset.dataset.snr_labels.items()}
     
     # Initialize training state
     best_val_loss = float('inf')
@@ -354,7 +321,7 @@ def train(
         
         print("Gathering validation predictions for plotting...")
         # Pre-allocate tensors for predictions on CPU to avoid memory issues
-        val_size = len(val_dataset)
+        val_size = len(val_loader.dataset)
         all_pred_modulation = torch.empty(val_size, dtype=torch.long)
         all_true_modulation = torch.empty(val_size, dtype=torch.long)
         all_pred_snr = torch.empty(val_size, dtype=torch.float32)
@@ -407,7 +374,7 @@ def train(
         
         print("Plotting confusion matrices...")
         # Plot and save confusion matrices
-        modulation_class_names = list(dataset.modulation_labels.keys())
+        modulation_class_names = list(train_loader.dataset.dataset.modulation_labels.keys())
         plot_validation_confusion_matrices(
             all_true_modulation, 
             all_pred_modulation, 

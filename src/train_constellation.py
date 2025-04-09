@@ -12,6 +12,7 @@ from training_constellation import train
 import argparse
 import warnings
 import os
+from torch.utils.data import DataLoader
 
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
@@ -27,7 +28,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0001, weight_decay=1e-4, test_size=0.2, patience=5, model_type="resnet"):
+def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0001, weight_decay=1e-4, test_size=0.2, model_type="resnet", cycles_per_epoch=3, max_lr_multiplier=10):
     # Load data
     print("Loading data...")
 
@@ -63,6 +64,36 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     print("\nSNR Values:")
     print("  ", list(dataset.snr_labels.keys()))
     print("===================\n")
+
+    # Split dataset into train and validation sets
+    train_size = int((1 - test_size) * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(
+        dataset, 
+        [train_size, val_size],
+        generator=torch.Generator().manual_seed(42)  # Add fixed seed for reproducibility
+    )
+    
+    # Create data loaders with optimized settings
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        num_workers=12,  # Increased for RTX 4090
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=3,  # Increased prefetch
+        drop_last=True  # Slightly faster and more stable training
+    )
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=batch_size*2,  # Doubled for faster validation
+        shuffle=False,
+        num_workers=12,
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=3
+    )
 
     # Determine input channels based on image_type
     input_channels = 1 if image_type == 'grayscale' else 3
@@ -112,14 +143,24 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         {'params': criterion_dynamic.parameters(), 'lr': 1e-3}  # Higher LR for loss weights
     ], lr=base_lr, weight_decay=weight_decay)
 
-    # Initialize learning rate scheduler with ReduceLROnPlateau
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+    # Calculate step size for CyclicLR
+    batches_per_epoch = len(train_loader)
+    step_size_up = batches_per_epoch // cycles_per_epoch
+    print(f"\nCyclicLR Configuration:")
+    print(f"Batches per epoch: {batches_per_epoch}")
+    print(f"Cycles per epoch: {cycles_per_epoch}")
+    print(f"Step size up: {step_size_up}")
+    print(f"Base LR: {base_lr}")
+    print(f"Max LR: {base_lr * max_lr_multiplier}\n")
+
+    # Initialize CyclicLR scheduler
+    scheduler = optim.lr_scheduler.CyclicLR(
         optimizer,
-        mode='min',
-        factor=0.5,
-        patience=patience,
-        verbose=True,
-        min_lr=1e-6
+        base_lr=base_lr,
+        max_lr=base_lr * max_lr_multiplier,
+        step_size_up=step_size_up,
+        mode='triangular2',
+        cycle_momentum=True
     )
 
     # Train and validate the model
@@ -131,15 +172,14 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         criterion_dynamic,
         optimizer,
         scheduler,
-        dataset,
-        batch_size=batch_size,
-        test_size=test_size,
+        train_loader,
+        val_loader,
         epochs=epochs,
         mod_list=mods_to_process,
         snr_list=snr_list,
         base_lr=base_lr,
         weight_decay=weight_decay,
-        checkpoint=checkpoint  # Pass checkpoint to train() but don't load it here
+        checkpoint=checkpoint
     )
 
 
@@ -153,8 +193,9 @@ if __name__ == "__main__":
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.00001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-4)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
-    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing', default=5)
     parser.add_argument('--model_type', type=str, help='Type of model to use (resnet or transformer)', default='resnet')
+    parser.add_argument('--cycles_per_epoch', type=int, help='Number of learning rate cycles per epoch', default=3)
+    parser.add_argument('--max_lr_multiplier', type=float, help='Multiplier for maximum learning rate (base_lr * multiplier)', default=10.0)
     
     args = parser.parse_args()
     
@@ -167,6 +208,7 @@ if __name__ == "__main__":
         base_lr=args.base_lr,
         weight_decay=args.weight_decay,
         test_size=args.test_size,
-        patience=args.patience,
-        model_type=args.model_type
+        model_type=args.model_type,
+        cycles_per_epoch=args.cycles_per_epoch,
+        max_lr_multiplier=args.max_lr_multiplier
     )
