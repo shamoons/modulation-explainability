@@ -68,6 +68,7 @@ if __name__ == "__main__":
             item_path = os.path.join(args.h5_dir, item)
             if os.path.isdir(item_path):
                 mods_to_process.append(item)
+        print(f"Modulations to process: {mods_to_process}")
         
         if not mods_to_process:
             # Fallback to default list if no directories found

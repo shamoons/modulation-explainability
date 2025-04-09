@@ -197,12 +197,12 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNRs to process')
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to process')
     parser.add_argument('--epochs', type=int, help='Number of epochs to train', default=100)
-    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.00001)
+    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-6)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-4)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
     parser.add_argument('--model_type', type=str, help='Type of model to use (resnet or transformer)', default='resnet')
     parser.add_argument('--cycles_per_epoch', type=int, help='Number of learning rate cycles per epoch', default=3)
-    parser.add_argument('--max_lr_multiplier', type=float, help='Multiplier for maximum learning rate (base_lr * multiplier)', default=10.0)
+    parser.add_argument('--max_lr_multiplier', type=float, help='Multiplier for maximum learning rate (base_lr * multiplier)', default=100.0)
     
     args = parser.parse_args()
     
