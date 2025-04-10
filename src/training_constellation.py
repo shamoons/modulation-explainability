@@ -25,6 +25,7 @@ def train(
     mod_list=None,
     snr_list=None,
     base_lr=None,
+    max_lr=None,
     weight_decay=None,
     checkpoint=None
 ):
@@ -57,6 +58,7 @@ def train(
             "architecture": model.__class__.__name__,
             "batch_size": train_loader.batch_size,
             "learning_rate": base_lr,
+            "max_learning_rate": max_lr,
             "weight_decay": weight_decay,
             "epochs": epochs,
             "mod_list": mod_list,
@@ -80,11 +82,11 @@ def train(
             # Load model state
             model.load_state_dict(checkpoint_data['model_state_dict'])
             
-            # Load training state
+            # Load training state but reset epoch counter
             best_val_loss = checkpoint_data.get('best_val_loss', float('inf'))
-            start_epoch = checkpoint_data.get('epoch', 0) + 1  # Start from next epoch
-            print(f"Resuming from epoch {start_epoch} (previous epoch: {start_epoch-1})")
-            print(f"Best validation loss so far: {best_val_loss:.4f}")
+            start_epoch = 0  # Always start from epoch 0
+            print(f"Loaded model weights from checkpoint (resetting epoch counter to 0)")
+            print(f"Previous best validation loss: {best_val_loss:.4f}")
             
             # Load optimizer and scheduler states
             if 'optimizer_state_dict' in checkpoint_data:
