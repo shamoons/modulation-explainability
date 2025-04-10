@@ -204,7 +204,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_lr', type=float, help='Maximum learning rate for the optimizer', default=1e-3)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-4)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
-    parser.add_argument('--model_type', type=str, help='Type of model to use (resnet or transformer)', default='resnet')
+    parser.add_argument('--model_type', type=str, help='Type of model to use (resnet or transformer)', default='transformer')
     
     args = parser.parse_args()
     

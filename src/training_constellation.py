@@ -193,14 +193,10 @@ def train(
             snr_acc = 100 * snr_acc_count / total_samples
             
             pbar.set_postfix({
-                'Loss': f'{avg_loss:.3f}',
-                'Mod Loss': f'{avg_mod_loss:.3f}',
-                'SNR Loss': f'{avg_snr_loss:.3f}',
-                'Mod Acc': f'{mod_acc:.2f}%',
-                'SNR MAE': f'{snr_mae:.2f} dB',
-                'SNR Acc': f'{snr_acc:.2f}%',
-                'Mod W': f'{mod_weight:.2f}',
-                'SNR W': f'{snr_weight:.2f}'
+                'Loss(Mod/SNR)': f'{avg_loss:.3f}({avg_mod_loss:.3f}/{avg_snr_loss:.3f})',
+                'Acc(Mod/SNR)': f'{mod_acc:.2f}%/{snr_acc:.2f}%',
+                'SNR MAE': f'{snr_mae:.2f}dB',
+                'W(Mod/SNR)': f'{mod_weight:.2f}/{snr_weight:.2f}'
             })
         
         # Calculate average metrics for the epoch
