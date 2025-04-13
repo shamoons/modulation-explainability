@@ -150,22 +150,22 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         {'params': criterion_dynamic.parameters(), 'lr': 1e-3}  # Higher LR for loss weights
     ], lr=base_lr, weight_decay=weight_decay)
 
-    # Calculate step size for CyclicLR - set for 3 complete cycles over all epochs
-    epochs_per_cycle = epochs // 3  # 33.33 epochs per cycle
-    step_size_up = epochs_per_cycle // 2  # 16.67 epochs for up phase
-    print(f"\nCyclicLR Configuration (3 cycles over {epochs} epochs):")
+    # Calculate step size for CyclicLR - set for 5 complete cycles over all epochs
+    epochs_per_cycle = epochs // 5  # 20 epochs per cycle
+    step_size_up = epochs_per_cycle // 2  # 10 epochs for up phase
+    print(f"\nCyclicLR Configuration (5 cycles over {epochs} epochs):")
     print(f"Epochs per cycle: {epochs_per_cycle}")
     print(f"Step size up: {step_size_up} epochs")
     print(f"Base LR: {base_lr}")
     print(f"Max LR: {max_lr}")
-    print(f"Cycle pattern: 3 triangular2 cycles over all epochs\n")
+    print(f"Cycle pattern: 5 triangular2 cycles over all epochs\n")
 
-    # Initialize CyclicLR scheduler with 3 cycles over all epochs
+    # Initialize CyclicLR scheduler with 5 cycles over all epochs
     scheduler = optim.lr_scheduler.CyclicLR(
         optimizer,
         base_lr=base_lr,
         max_lr=max_lr,
-        step_size_up=step_size_up,  # ~16.67 epochs up
+        step_size_up=step_size_up,  # 10 epochs up
         mode='triangular2',  # Will automatically reduce max_lr by half each cycle
         cycle_momentum=True
     )
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to process')
     parser.add_argument('--epochs', type=int, help='Number of epochs to train', default=100)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-5)
-    parser.add_argument('--max_lr', type=float, help='Maximum learning rate for the optimizer', default=1e-3)
+    parser.add_argument('--max_lr', type=float, help='Maximum learning rate for the optimizer', default=1e-4)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-4)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
     parser.add_argument('--model_type', type=str, help='Type of model to use (resnet or transformer)', default='transformer')
