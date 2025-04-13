@@ -5,81 +5,68 @@ import torch.nn.functional as F
 class WeightedSNRLoss(nn.Module):
     def __init__(self, snr_values, device):
         """
-        Initialize the weighted SNR loss.
+        Initialize the weighted SNR loss for classification.
         
         Args:
-            snr_values (list): List of SNR values in order (e.g., [-20, -18, ..., 30])
+            snr_values (list): List of SNR values in order (e.g., [-20, 0, 30])
             device (torch.device): Device to place tensors on
         """
         super().__init__()
         self.device = device
-        
-        # Initialize SNR values on the correct device
         self.snr_values = torch.tensor(snr_values, dtype=torch.float32, device=device)
-        self.snr_min = min(snr_values)
-        self.snr_max = max(snr_values)
+        self.num_classes = len(snr_values)
         
     def forward(self, predictions, targets):
         """
-        Compute weighted loss based on distance from true SNR.
+        Compute weighted cross-entropy loss for SNR classification.
         
         Args:
             predictions (torch.Tensor): Model predictions (N, num_classes)
             targets (torch.Tensor): True SNR class indices (N,)
             
         Returns:
-            torch.Tensor: Weighted loss value
+            torch.Tensor: Weighted cross-entropy loss value
         """
-        # Get the predicted probabilities for each SNR class
-        probs = F.softmax(predictions, dim=1)
-        
-        # Get the true SNR values for the targets
-        true_snr_values = self.snr_values[targets]
-        
-        # Compute expected SNR value from predictions
-        expected_snr = torch.sum(probs * self.snr_values, dim=1)
-        
-        # Scale SNR values to [0, 1] range
-        scaled_true = (true_snr_values - self.snr_min) / (self.snr_max - self.snr_min)
-        scaled_pred = (expected_snr - self.snr_min) / (self.snr_max - self.snr_min)
-        
-        # Compute absolute difference between expected and true SNR
-        abs_diff = torch.abs(scaled_pred - scaled_true)
-        
-        # Weight the cross-entropy loss by the absolute difference
-        # This means predictions that are further from the true value get higher loss
-        weights = 1.0 + abs_diff
-        
-        # Compute standard cross-entropy loss
+        # Standard cross-entropy loss
         ce_loss = F.cross_entropy(predictions, targets, reduction='none')
         
-        # Apply weights to the cross-entropy loss
-        weighted_loss = weights * ce_loss
+        # Get predicted class indices
+        pred_classes = torch.argmax(predictions, dim=1)
+        
+        # Calculate distance between predicted and true classes
+        pred_values = self.snr_values[pred_classes]
+        true_values = self.snr_values[targets]
+        
+        # Calculate normalized distance weights
+        value_range = self.snr_values.max() - self.snr_values.min()
+        distance_weights = 1.0 + torch.abs(pred_values - true_values) / value_range
+        
+        # Apply weights to cross-entropy loss
+        weighted_loss = distance_weights * ce_loss
         
         return weighted_loss.mean()
 
     def scale_to_snr(self, predictions):
         """
-        Convert class predictions to actual SNR values.
-        For backward compatibility with the regression approach.
+        Convert class predictions to SNR values for metrics.
         
         Args:
             predictions (torch.Tensor): Predictions from model [batch_size, num_classes]
             
         Returns:
-            torch.Tensor: Expected SNR values [batch_size, 1]
+            torch.Tensor: SNR values [batch_size, 1]
         """
-        # Get softmax probabilities
-        probs = F.softmax(predictions, dim=1)
+        # Get predicted class indices
+        pred_classes = torch.argmax(predictions, dim=1)
         
-        # Calculate expected SNR value (weighted average)
-        expected_snr = torch.sum(probs * self.snr_values, dim=1, keepdim=True)
+        # Convert to actual SNR values
+        snr_values = self.snr_values[pred_classes]
         
-        return expected_snr
+        return snr_values.unsqueeze(1)
 
     def get_snr_metrics(self, predictions, targets):
         """
-        Calculate both classification accuracy and regression metrics (MAE).
+        Calculate both classification accuracy and MAE for monitoring.
         
         Args:
             predictions (torch.Tensor): Predictions from model [batch_size, num_classes]
@@ -88,20 +75,16 @@ class WeightedSNRLoss(nn.Module):
         Returns:
             tuple: (accuracy, mae)
             - accuracy: Classification accuracy (percentage)
-            - mae: Mean absolute error between expected and true SNR values
+            - mae: Mean absolute error between predicted and true SNR values
         """
-        # Get the predicted class (argmax)
+        # Get predicted classes
         pred_classes = torch.argmax(predictions, dim=1)
         accuracy = (pred_classes == targets).float().mean().item() * 100
         
-        # Get the expected SNR value from probabilities
-        expected_snr = self.scale_to_snr(predictions).squeeze()
-        
-        # Get the true SNR values for the targets
-        true_snr_values = self.snr_values[targets]
-        
-        # Calculate MAE
-        mae = torch.abs(expected_snr - true_snr_values).mean().item()
+        # Calculate MAE using actual SNR values
+        pred_values = self.snr_values[pred_classes]
+        true_values = self.snr_values[targets]
+        mae = torch.abs(pred_values - true_values).mean().item()
         
         return accuracy, mae
 

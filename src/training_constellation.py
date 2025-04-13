@@ -8,6 +8,7 @@ import os
 from torch.amp import GradScaler 
 from validate_constellation import plot_validation_confusion_matrices
 from contextlib import nullcontext
+from torch.amp import autocast
 
 
 def train(
@@ -32,10 +33,13 @@ def train(
     """
     Train the model with mixed precision support for CUDA devices
     """
-    # Create save directory if it doesn't exist
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    
+    print("\nStarting training...")
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Create a subdirectory for plots
+    plots_dir = os.path.join(save_dir, 'plots')
+    os.makedirs(plots_dir, exist_ok=True)
+
     # Create results directory for confusion matrices (at the same level as checkpoints)
     results_dir = "results"
     if not os.path.exists(results_dir):
@@ -68,7 +72,8 @@ def train(
     )
     
     # Get the SNR mapping from dataset
-    snr_index_to_value = {idx: snr for snr, idx in train_loader.dataset.dataset.snr_labels.items()}
+    snr_values = list(train_loader.dataset.dataset.snr_labels.keys())
+    print(f"SNR values for classification: {snr_values}")
     
     # Initialize training state
     best_val_loss = float('inf')
@@ -104,7 +109,7 @@ def train(
                 print(f"Current task weights - Mod: {weights[0]:.4f}, SNR: {weights[1]:.4f}")
         else:
             model.load_state_dict(checkpoint_data)
-            print("Loaded model weights only (old format checkpoint)")
+            print("Loaded model weights from simple state dict checkpoint")
         print("Checkpoint loaded successfully.\n")
     else:
         print("\nNo checkpoint provided or checkpoint file not found, starting training from scratch.\n")
@@ -168,7 +173,7 @@ def train(
             # For backward compatibility, calculate MAE using expected SNR values
             # Get expected SNR values using the same method as in WeightedSNRLoss
             pred_snr_values = criterion_snr.scale_to_snr(snr_output).squeeze()
-            true_snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_labels], 
+            true_snr_values = torch.tensor([snr_values[idx.item()] for idx in snr_labels], 
                                          device=device, dtype=torch.float32)
             snr_mae += torch.abs(pred_snr_values - true_snr_values).sum().item()
             
@@ -238,7 +243,7 @@ def train(
                 # For backward compatibility, calculate MAE using expected SNR values
                 # Get expected SNR values using the same method as in WeightedSNRLoss
                 pred_snr_values = criterion_snr.scale_to_snr(snr_output).squeeze()
-                true_snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets],
+                true_snr_values = torch.tensor([snr_values[idx.item()] for idx in snr_targets],
                                               device=device, dtype=torch.float32)
                 val_snr_mae += torch.abs(pred_snr_values - true_snr_values).sum().item()
                 
@@ -335,7 +340,7 @@ def train(
                     
                     # Get SNR values using expected value method from the loss function
                     pred_snr_values = criterion_snr.scale_to_snr(snr_output).squeeze()
-                    true_snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_targets],
+                    true_snr_values = torch.tensor([snr_values[idx.item()] for idx in snr_targets],
                                                   device=device, dtype=torch.float32)
                     
                     # Store in pre-allocated tensors (move to CPU in batches)
