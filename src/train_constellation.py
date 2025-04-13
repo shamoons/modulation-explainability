@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from models.constellation_model import ConstellationResNet
 from models.vision_transformer_model import ConstellationVisionTransformer
+from models.swin_constellation import SwinConstellation
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from utils.loss_utils import WeightedSNRLoss, KendallUncertaintyWeighting, SNRRegressionLoss
@@ -119,8 +120,15 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
             num_classes=num_modulation_classes,
             num_snr_classes=num_snr_classes
         )
+    elif model_type.lower() == "swin":
+        print("Using Swin Transformer model...")
+        model = SwinConstellation(
+            num_classes=num_modulation_classes,
+            num_snr_classes=num_snr_classes,
+            dropout_prob=0.3  # Consistent with VisionTransformer default
+        )
     else:
-        raise ValueError(f"Unsupported model type: {model_type}. Choose 'resnet' or 'transformer'.")
+        raise ValueError(f"Unsupported model type: {model_type}. Choose 'resnet', 'transformer', or 'swin'.")
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()

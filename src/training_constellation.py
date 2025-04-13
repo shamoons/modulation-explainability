@@ -30,7 +30,7 @@ def train(
     checkpoint=None
 ):
     """
-    Train the model with dynamic weighted loss.
+    Train the model with mixed precision support for CUDA devices
     """
     # Create save directory if it doesn't exist
     if not os.path.exists(save_dir):
@@ -48,8 +48,8 @@ def train(
         os.makedirs(confusion_matrices_dir)
         print(f"Created confusion matrices directory at {confusion_matrices_dir}")
     
-    # Initialize GradScaler for mixed precision training
-    scaler = GradScaler('cuda' if torch.cuda.is_available() else 'cpu')
+    # Initialize mixed precision training if CUDA is available
+    scaler = torch.amp.GradScaler('cuda') if device.type == 'cuda' else None
     
     # Initialize wandb with resume support
     wandb.init(
@@ -113,99 +113,87 @@ def train(
     for epoch in range(start_epoch, epochs):
         print(f"\nStarting Epoch {epoch+1}/{epochs}")
         model.train()
-        total_loss = 0.0
-        total_mod_loss = 0.0
-        total_snr_loss = 0.0
-        correct_mod = 0
-        total_samples = 0
-        snr_mae_sum = 0.0
-        snr_acc_count = 0
+        running_loss = 0.0
+        running_modulation_loss = 0.0
+        running_snr_loss = 0.0
+        correct_modulation = 0
+        correct_snr = 0
+        total = 0
+        snr_mae = 0.0
         
         # Create progress bar
         pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{epochs}')
         
-        for batch_idx, (data, mod_target, snr_target) in enumerate(pbar):
-            data, mod_target, snr_target = data.to(device), mod_target.to(device), snr_target.to(device)
+        for i, (inputs, modulation_labels, snr_labels) in enumerate(pbar):
+            inputs = inputs.to(device)
+            modulation_labels = modulation_labels.to(device)
+            snr_labels = snr_labels.to(device)
             
             optimizer.zero_grad()
             
-            # Use mixed precision training only for CUDA
+            # Mixed precision training for CUDA devices
             if device.type == 'cuda':
                 with torch.amp.autocast('cuda'):
-                    # Forward pass
-                    mod_output, snr_output = model(data)
-                    
-                    # Calculate individual losses
-                    mod_loss = criterion_modulation(mod_output, mod_target)
-                    snr_loss = criterion_snr(snr_output, snr_target)
-                    
-                    # Combine losses using dynamic balancing
-                    loss, weights = criterion_dynamic([mod_loss, snr_loss])
+                    modulation_output, snr_output = model(inputs)
+                    loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                    loss_snr = criterion_snr(snr_output, snr_labels)
+                    total_loss, loss_weights = criterion_dynamic([loss_modulation, loss_snr])
                 
-                # Scale loss and backpropagate
-                scaler.scale(loss).backward()
+                scaler.scale(total_loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
             else:
-                # Forward pass without mixed precision
-                mod_output, snr_output = model(data)
+                modulation_output, snr_output = model(inputs)
+                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                loss_snr = criterion_snr(snr_output, snr_labels)
+                total_loss, loss_weights = criterion_dynamic([loss_modulation, loss_snr])
                 
-                # Calculate individual losses
-                mod_loss = criterion_modulation(mod_output, mod_target)
-                snr_loss = criterion_snr(snr_output, snr_target)
-                
-                # Combine losses using dynamic balancing
-                loss, weights = criterion_dynamic([mod_loss, snr_loss])
-                
-                # Normal backward pass
-                loss.backward()
+                total_loss.backward()
                 optimizer.step()
             
-            mod_weight, snr_weight = weights
-            
             # Update metrics
-            total_loss += loss.item()
-            total_mod_loss += mod_loss.item()
-            total_snr_loss += snr_loss.item()
+            running_loss += total_loss.item()
+            running_modulation_loss += loss_modulation.item()
+            running_snr_loss += loss_snr.item()
             
             # Calculate modulation accuracy
-            pred_mod = mod_output.argmax(dim=1)
-            correct_mod += (pred_mod == mod_target).sum().item()
-            total_samples += mod_target.size(0)
+            pred_modulation = modulation_output.argmax(dim=1)
+            correct_modulation += (pred_modulation == modulation_labels).sum().item()
+            total += modulation_labels.size(0)
             
             # Calculate SNR metrics (classification)
             pred_snr_class = torch.argmax(snr_output, dim=1)
-            snr_acc_count += (pred_snr_class == snr_target).sum().item()
+            correct_snr += (pred_snr_class == snr_labels).sum().item()
             
             # For backward compatibility, calculate MAE using expected SNR values
             # Get expected SNR values using the same method as in WeightedSNRLoss
             pred_snr_values = criterion_snr.scale_to_snr(snr_output).squeeze()
-            true_snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_target], 
+            true_snr_values = torch.tensor([snr_index_to_value[idx.item()] for idx in snr_labels], 
                                          device=device, dtype=torch.float32)
-            snr_mae_sum += torch.abs(pred_snr_values - true_snr_values).sum().item()
+            snr_mae += torch.abs(pred_snr_values - true_snr_values).sum().item()
             
             # Update progress bar
-            avg_loss = total_loss / (batch_idx + 1)
-            avg_mod_loss = total_mod_loss / (batch_idx + 1)
-            avg_snr_loss = total_snr_loss / (batch_idx + 1)
-            mod_acc = 100. * correct_mod / total_samples
-            snr_mae = snr_mae_sum / total_samples
-            snr_acc = 100 * snr_acc_count / total_samples
+            avg_loss = running_loss / (i + 1)
+            avg_modulation_loss = running_modulation_loss / (i + 1)
+            avg_snr_loss = running_snr_loss / (i + 1)
+            modulation_accuracy = 100 * correct_modulation / total
+            snr_mae_avg = snr_mae / total
+            snr_accuracy = 100 * correct_snr / total
             
             pbar.set_postfix({
-                'Loss(Mod/SNR)': f'{avg_loss:.3f}({avg_mod_loss:.3f}/{avg_snr_loss:.3f})',
-                'Acc(Mod/SNR)': f'{mod_acc:.2f}%/{snr_acc:.2f}%',
-                'SNR MAE': f'{snr_mae:.2f}dB',
-                'W(Mod/SNR)': f'{mod_weight:.2f}/{snr_weight:.2f}'
+                'Loss(Mod/SNR)': f'{avg_loss:.3f}({avg_modulation_loss:.3f}/{avg_snr_loss:.3f})',
+                'Acc(Mod/SNR)': f'{modulation_accuracy:.2f}%/{snr_accuracy:.2f}%',
+                'SNR MAE': f'{snr_mae_avg:.2f}dB',
+                'W(Mod/SNR)': f'{loss_weights[0]:.2f}/{loss_weights[1]:.2f}'
             })
         
         # Calculate average metrics for the epoch
-        avg_loss = total_loss / len(train_loader)
-        modulation_accuracy = 100 * correct_mod / total_samples
-        snr_mae = snr_mae_sum / total_samples
-        snr_accuracy = 100 * snr_acc_count / total_samples
-        avg_modulation_loss = total_mod_loss / len(train_loader)
-        avg_snr_loss = total_snr_loss / len(train_loader)
+        avg_loss = running_loss / len(train_loader)
+        modulation_accuracy = 100 * correct_modulation / total
+        snr_mae_avg = snr_mae / total
+        snr_accuracy = 100 * correct_snr / total
+        avg_modulation_loss = running_modulation_loss / len(train_loader)
+        avg_snr_loss = running_snr_loss / len(train_loader)
         
         # Validation
         model.eval()
@@ -266,11 +254,11 @@ def train(
         
         # Print epoch summary
         print(f"\nEpoch {epoch+1}/{epochs} Summary:")
-        print(f"Training - Loss: {avg_loss:.4f}, Mod Acc: {modulation_accuracy:.2f}%, SNR MAE: {snr_mae:.2f} dB, SNR Acc: {snr_accuracy:.2f}%")
+        print(f"Training - Loss: {avg_loss:.4f}, Mod Acc: {modulation_accuracy:.2f}%, SNR MAE: {snr_mae_avg:.2f} dB, SNR Acc: {snr_accuracy:.2f}%")
         print(f"Validation - Loss: {val_loss:.4f}, Mod Acc: {val_modulation_accuracy:.2f}%, SNR MAE: {val_snr_mae:.2f} dB, SNR Acc: {val_snr_accuracy:.2f}%")
         print(f"Training Losses - Mod: {avg_modulation_loss:.4f}, SNR: {avg_snr_loss:.4f}")
         print(f"Validation Losses - Mod: {val_avg_modulation_loss:.4f}, SNR: {val_avg_snr_loss:.4f}")
-        print(f"Task Weights - Modulation: {mod_weight:.4f}, SNR: {snr_weight:.4f}")
+        print(f"Task Weights - Modulation: {loss_weights[0]:.4f}, SNR: {loss_weights[1]:.4f}")
         print(f"Current Learning Rate: {optimizer.param_groups[0]['lr']:.6f}\n")
         
         print("Logging metrics to wandb...")
@@ -279,7 +267,7 @@ def train(
             "epoch": epoch + 1,
             "train_loss": avg_loss,
             "train_modulation_accuracy": modulation_accuracy,
-            "train_snr_mae": snr_mae,
+            "train_snr_mae": snr_mae_avg,
             "train_snr_accuracy": snr_accuracy,
             "train_modulation_loss": avg_modulation_loss,
             "train_snr_loss": avg_snr_loss,
