@@ -33,6 +33,8 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     # Load data
     print("Loading data...")
 
+    # image_type = 'point'
+    # root_dir = "constellation_points"
     image_type = 'grayscale'
     root_dir = "constellation"
     torch.random.manual_seed(42)
@@ -96,9 +98,6 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         prefetch_factor=3
     )
 
-    # Determine input channels based on image_type
-    input_channels = 1 if image_type == 'grayscale' else 3
-
     num_modulation_classes = len(dataset.modulation_labels)
     num_snr_classes = len(dataset.snr_labels)
 
@@ -111,7 +110,6 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         model = ConstellationResNet(
             num_classes=num_modulation_classes,
             snr_classes=num_snr_classes,
-            input_channels=input_channels,
             model_name="resnet18"
         )
     elif model_type.lower() == "transformer":

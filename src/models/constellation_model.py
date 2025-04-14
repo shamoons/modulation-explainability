@@ -4,7 +4,7 @@ from torchvision import models
 
 
 class ConstellationResNet(nn.Module):
-    def __init__(self, num_classes, snr_classes, input_channels=1, model_name="resnet18"):
+    def __init__(self, num_classes, snr_classes, model_name="resnet18"):
         super(ConstellationResNet, self).__init__()
         self.model_name = model_name
         
@@ -17,7 +17,7 @@ class ConstellationResNet(nn.Module):
             raise ValueError(f"Unsupported model name: {model_name}")
         
         # Modify first layer to accept single channel input
-        self.resnet.conv1 = nn.Conv2d(input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         
         # Get the number of features from the last layer
         num_features = self.resnet.fc.in_features

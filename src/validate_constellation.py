@@ -94,8 +94,8 @@ def plot_validation_confusion_matrices(true_mod_labels, pred_mod_labels, true_sn
     Args:
         true_mod_labels: True modulation class indices
         pred_mod_labels: Predicted modulation class indices
-        true_snr_indices: True SNR class indices
-        pred_snr_indices: Predicted SNR class indices
+        true_snr_indices: True SNR class indices (0-25)
+        pred_snr_indices: Predicted SNR class indices (0-25)
         mod_classes: List of modulation class names (optional)
         save_dir: Directory to save plots (if None, just display)
         epoch: Current epoch number
@@ -105,6 +105,9 @@ def plot_validation_confusion_matrices(true_mod_labels, pred_mod_labels, true_sn
     pred_mod_labels = np.array(pred_mod_labels)
     true_snr_indices = np.array(true_snr_indices)
     pred_snr_indices = np.array(pred_snr_indices)
+    
+    # Define SNR values mapping (from -20 to 30 in steps of 2)
+    snr_values = np.arange(-20, 31, 2)
     
     # 1. Modulation Confusion Matrix
     plt.figure(figsize=(10, 8))
@@ -132,7 +135,7 @@ def plot_validation_confusion_matrices(true_mod_labels, pred_mod_labels, true_sn
         plt.show()
     
     # 2. SNR Confusion Matrix
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(15, 12))
     
     # Create confusion matrix using indices
     cm_snr = confusion_matrix(true_snr_indices, pred_snr_indices)
@@ -141,16 +144,18 @@ def plot_validation_confusion_matrices(true_mod_labels, pred_mod_labels, true_sn
     cm_snr_norm = cm_snr.astype('float') / cm_snr.sum(axis=1)[:, np.newaxis]
     cm_snr_norm = np.nan_to_num(cm_snr_norm)
     
-    # Get SNR values for labels
-    snr_values = [-20, 0, 30]  # The fixed SNR values we're using
+    # Create labels that show both index and dB value
+    snr_labels = [f"{idx}\n({val}dB)" for idx, val in enumerate(snr_values)]
     
-    # Plot SNR confusion matrix
+    # Plot SNR confusion matrix with combined labels
     sns.heatmap(cm_snr_norm, annot=True, fmt='.2f', cmap='Blues',
-               xticklabels=snr_values, yticklabels=snr_values)
+               xticklabels=snr_labels, yticklabels=snr_labels)
     
     plt.title('SNR Classification Confusion Matrix')
-    plt.xlabel('Predicted SNR (dB)')
-    plt.ylabel('True SNR (dB)')
+    plt.xlabel('Predicted SNR Class (Index and dB)')
+    plt.ylabel('True SNR Class (Index and dB)')
+    plt.xticks(rotation=45)
+    plt.yticks(rotation=0)
     plt.tight_layout()
     
     if save_dir and epoch is not None:
@@ -160,19 +165,22 @@ def plot_validation_confusion_matrices(true_mod_labels, pred_mod_labels, true_sn
         plt.show()
     
     # 3. SNR Classification Accuracy Distribution
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(15, 6))
     
     # Calculate accuracy per SNR class
     snr_accuracies = np.diag(cm_snr_norm) * 100
     
-    # Create bar plot of accuracies
-    plt.bar(snr_values, snr_accuracies)
+    # Create bar plot with both indices and dB values
+    plt.bar(range(len(snr_values)), snr_accuracies)
     plt.axhline(y=np.mean(snr_accuracies), color='r', linestyle='--', 
                 label=f'Mean Accuracy: {np.mean(snr_accuracies):.1f}%')
     
     plt.title('SNR Classification Accuracy by Class')
-    plt.xlabel('SNR (dB)')
+    plt.xlabel('SNR Class')
     plt.ylabel('Accuracy (%)')
+    
+    # Set x-axis ticks to show both index and dB value
+    plt.xticks(range(len(snr_values)), snr_labels, rotation=45)
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
