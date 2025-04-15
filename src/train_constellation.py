@@ -8,12 +8,20 @@ from models.vision_transformer_model import ConstellationVisionTransformer
 from models.swin_constellation import SwinConstellation
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
-from utils.loss_utils import WeightedSNRLoss, KendallUncertaintyWeighting, SNRRegressionLoss
+from utils.loss_utils import WeightedSNRLoss, KendallUncertaintyWeighting
 from training_constellation import train
 import argparse
 import warnings
-import os
-from torch.utils.data import DataLoader
+import sys
+from torch.utils.data import DataLoader, random_split
+
+# Add curriculum learning imports
+try:
+    from curriculum import CurriculumAwareDataset, CURRICULUM_STAGES, DEFAULT_CURRICULUM_PATIENCE
+    CURRICULUM_AVAILABLE = True
+except ImportError:
+    print("Curriculum learning modules not found, disabling curriculum functionality")
+    CURRICULUM_AVAILABLE = False
 
 warnings.filterwarnings("ignore", message=r".*NNPACK.*")
 
@@ -29,7 +37,9 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0001, max_lr=0.001, weight_decay=1e-4, test_size=0.2, model_type="resnet"):
+def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
+         epochs=100, base_lr=0.0001, max_lr=0.001, weight_decay=1e-4, test_size=0.2, 
+         model_type="resnet", use_curriculum=False, curriculum_patience=DEFAULT_CURRICULUM_PATIENCE):
     # Load data
     print("Loading data...")
 
@@ -50,8 +60,34 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     else:
         mods_to_process = None  # Load all modulation types
 
-    # Load full dataset (with modulation types and SNRs filtering)
-    dataset = ConstellationDataset(
+    # Import and use curriculum dataset if available and requested
+    use_curriculum = use_curriculum and CURRICULUM_AVAILABLE
+    if use_curriculum:
+        try:
+            from curriculum import CurriculumAwareDataset, CURRICULUM_STAGES
+            print("\nInitializing curriculum learning mode:")
+            print(f"Patience: {curriculum_patience} epochs")
+            
+            # Important: Start with only the first stage's SNR values
+            initial_snr_list = CURRICULUM_STAGES[0]['snr_list'] 
+            print(f"Starting with SNR values: {initial_snr_list}")
+            print(f"Total stages: {len(CURRICULUM_STAGES)}")
+            
+            # Override snr_list with initial curriculum stage
+            snr_list = initial_snr_list
+            
+            # Use curriculum-aware dataset
+            dataset_class = CurriculumAwareDataset
+        except ImportError:
+            print("Curriculum learning modules not available. Falling back to standard training.")
+            use_curriculum = False
+            dataset_class = ConstellationDataset
+    else:
+        # Use standard dataset
+        dataset_class = ConstellationDataset
+
+    # Load dataset with appropriate class
+    dataset = dataset_class(
         root_dir=root_dir,
         image_type=image_type,
         snr_list=snr_list,
@@ -71,11 +107,55 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     # Split dataset into train and validation sets
     train_size = int((1 - test_size) * len(dataset))
     val_size = len(dataset) - train_size
-    train_dataset, val_dataset = torch.utils.data.random_split(
+    
+    # Create initial splits
+    train_dataset, val_dataset = random_split(
         dataset, 
         [train_size, val_size],
-        generator=torch.Generator().manual_seed(42)  # Add fixed seed for reproducibility
+        generator=torch.Generator().manual_seed(42)  # Fixed seed for reproducibility
     )
+    
+    # If using curriculum, we need to ensure both datasets are curriculum-aware
+    if use_curriculum:
+        # Create new curriculum-aware datasets from the splits
+        # We need to do this because random_split returns dataset views, not the original dataset class
+        train_indices = train_dataset.indices
+        val_indices = val_dataset.indices
+        
+        # Create curriculum-aware datasets with the same indices
+        train_dataset = dataset_class(
+            root_dir=root_dir,
+            image_type=image_type,
+            snr_list=snr_list,
+            mods_to_process=mods_to_process
+        )
+        val_dataset = dataset_class(
+            root_dir=root_dir,
+            image_type=image_type,
+            snr_list=snr_list,
+            mods_to_process=mods_to_process
+        )
+        
+        # Filter datasets to include only the respective indices
+        train_dataset.image_paths = [dataset.image_paths[i] for i in train_indices]
+        train_dataset.modulation_labels_list = [dataset.modulation_labels_list[i] for i in train_indices]
+        train_dataset.snr_labels_list = [dataset.snr_labels_list[i] for i in train_indices]
+        
+        val_dataset.image_paths = [dataset.image_paths[i] for i in val_indices]
+        val_dataset.modulation_labels_list = [dataset.modulation_labels_list[i] for i in val_indices]
+        val_dataset.snr_labels_list = [dataset.snr_labels_list[i] for i in val_indices]
+        
+        # Store original data for filtering
+        train_dataset.original_image_paths = train_dataset.image_paths.copy()
+        train_dataset.original_modulation_labels_list = train_dataset.modulation_labels_list.copy()
+        train_dataset.original_snr_labels_list = train_dataset.snr_labels_list.copy()
+        
+        val_dataset.original_image_paths = val_dataset.image_paths.copy()
+        val_dataset.original_modulation_labels_list = val_dataset.modulation_labels_list.copy()
+        val_dataset.original_snr_labels_list = val_dataset.snr_labels_list.copy()
+        
+        print(f"Created curriculum-aware training dataset with {len(train_dataset)} samples")
+        print(f"Created curriculum-aware validation dataset with {len(val_dataset)} samples")
     
     # Create data loaders with optimized settings
     train_loader = DataLoader(
@@ -143,11 +223,17 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
     criterion_modulation = nn.CrossEntropyLoss().to(device)
     
     # Get the SNR values list from the dataset labels
-    snr_values = list(dataset.snr_labels.keys())
-    print(f"Using SNR values for classification: {snr_values}")
+    if use_curriculum:
+        # For curriculum learning, use only the initial stage's SNR values for the loss function
+        initial_snr_values = CURRICULUM_STAGES[0]['snr_list']
+        print(f"Using initial curriculum SNR values for loss function: {initial_snr_values}")
+        criterion_snr = WeightedSNRLoss(snr_values=initial_snr_values, device=device)
+    else:
+        # For standard training, use all SNR values
+        snr_values = list(dataset.snr_labels.keys())
+        print(f"Using SNR values for classification: {snr_values}")
+        criterion_snr = WeightedSNRLoss(snr_values=snr_values, device=device)
     
-    # Initialize weighted SNR loss with the SNR values
-    criterion_snr = WeightedSNRLoss(snr_values=snr_values, device=device)
     criterion_dynamic = KendallUncertaintyWeighting(num_tasks=2, device=device)
 
     # Initialize optimizer with separate learning rates for model and loss weights
@@ -194,7 +280,10 @@ def main(checkpoint=None, batch_size=1024, snr_list=None, mods_to_process=None, 
         base_lr=base_lr,
         max_lr=max_lr,
         weight_decay=weight_decay,
-        checkpoint=checkpoint
+        checkpoint=checkpoint,
+        use_curriculum=use_curriculum,
+        curriculum_patience=curriculum_patience,
+        curriculum_stages=CURRICULUM_STAGES if use_curriculum else None
     )
 
 
@@ -211,6 +300,11 @@ if __name__ == "__main__":
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
     parser.add_argument('--model_type', type=str, help='Type of model to use (resnet or transformer)', default='transformer')
     
+    # Add curriculum learning arguments
+    parser.add_argument('--use_curriculum', type=str2bool, help='Enable curriculum learning', default=False)
+    parser.add_argument('--curriculum_patience', type=int, help='Epochs without improvement before stage progression', 
+                       default=DEFAULT_CURRICULUM_PATIENCE if CURRICULUM_AVAILABLE else 2)
+    
     args = parser.parse_args()
     
     main(
@@ -223,5 +317,7 @@ if __name__ == "__main__":
         max_lr=args.max_lr,
         weight_decay=args.weight_decay,
         test_size=args.test_size,
-        model_type=args.model_type
+        model_type=args.model_type,
+        use_curriculum=args.use_curriculum,
+        curriculum_patience=args.curriculum_patience
     )

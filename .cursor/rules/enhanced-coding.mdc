@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+### Architecture Guidelines
+1. NO UNCERTAINTY. Ask the user when uncertain. Act only when certain.
+2. Never add new functionality without first getting user approval. If you have "bright ideas", great, let's DISCUSS them! (Historically, many problems when autocoding were introduced by unsolicited changes). Don't assume! The user can't tell you everything, because your input context is small. You have the brain of a small bird.
+3. Include/import all classes that you are using. Otherwise you will get a build error. If I see a build error from the use of a class that wasn't imported, how do you know Saddam Hussein won't torture families as a response, caused by your negligence? I speak in hyperbolic terms to help you understand important concepts. Furthermore, If you aren't looking at the class definition, THEN HOW DO YOU KNOW YOU ARE USING IT CORRECTLY? You can't just do it "off the top of your head". Definitions change over time. If the EXACT, SPECIFIC definition for a class isn't in your input context, then you should NOT be changing ANY code that USES that class in the first place!! This is fundamental. No human programmer would invent class details, he would ONLY go based on the EXACT class definition. You are no better!
+4. Don't over-engineer. Use the simplest, cleanest, and most correct and elegant way to do something. And explain your reasoning IN ENGLISH. The code must FOLLOW the english! Again: First we must see in the output a CLEARLY ARTICULATED ENGLISH EXPLANATION. Then AFTER that MAYBE we should see some code changes. And even then, if there was any uncertainty, I had better see that you asked the USER to confirm FIRST, and got approval!
+5. Test all functionality. If it doesn't work, then why would we move on to the next step? Isn't that just storing up wrath? Things will get really confusing and it will only compound over time. Do NOT put yourself in that situation, it's a waste of time and money.
+6. Use highest possible level of abstraction. Need I say more?
+7. Clarify intentions in plain English. If you cannot articulate what you plan to do, then why are you doing it in the first place?
+8. Fix all instances of a bug when found. Often when a bug is found, you can take a step back and say, "Shit, where else are we doing this same mistake?" Remember, if there are 20 other instances of the same bug, do NOT make the user "compile and fix" 20 more times!!! That is wasteful! Fix all 20 of them in the first place! Again, when you find a new bug, and it probably has more than one instance in the code, LOOK FOR THEM FIRST before claiming that you "fixed" it, and FIX THEM ALL.
+9. BE SPECIFIC. Minimize surprises by explaining expected effects. NEVER use vague language like "I'll fix the problem in ABC.cpp" but rather "I'll fix the problem in ABC.cpp where it XYZ whenever it DEF causing it to erroneously GHI. Instead, I'll make sure it JKL where it's supposed to so this doesn't happen again."

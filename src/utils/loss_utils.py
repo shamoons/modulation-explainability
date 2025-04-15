@@ -16,6 +16,19 @@ class WeightedSNRLoss(nn.Module):
         self.snr_values = torch.tensor(snr_values, dtype=torch.float32, device=device)
         self.num_classes = len(snr_values)
         
+    def update_snr_values(self, new_snr_values):
+        """
+        Update the SNR values for the loss function.
+        This should be called when curriculum stage advances.
+        
+        Args:
+            new_snr_values (list): New list of SNR values
+        """
+        print(f"Updating SNR loss values from {self.snr_values.tolist()} to {new_snr_values}")
+        self.snr_values = torch.tensor(new_snr_values, dtype=torch.float32, device=self.device)
+        self.num_classes = len(new_snr_values)
+        return self.snr_values.tolist()
+        
     def forward(self, predictions, targets):
         """
         Compute weighted cross-entropy loss for SNR classification.
