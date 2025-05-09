@@ -352,39 +352,37 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
                                        mod_classes=None, save_dir=None, epoch=None, use_curriculum=False, 
                                        current_snr_list=None, metrics=None):
     """
-    Plot confusion matrices for modulation and SNR predictions
-    """
-    # Convert inputs to numpy arrays if they aren't already
-    if isinstance(true_modulation, torch.Tensor):
-        true_modulation = true_modulation.cpu().numpy()
-    if isinstance(pred_modulation, torch.Tensor):
-        pred_modulation = pred_modulation.cpu().numpy()
-    if isinstance(true_snr_indices, torch.Tensor):
-        true_snr_indices = true_snr_indices.cpu().numpy()
-    if isinstance(pred_snr_indices, torch.Tensor):
-        pred_snr_indices = pred_snr_indices.cpu().numpy()
+    Plot confusion matrices for modulation and SNR predictions, handling both direct values and indices.
     
-    # Convert to numpy arrays if they're lists
-    true_modulation = np.array(true_modulation)
-    pred_modulation = np.array(pred_modulation)
+    Args:
+        true_modulation (array): True modulation labels
+        pred_modulation (array): Predicted modulation labels
+        true_snr_indices (array): True SNR indices or values
+        pred_snr_indices (array): Predicted SNR indices or values
+        mod_classes (list): List of modulation class names
+        save_dir (str): Directory to save plots
+        epoch (int): Current epoch number
+        use_curriculum (bool): Whether to use curriculum learning
+        current_snr_list (list): List of current SNR values in curriculum
+        metrics (dict): Additional metrics to use
+    """
+    import os
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import confusion_matrix
+    
+    # Convert all inputs to numpy arrays if they aren't already
+    true_mod_labels = np.array(true_modulation)
+    pred_mod_labels = np.array(pred_modulation)
     true_snr_indices = np.array(true_snr_indices)
     pred_snr_indices = np.array(pred_snr_indices)
     
-    # Ensure all inputs have the same length
-    min_length = min(len(true_modulation), len(pred_modulation), 
-                     len(true_snr_indices), len(pred_snr_indices))
-    if min_length < len(true_modulation):
-        print(f"WARNING: Truncating arrays from {len(true_modulation)} to {min_length} elements")
-        true_modulation = true_modulation[:min_length]
-        pred_modulation = pred_modulation[:min_length]
-        true_snr_indices = true_snr_indices[:min_length]
-        pred_snr_indices = pred_snr_indices[:min_length]
+    # Check that all inputs have the same length
+    if (len(true_mod_labels) != len(pred_mod_labels) or 
+        len(true_snr_indices) != len(pred_snr_indices) or
+        len(true_mod_labels) != len(true_snr_indices)):
+        raise ValueError("All input arrays must have the same length")
     
-    # Rename input parameters for clarity (accepting both naming conventions)
-    true_mod_labels = true_modulation
-    pred_mod_labels = pred_modulation
-    
-    print(f"Plot confusion matrices with shape: true_mod={true_mod_labels.shape}, pred_mod={pred_mod_labels.shape}")
     print(f"true_snr={true_snr_indices.shape}, pred_snr={pred_snr_indices.shape}")
     print(f"true_snr_indices dtype: {true_snr_indices.dtype}, pred_snr_indices dtype: {pred_snr_indices.dtype}")
     print(f"true_snr_indices unique values: {np.unique(true_snr_indices)}")
@@ -404,10 +402,17 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
     # Handle SNR confusion matrix
     # Define standard SNR values if not provided
     if current_snr_list is None:
-        current_snr_list = [-20, -10, 10, 30]  # Default curriculum SNR values
+        # Try to get SNR list from metrics if available
+        if metrics and 'current_snr_list' in metrics:
+            current_snr_list = metrics['current_snr_list']
+        else:
+            current_snr_list = [-20, -10, 10, 30]  # Default curriculum SNR values
         print(f"Using default SNR list: {current_snr_list}")
     else:
         print(f"Using provided SNR list: {current_snr_list}")
+    
+    # Make sure current_snr_list is sorted for consistent mapping
+    current_snr_list = sorted(current_snr_list)
     
     # Determine if values are indices or actual SNR values
     # More reliable detection based on value ranges and uniqueness
@@ -445,7 +450,7 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
             true_snr_values[true_indices == i] = snr_value
             pred_snr_values[pred_indices == i] = snr_value
         
-        # Handle invalid indices by setting to a safe default (e.g., the first SNR value)
+        # Handle invalid indices by setting to a safe default or filtering them out
         if len(current_snr_list) > 0:
             default_snr = current_snr_list[0]
             invalid_count_true = np.sum(~true_valid_mask)
@@ -453,10 +458,18 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
             
             if invalid_count_true > 0 or invalid_count_pred > 0:
                 print(f"WARNING: Found {invalid_count_true} invalid true indices and {invalid_count_pred} invalid pred indices")
-                print(f"Setting invalid indices to default SNR value: {default_snr}")
-            
-            true_snr_values[~true_valid_mask] = default_snr
-            pred_snr_values[~pred_valid_mask] = default_snr
+                
+                # Instead of setting them to default value, filter them out
+                valid_samples = true_valid_mask & pred_valid_mask
+                if np.sum(valid_samples) > 0:
+                    print(f"Filtering out invalid indices, keeping {np.sum(valid_samples)}/{len(true_indices)} samples")
+                    true_snr_values = true_snr_values[valid_samples]
+                    pred_snr_values = pred_snr_values[valid_samples]
+                else:
+                    print(f"WARNING: No valid samples left after filtering. Setting invalid indices to default SNR value: {default_snr}")
+                    # If we'd filter everything out, set to default as fallback
+                    true_snr_values[~true_valid_mask] = default_snr
+                    pred_snr_values[~pred_valid_mask] = default_snr
             
         print(f"Valid true indices: {np.sum(true_valid_mask)}/{len(true_indices)}")
         print(f"Valid pred indices: {np.sum(pred_valid_mask)}/{len(pred_indices)}")
@@ -468,6 +481,24 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
     print(f"SNR values after mapping - true: {np.unique(true_snr_values)}")
     print(f"SNR values after mapping - pred: {np.unique(pred_snr_values)}")
     
+    # Check if we have a curriculum confusion matrix already calculated
+    if use_curriculum and metrics and 'curriculum_cm' in metrics:
+        print("Using pre-calculated curriculum confusion matrix from validation")
+        curriculum_cm = metrics['curriculum_cm']
+        
+        if curriculum_cm.shape[0] == len(current_snr_list):
+            snr_classes = [str(int(snr)) for snr in current_snr_list]
+            
+            # Plot SNR confusion matrix with the pre-calculated matrix
+            plot_confusion_matrix(None, None, classes=snr_classes, 
+                                 title=f'SNR Confusion Matrix (Epoch {epoch})' if epoch else 'SNR Confusion Matrix',
+                                 normalize=True, 
+                                 save_path=os.path.join(save_dir, f'snr_conf_matrix_epoch_{epoch}.png') if epoch else None,
+                                 cm=curriculum_cm)
+            return
+        else:
+            print(f"Warning: Pre-calculated confusion matrix shape {curriculum_cm.shape} doesn't match current SNR list length {len(current_snr_list)}")
+    
     # Create SNR class labels from unique values or curriculum
     if use_curriculum:
         snr_classes = [str(int(snr)) for snr in current_snr_list]
@@ -478,35 +509,61 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
         # Create lookup for faster matching
         snr_value_to_idx = {snr: i for i, snr in enumerate(current_snr_list)}
         
+        # Check if we actually have data to work with
+        if len(true_snr_values) == 0 or len(pred_snr_values) == 0:
+            print("WARNING: No valid SNR values found for confusion matrix")
+            
+            # Try a simplified approach with indices directly
+            try:
+                # Check if we can safely create a confusion matrix using indices
+                max_idx = max(np.max(true_snr_indices), np.max(pred_snr_indices))
+                if max_idx < 30:  # Reasonable max index for safety
+                    simple_cm = confusion_matrix(true_snr_indices, pred_snr_indices)
+                    simple_classes = [str(i) for i in range(simple_cm.shape[0])]
+                    
+                    plot_confusion_matrix(None, None, classes=simple_classes, 
+                                         title=f'SNR Index Confusion Matrix (Epoch {epoch})' if epoch else 'SNR Index Confusion Matrix',
+                                         normalize=True, 
+                                         save_path=os.path.join(save_dir, f'snr_index_conf_matrix_epoch_{epoch}.png') if epoch else None,
+                                         cm=simple_cm)
+                    return
+            except Exception as e:
+                print(f"ERROR creating simplified confusion matrix: {str(e)}")
+                return
+        
         # Map values to indices in the confusion matrix
         for i in range(len(true_snr_values)):
-            true_val = true_snr_values[i]
-            pred_val = pred_snr_values[i]
-            
-            # Find the closest SNR values in our curriculum list
-            true_idx = -1
-            pred_idx = -1
-            
-            # Direct match first (most efficient)
-            if true_val in snr_value_to_idx:
-                true_idx = snr_value_to_idx[true_val]
-            else:
-                # Find closest match
-                true_diffs = [abs(true_val - snr) for snr in current_snr_list]
-                if true_diffs:
-                    true_idx = np.argmin(true_diffs)
-            
-            if pred_val in snr_value_to_idx:
-                pred_idx = snr_value_to_idx[pred_val]
-            else:
-                # Find closest match
-                pred_diffs = [abs(pred_val - snr) for snr in current_snr_list]
-                if pred_diffs:
-                    pred_idx = np.argmin(pred_diffs)
-            
-            # Only update if we found valid indices
-            if true_idx >= 0 and pred_idx >= 0:
-                snr_cm[true_idx, pred_idx] += 1
+            try:
+                true_val = true_snr_values[i]
+                pred_val = pred_snr_values[i]
+                
+                # Find the closest SNR values in our curriculum list
+                true_idx = -1
+                pred_idx = -1
+                
+                # Direct match first (most efficient)
+                if true_val in snr_value_to_idx:
+                    true_idx = snr_value_to_idx[true_val]
+                else:
+                    # Find closest match
+                    true_diffs = [abs(true_val - snr) for snr in current_snr_list]
+                    if true_diffs:
+                        true_idx = np.argmin(true_diffs)
+                
+                if pred_val in snr_value_to_idx:
+                    pred_idx = snr_value_to_idx[pred_val]
+                else:
+                    # Find closest match
+                    pred_diffs = [abs(pred_val - snr) for snr in current_snr_list]
+                    if pred_diffs:
+                        pred_idx = np.argmin(pred_diffs)
+                
+                # Only update if we found valid indices
+                if true_idx >= 0 and pred_idx >= 0:
+                    snr_cm[true_idx, pred_idx] += 1
+            except Exception as e:
+                print(f"Error processing sample {i}: {str(e)}")
+                continue
         
         print(f"Created custom SNR confusion matrix with shape: {snr_cm.shape}")
         print(f"Confusion matrix contains {np.sum(snr_cm)} samples")
@@ -523,27 +580,35 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
             print("WARNING: No valid samples for SNR confusion matrix, falling back to standard method")
             # Fall back to standard method
             use_curriculum = False
-    else:
+    
+    if not use_curriculum or use_curriculum and np.sum(snr_cm) == 0:
         # Use automatic confusion matrix from sklearn
-        unique_snrs = sorted(list(set(np.concatenate([np.unique(true_snr_values), np.unique(pred_snr_values)]))))
-        
-        # Filter out any potential NaN or inf values
-        unique_snrs = [snr for snr in unique_snrs if np.isfinite(snr)]
-        
-        # Make sure we have valid SNR values
-        if len(unique_snrs) == 0:
-            print("WARNING: No valid SNR values found, using default SNR classes")
-            unique_snrs = [-20, -10, 0, 10, 20, 30]  # Default fallback values
-        
-        # Convert to string labels and ensure they're unique
-        snr_classes = [str(int(snr)) for snr in unique_snrs]
-        
-        # Print the SNR class information
-        print(f"Using SNR classes: {snr_classes}")
-        print(f"True SNR values shape: {true_snr_values.shape}")
-        print(f"Pred SNR values shape: {pred_snr_values.shape}")
-        
         try:
+            # Filter out any NaN or inf values before processing
+            valid_mask = np.isfinite(true_snr_values) & np.isfinite(pred_snr_values)
+            if np.sum(valid_mask) < len(true_snr_values):
+                print(f"WARNING: Filtering out {len(true_snr_values) - np.sum(valid_mask)} non-finite values")
+                true_snr_values = true_snr_values[valid_mask]
+                pred_snr_values = pred_snr_values[valid_mask]
+            
+            unique_snrs = sorted(list(set(np.concatenate([np.unique(true_snr_values), np.unique(pred_snr_values)]))))
+            
+            # Filter out any potential NaN or inf values
+            unique_snrs = [snr for snr in unique_snrs if np.isfinite(snr)]
+            
+            # Make sure we have valid SNR values
+            if len(unique_snrs) == 0:
+                print("WARNING: No valid SNR values found, using default SNR classes")
+                unique_snrs = [-20, -10, 0, 10, 20, 30]  # Default fallback values
+            
+            # Convert to string labels and ensure they're unique
+            snr_classes = [str(int(snr)) for snr in unique_snrs]
+            
+            # Print the SNR class information
+            print(f"Using SNR classes: {snr_classes}")
+            print(f"True SNR values shape: {true_snr_values.shape}")
+            print(f"Pred SNR values shape: {pred_snr_values.shape}")
+            
             # Attempt to create the confusion matrix
             cm = confusion_matrix(true_snr_values, pred_snr_values, labels=unique_snrs)
             
@@ -559,14 +624,19 @@ def plot_validation_confusion_matrices(true_modulation, pred_modulation, true_sn
             
             # Try a simpler approach: just use the indices directly
             try:
-                simple_cm = confusion_matrix(true_snr_indices, pred_snr_indices)
-                simple_classes = [str(i) for i in range(simple_cm.shape[0])]
-                
-                plot_confusion_matrix(None, None, classes=simple_classes, 
-                                    title=f'SNR Index Confusion Matrix (Epoch {epoch})' if epoch else 'SNR Index Confusion Matrix',
-                                    normalize=True, 
-                                    save_path=os.path.join(save_dir, f'snr_index_conf_matrix_epoch_{epoch}.png') if epoch else None,
-                                    cm=simple_cm)
+                # Calculate maximum index for safety
+                max_idx = max(np.max(true_snr_indices), np.max(pred_snr_indices))
+                if max_idx < 30:  # Reasonable for safety
+                    simple_cm = confusion_matrix(true_snr_indices, pred_snr_indices)
+                    simple_classes = [str(i) for i in range(simple_cm.shape[0])]
+                    
+                    plot_confusion_matrix(None, None, classes=simple_classes, 
+                                        title=f'SNR Index Confusion Matrix (Epoch {epoch})' if epoch else 'SNR Index Confusion Matrix',
+                                        normalize=True, 
+                                        save_path=os.path.join(save_dir, f'snr_index_conf_matrix_epoch_{epoch}.png') if epoch else None,
+                                        cm=simple_cm)
+                else:
+                    print(f"Index range too large ({max_idx}) for safe confusion matrix calculation")
             except Exception as e2:
                 print(f"ERROR creating simplified SNR confusion matrix: {str(e2)}")
                 print("Unable to create SNR confusion matrix.")

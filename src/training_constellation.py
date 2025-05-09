@@ -5,7 +5,7 @@ import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os
-from validate_constellation import plot_validation_confusion_matrices
+from src.validate_constellation import plot_validation_confusion_matrices
 from contextlib import nullcontext
 import numpy as np
 
@@ -798,7 +798,7 @@ def validate_constellation(model, val_dataloader, criterion, device,
         os.makedirs(save_results_dir, exist_ok=True)
         
         # Plot confusion matrices
-        from validate_constellation import plot_validation_confusion_matrices
+        from src.validate_constellation import plot_validation_confusion_matrices
         
         # Pass metric information for visualization
         plot_validation_confusion_matrices(
