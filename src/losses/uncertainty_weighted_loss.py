@@ -55,10 +55,20 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
         # Compute weighted loss with regularization term
         weighted_losses = weights * losses
         
-        # Add uncertainty regularization term (from original Kendall formulation)
-        regularization = 0.5 * torch.sum(self.log_vars)
+        # Add uncertainty regularization term (proper formulation for analytical weighting)
+        # The regularization should encourage learning of uncertainties, not penalize them
+        regularization = 0.5 * torch.sum(torch.exp(self.log_vars))
         
         total_loss = torch.sum(weighted_losses) + regularization
+        
+        # Validation: Ensure loss is mathematically valid
+        if torch.isnan(total_loss) or torch.isinf(total_loss):
+            raise ValueError(f"Invalid loss value: {total_loss}")
+        if total_loss < 0:
+            print(f"Warning: Negative total loss detected: {total_loss.item():.6f}")
+            print(f"  Weighted losses: {torch.sum(weighted_losses).item():.6f}")
+            print(f"  Regularization: {regularization.item():.6f}")
+            print(f"  Log vars: {self.log_vars.detach().cpu().numpy()}")
         
         return total_loss, weights.detach()
     

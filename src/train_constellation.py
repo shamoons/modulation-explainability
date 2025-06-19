@@ -83,8 +83,9 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
     
-    # Use simple CrossEntropyLoss for SNR for now (to avoid index mapping issues)
-    criterion_snr = nn.CrossEntropyLoss()
+    # Use Distance-Penalized SNR Loss for better ordinal relationships
+    from losses.uncertainty_weighted_loss import DistancePenalizedSNRLoss
+    criterion_snr = DistancePenalizedSNRLoss(snr_min=-20, snr_max=30, snr_step=2, alpha=1.0, beta=0.5)
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
