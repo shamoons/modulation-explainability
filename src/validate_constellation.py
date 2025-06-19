@@ -3,12 +3,12 @@
 import torch
 from tqdm import tqdm
 from utils.config_utils import load_loss_config
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 
 
 # src/validate_constellation.py
 
-def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=False, use_autocast=False):
+def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=False):
     model.eval()
 
     alpha, beta = load_loss_config()
@@ -25,8 +25,9 @@ def validate(model, device, criterion_modulation, criterion_snr, val_loader, use
     all_true_snr_labels = []
     all_pred_snr_labels = []
 
-    # Choose autocast context based on use_autocast flag
-    autocast_context = autocast() if use_autocast else torch.no_grad()
+    # Choose autocast context based on use_autocast flag and device
+    device = next(model.parameters()).device
+    autocast_context = autocast('cuda') if use_autocast and device.type == 'cuda' else torch.no_grad()
 
     with torch.no_grad():
         with autocast_context:

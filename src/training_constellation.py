@@ -10,7 +10,8 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os
-from torch.cuda.amp import autocast, GradScaler  # Import autocast and GradScaler
+from torch.amp import autocast, GradScaler  # Import autocast and GradScaler
+import torch
 
 
 def train(
@@ -27,15 +28,15 @@ def train(
     save_dir="checkpoints",
     mod_list=None,
     snr_list=None,
-    use_snr_buckets=False,
     base_lr=None,
     weight_decay=None,
-    patience=1
+    patience=1,
+    uncertainty_weighter=None
 ):
     """
     Train the model and save the best one based on validation loss.
     Log metrics after validation and plot confusion matrices and F1 scores.
-    If use_snr_buckets is True, SNR values will be classified into buckets (low, medium, high).
+    Uses discrete SNR prediction (26 classes from -20 to 30 dB in 2dB steps).
     """
     alpha, beta = load_loss_config()
     save_dir = 'checkpoints'
@@ -49,7 +50,6 @@ def train(
         "epochs": epochs,
         "mod_list": mod_list,
         "snr_list": snr_list,
-        "use_snr_buckets": use_snr_buckets,
         # "num_train_samples": num_train_samples,
         # "num_val_samples": num_val_samples,
         "alpha": alpha,
@@ -66,8 +66,8 @@ def train(
     best_val_loss = float('inf')  # Initialize best validation loss
     model.to(device)
 
-    # Initialize GradScaler for mixed-precision training
-    scaler = GradScaler()
+    # Initialize GradScaler for mixed-precision training (only if CUDA available)
+    scaler = GradScaler('cuda') if device.type == 'cuda' else None
 
     for epoch in range(epochs):
         indices = list(range(len(dataset)))
@@ -76,8 +76,10 @@ def train(
         train_sampler = SubsetRandomSampler(train_idx)
         val_sampler = SubsetRandomSampler(val_idx)
 
-        train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=True, prefetch_factor=4)
-        val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=True, prefetch_factor=4)
+        # Disable pin_memory for MPS
+        use_pin_memory = device.type == 'cuda'
+        train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
+        val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
 
         model.train()
         running_loss = 0.0
@@ -99,28 +101,41 @@ def train(
 
                 optimizer.zero_grad()
 
-                # Forward pass under autocast for mixed precision
-                with autocast():
+                # Forward pass under autocast for mixed precision (only for CUDA)
+                if device.type == 'cuda':
+                    with autocast('cuda'):
+                        modulation_output, snr_output = model(inputs)
+                else:
+                    # For non-CUDA devices, don't use autocast or no_grad
                     modulation_output, snr_output = model(inputs)
 
-                    # Compute loss for both outputs
-                    loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                    loss_snr = criterion_snr(snr_output, snr_labels)
+                # Compute loss for both outputs
+                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                loss_snr = criterion_snr(snr_output, snr_labels)
 
-                    # Combine both losses
-                    total_loss = alpha * loss_modulation + beta * loss_snr
+                # For now, use simple weighted combination to avoid gradient issues
+                # TODO: Re-enable uncertainty weighting once gradient flow is fixed
+                total_loss = alpha * loss_modulation + beta * loss_snr
 
-                # Backpropagation with scaled gradients
-                scaler.scale(total_loss).backward()
-
-                # Unscale the gradients before gradient clipping
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
-                # Step the optimizer using scaled gradients
-                scaler.step(optimizer)
-                # Update the scaler for next iteration
-                scaler.update()
+                # Backpropagation with scaled gradients (only for CUDA)
+                if scaler is not None:
+                    scaler.scale(total_loss).backward()
+                    scaler.unscale_(optimizer)
+                    # Clip gradients for all parameters in optimizer
+                    all_params = []
+                    for param_group in optimizer.param_groups:
+                        all_params.extend(param_group['params'])
+                    torch.nn.utils.clip_grad_norm_(all_params, max_norm=1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    total_loss.backward()
+                    # Clip gradients for all parameters in optimizer  
+                    all_params = []
+                    for param_group in optimizer.param_groups:
+                        all_params.extend(param_group['params'])
+                    torch.nn.utils.clip_grad_norm_(all_params, max_norm=1.0)
+                    optimizer.step()
 
                 running_loss += total_loss.item()
 
@@ -154,7 +169,7 @@ def train(
 
         # Perform validation at the end of each epoch
         # Use autocast also in validation to speed up inference
-        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_snr_buckets=use_snr_buckets, use_autocast=True)
+        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=True)
         (
             val_loss,
             modulation_loss_total,

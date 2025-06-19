@@ -26,7 +26,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, use_snr_buckets=True, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
+def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
     # Load data
     print("Loading data...")
 
@@ -50,8 +50,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         root_dir=root_dir,
         image_type=image_type,
         snr_list=snr_list,
-        mods_to_process=mods_to_process,
-        use_snr_buckets=use_snr_buckets
+        mods_to_process=mods_to_process
     )
 
     # Determine input channels based on image_type
@@ -83,10 +82,18 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss()  # Modulation classification loss
-    criterion_snr = nn.CrossEntropyLoss()  # SNR classification loss
+    
+    # Use simple CrossEntropyLoss for SNR for now (to avoid index mapping issues)
+    criterion_snr = nn.CrossEntropyLoss()
+    
+    # Initialize analytical uncertainty weighting for multi-task learning
+    from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
+    device = get_device()
+    uncertainty_weighter = AnalyticalUncertaintyWeightedLoss(num_tasks=2, temperature=1.0, device=device)
 
-    # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
+    # Initialize optimizer (include uncertainty weighter parameters)
+    model_params = list(model.parameters()) + list(uncertainty_weighter.parameters())
+    optimizer = optim.Adam(model_params, lr=base_lr, weight_decay=weight_decay)
 
     # Instead of CyclicLR, use ReduceLROnPlateau
     # ReduceLROnPlateau reduces the learning rate when a metric has stopped improving.
@@ -100,8 +107,7 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         threshold_mode='rel',
         cooldown=0,
         min_lr=0,
-        eps=1e-08,
-        verbose=True
+        eps=1e-08
     )
 
     # Determine device (CUDA, MPS, or CPU)
@@ -123,10 +129,10 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
         epochs=epochs,
         mod_list=mods_to_process,
         snr_list=snr_list,
-        use_snr_buckets=use_snr_buckets,
         base_lr=base_lr,
         weight_decay=weight_decay,
-        patience=patience
+        patience=patience,
+        uncertainty_weighter=uncertainty_weighter  # Pass the uncertainty weighter
     )
 
 
@@ -137,7 +143,6 @@ if __name__ == "__main__":
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
-    parser.add_argument('--use_snr_buckets', type=str2bool, help='Flag to use SNR buckets instead of actual SNR values', default=False)
     parser.add_argument('--num_cycles', type=int, help='Number of cycles (unused now, but kept for compatibility)', default=4)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0000001)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
@@ -153,7 +158,6 @@ if __name__ == "__main__":
         snr_list=args.snr_list,
         mods_to_process=args.mods_to_process,
         epochs=args.epochs,
-        use_snr_buckets=args.use_snr_buckets,
         base_lr=args.base_lr,
         max_lr=args.max_lr,
         weight_decay=args.weight_decay,

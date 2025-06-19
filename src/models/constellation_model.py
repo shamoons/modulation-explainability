@@ -4,7 +4,7 @@ from torchvision import models
 
 
 class ConstellationResNet(nn.Module):
-    def __init__(self, num_classes=20, snr_classes=3, input_channels=1, dropout_prob=0.6, model_name="resnet18"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.6, model_name="resnet18"):
         super(ConstellationResNet, self).__init__()
 
         # Load a ResNet model from torchvision
@@ -39,6 +39,7 @@ class ConstellationResNet(nn.Module):
 
         # Separate transformation and output heads for modulation and SNR tasks
         self.modulation_head = nn.Linear(in_features // 4, num_classes)
+        # SNR head: 26 classes for discrete SNR values (-20 to 30 dB in 2dB steps)
         self.snr_head = nn.Linear(in_features // 4, snr_classes)
 
     def forward(self, x):

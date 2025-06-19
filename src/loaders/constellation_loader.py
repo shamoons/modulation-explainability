@@ -4,15 +4,14 @@ import os
 from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-from utils.snr_utils import get_snr_bucket_label, get_snr_label_names
+# SNR bucket utilities no longer needed - using discrete SNR values
 
 
 class ConstellationDataset(Dataset):
-    def __init__(self, root_dir, snr_list=None, mods_to_process=None, image_type='three_channel', use_snr_buckets=False):
+    def __init__(self, root_dir, snr_list=None, mods_to_process=None, image_type='three_channel'):
         self.root_dir = root_dir
         self.mods_to_process = mods_to_process if mods_to_process is not None else []  # If not provided, load all modulations
         self.image_type = image_type
-        self.use_snr_buckets = use_snr_buckets
 
         # Ensure snr_list is a list of integers
         if snr_list is not None:
@@ -69,29 +68,18 @@ class ConstellationDataset(Dataset):
                                     image_paths.append(img_path)
                                     modulation_labels_list.append(modulation_type)
 
-                                    # Optionally bucket SNR values (store the bucket label)
-                                    if self.use_snr_buckets:
-                                        snr_bucket_label = get_snr_bucket_label(snr_value)
-                                        snr_labels_list.append(snr_bucket_label)
-                                    else:
-                                        snr_labels_list.append(snr_value)
+                                    # Use discrete SNR values
+                                    snr_labels_list.append(snr_value)
 
         # Create label mappings for modulations
         modulation_types = sorted(list(modulation_types_set))
         self.modulation_labels = {mod: idx for idx, mod in enumerate(modulation_types)}
         self.inverse_modulation_labels = {idx: mod for mod, idx in self.modulation_labels.items()}
 
-        # Create label mappings for SNRs
-        if self.use_snr_buckets:
-            # Get bucket names like ['low', 'medium', 'high']
-            snr_label_names = get_snr_label_names()
-            self.snr_labels = {label: idx for idx, label in enumerate(snr_label_names)}
-            self.inverse_snr_labels = {idx: label for idx, label in enumerate(snr_label_names)}
-        else:
-            # Use raw SNR values
-            snr_values = sorted(list(snr_values_set))
-            self.snr_labels = {snr: idx for idx, snr in enumerate(snr_values)}
-            self.inverse_snr_labels = {idx: snr for idx, snr in enumerate(snr_values)}
+        # Create label mappings for discrete SNR values
+        snr_values = sorted(list(snr_values_set))
+        self.snr_labels = {snr: idx for idx, snr in enumerate(snr_values)}
+        self.inverse_snr_labels = {idx: snr for idx, snr in enumerate(snr_values)}
 
         # Convert modulation_labels_list and snr_labels_list from labels to indices
         modulation_labels_list = [self.modulation_labels[mod] for mod in modulation_labels_list]

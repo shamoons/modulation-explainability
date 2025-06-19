@@ -18,7 +18,6 @@ class PerturbationDataset(ConstellationDataset):
         image_type="grayscale",
         snr_list=None,
         mods_to_process=None,
-        use_snr_buckets=True,
     ):
         """
         Initialize the PerturbationDataset.
@@ -30,13 +29,11 @@ class PerturbationDataset(ConstellationDataset):
             image_type (str): Type of image ('grayscale' or 'RGB').
             snr_list (list, optional): List of SNR values to include.
             mods_to_process (list, optional): List of modulation types to include.
-            use_snr_buckets (bool): Whether to use SNR buckets.
         """
         self.root_dir = perturbation_dir  # Use the perturbed images directory
         self.image_type = image_type
         self.snr_list = snr_list
         self.mods_to_process = mods_to_process
-        self.use_snr_buckets = use_snr_buckets
         self.perturbation_type = perturbation_type
 
         # Initialize labels and mappings
@@ -109,27 +106,18 @@ class PerturbationDataset(ConstellationDataset):
                         image_path = os.path.join(snr_dir_full, file_name)
                         image_paths.append(image_path)
                         mod_labels_list.append(mod)
-                        if self.use_snr_buckets:
-                            from utils.snr_utils import get_snr_bucket_label
-                            snr_bucket_label = get_snr_bucket_label(snr_value)
-                            snr_labels_list.append(snr_bucket_label)
-                        else:
-                            snr_labels_list.append(snr_value)
+                        # Use discrete SNR values
+                        snr_labels_list.append(snr_value)
 
         # Create modulation and SNR mappings
         modulation_types = sorted(list(modulation_types_set))
         self.modulation_labels = {mod: idx for idx, mod in enumerate(modulation_types)}
         self.inverse_modulation_labels = {idx: mod for mod, idx in self.modulation_labels.items()}
 
-        if self.use_snr_buckets:
-            from utils.snr_utils import get_snr_label_names
-            snr_label_names = get_snr_label_names()  # E.g., ['low', 'medium', 'high']
-            self.snr_labels = {label: idx for idx, label in enumerate(snr_label_names)}
-            self.inverse_snr_labels = {idx: label for idx, label in enumerate(snr_label_names)}
-        else:
-            snr_values = sorted(list(snr_values_set))
-            self.snr_labels = {snr: idx for idx, snr in enumerate(snr_values)}
-            self.inverse_snr_labels = {idx: snr for idx, snr in enumerate(snr_values)}
+        # Create discrete SNR mappings
+        snr_values = sorted(list(snr_values_set))
+        self.snr_labels = {snr: idx for idx, snr in enumerate(snr_values)}
+        self.inverse_snr_labels = {idx: snr for idx, snr in enumerate(snr_values)}
 
         # Convert mod_labels_list and snr_labels_list to indices
         mod_labels_list = [self.modulation_labels[mod] for mod in mod_labels_list]
