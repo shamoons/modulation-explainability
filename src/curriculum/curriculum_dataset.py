@@ -41,59 +41,66 @@ class CurriculumAwareDataset(ConstellationDataset):
         self.use_snr_buckets = use_snr_buckets
         self.original_snr_list = snr_list
         
-        # IMPORTANT: Instead of using the parent class init which loads all SNRs,
-        # we'll use our custom loader to only load specified SNRs from the start
-        if snr_list is not None:
-            print(f"Loading ONLY specified SNRs: {snr_list}")
-        else:
-            print(f"No SNR list provided, loading all available SNRs")
+        # Initialize empty lists for dataset
+        self.image_paths = []
+        self.modulation_labels_list = []
+        self.snr_labels_list = []
         
-        # Load only images with specified SNR values
-        self.image_paths, self.modulation_labels_list, self.snr_labels_list = self._load_image_paths_and_labels(
-            snr_list=snr_list
-        )
+        # Initialize SNR and modulation mappings
+        self.snr_labels = {}
+        self.modulation_labels = {}
+        self.inverse_snr_labels = {}
+        self.inverse_modulation_labels = {}
         
-        # Setup transform
-        if self.image_type == 'three_channel':
+        # Initialize transform based on image type
+        if image_type == 'three_channel':
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                  std=[0.229, 0.224, 0.225])
             ])
-        elif self.image_type == 'grayscale':
+        elif image_type == 'grayscale':
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.0], std=[1.0])
+                transforms.Normalize(mean=[0.485],
+                                  std=[0.229])
             ])
-        elif self.image_type == 'point':
+        elif image_type == 'point':
             self.transform = transforms.Compose([
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.0], std=[1.0])
+                transforms.Normalize(mean=[0.485],
+                                  std=[0.229])
             ])
         else:
-            raise ValueError(f"Unsupported image_type '{self.image_type}'.")
-            
-        # Store original data for filtering/resetting
-        self.original_image_paths = self.image_paths.copy()
-        self.original_modulation_labels_list = self.modulation_labels_list.copy()
-        self.original_snr_labels_list = self.snr_labels_list.copy()
+            raise ValueError(f"Unsupported image_type '{image_type}'")
+        
+        # Load dataset with specified SNR list
+        self._load_image_paths_and_labels(snr_list)
         
         # Print dataset statistics
-        dataset_snrs = set()
-        for snr_label in self.snr_labels_list:
-            dataset_snrs.add(self.inverse_snr_labels[snr_label])
+        print(f"\nDataset Statistics:")
+        print(f"Total samples: {len(self.image_paths)}")
+        
+        # Count samples per modulation type
+        mod_counts = {}
+        for mod_label in self.modulation_labels_list:
+            mod_type = self.inverse_modulation_labels[mod_label]
+            mod_counts[mod_type] = mod_counts.get(mod_type, 0) + 1
             
+        print("\nSamples per modulation type:")
+        for mod_type, count in sorted(mod_counts.items()):
+            print(f"  {mod_type}: {count} samples")
+            
+        # Count samples per SNR value
         snr_counts = {}
         for snr_label in self.snr_labels_list:
-            actual_snr = self.inverse_snr_labels[snr_label]
-            if actual_snr not in snr_counts:
-                snr_counts[actual_snr] = 0
-            snr_counts[actual_snr] += 1
+            snr_value = self.inverse_snr_labels[snr_label]
+            snr_counts[snr_value] = snr_counts.get(snr_value, 0) + 1
             
-        print(f"SNRs in initialized dataset: {sorted(list(dataset_snrs))}")
-        print(f"Samples per SNR in dataset:")
+        print("\nSamples per SNR value:")
         for snr in sorted(snr_counts.keys()):
             print(f"  SNR {snr}dB: {snr_counts[snr]} samples")
             
@@ -110,6 +117,8 @@ class CurriculumAwareDataset(ConstellationDataset):
         Returns:
             Actual SNR value in dB
         """
+        if snr_idx not in self.inverse_snr_labels:
+            raise ValueError(f"SNR index {snr_idx} not found in mapping")
         return self.inverse_snr_labels[snr_idx]
         
     def update_snr_list(self, new_snr_list: List[int]) -> None:
@@ -141,67 +150,26 @@ class CurriculumAwareDataset(ConstellationDataset):
         # Save the count of the original dataset for comparison
         original_count = len(self.image_paths)
         
-        # KEY CHANGE: Instead of filtering, we completely reload the dataset
-        # with the new SNR list
-        # 1. Save important properties we need to preserve
-        root_dir = self.root_dir
-        mods_to_process = self.mods_to_process
-        image_type = self.image_type
-        use_snr_buckets = self.use_snr_buckets
+        # Reload dataset with new SNR list
+        self._load_image_paths_and_labels(new_snr_list)
         
-        # 2. Reload the dataset with the new SNR list
-        print(f"Reloading dataset from disk with SNR list: {new_snr_list}")
-        image_paths, modulation_labels_list, snr_labels_list = self._load_image_paths_and_labels(
-            snr_list=new_snr_list
-        )
+        # Print update statistics
+        print(f"\nDataset Update Statistics:")
+        print(f"Original sample count: {original_count}")
+        print(f"New sample count: {len(self.image_paths)}")
         
-        # Safety check: Ensure all arrays are the same length
-        if len(image_paths) != len(modulation_labels_list) or len(image_paths) != len(snr_labels_list):
-            raise ValueError(f"Dataset arrays have inconsistent lengths: "
-                             f"image_paths={len(image_paths)}, "
-                             f"modulation_labels_list={len(modulation_labels_list)}, "
-                             f"snr_labels_list={len(snr_labels_list)}")
-            
-        # 3. Update dataset properties
-        self.image_paths = image_paths
-        self.modulation_labels_list = modulation_labels_list
-        self.snr_labels_list = snr_labels_list
-        
-        # 4. Verify the dataset was updated correctly
-        snr_counts = {snr: 0 for snr in new_snr_list}
+        # Count samples per SNR value
+        snr_counts = {}
         for snr_label in self.snr_labels_list:
-            actual_snr = self.inverse_snr_labels[snr_label]
-            if actual_snr in snr_counts:
-                snr_counts[actual_snr] += 1
-        
-        # Check for missing SNRs
-        missing_snrs = [snr for snr in new_snr_list if snr_counts[snr] == 0]
-        if missing_snrs:
-            print(f"WARNING: No samples found for SNR values: {missing_snrs}")
-        
-        # Print counts per SNR
-        print(f"Samples per SNR in updated dataset:")
+            snr_value = self.inverse_snr_labels[snr_label]
+            snr_counts[snr_value] = snr_counts.get(snr_value, 0) + 1
+            
+        print("\nSamples per SNR value after update:")
         for snr in sorted(snr_counts.keys()):
             print(f"  SNR {snr}dB: {snr_counts[snr]} samples")
-        
-        # Calculate unique SNR values in the dataset
-        dataset_snrs = set()
-        for snr_label in self.snr_labels_list:
-            dataset_snrs.add(self.inverse_snr_labels[snr_label])
-        
-        # Final safety check to ensure data integrity
-        print(f"Final dataset check:")
-        print(f"- Dataset size: {len(self.image_paths)} examples")
-        print(f"- All arrays same length: {len(self.image_paths) == len(self.modulation_labels_list) == len(self.snr_labels_list)}")
-        print(f"- SNRs in updated dataset: {sorted(list(dataset_snrs))}")
-        print(f"- Dataset size changed from {original_count} to {len(self.image_paths)} images")
+            
         print(f"{'='*50}\n")
         
-        # Store updated data as new original data
-        self.original_image_paths = self.image_paths.copy()
-        self.original_modulation_labels_list = self.modulation_labels_list.copy()
-        self.original_snr_labels_list = self.snr_labels_list.copy()
-    
     def _load_image_paths_and_labels(self, snr_list=None):
         """
         Load image paths and labels based on specified SNR list.
@@ -215,66 +183,83 @@ class CurriculumAwareDataset(ConstellationDataset):
         """
         print(f"Loading images with SNR list: {snr_list}")
         
-        image_paths = []
-        modulation_labels_list = []
-        snr_labels_list = []
-        snr_values_set = set()
-        modulation_types_set = set()
-
-        for modulation_type in sorted(os.listdir(self.root_dir)):  # Sorted for consistency
+        # Reset lists
+        self.image_paths = []
+        self.modulation_labels_list = []
+        self.snr_labels_list = []
+        
+        # Reset mappings
+        self.snr_labels = {}
+        self.modulation_labels = {}
+        self.inverse_snr_labels = {}
+        self.inverse_modulation_labels = {}
+        
+        # Create SNR value to index mapping
+        if snr_list:
+            for i, snr in enumerate(sorted(snr_list)):
+                self.snr_labels[snr] = i
+                self.inverse_snr_labels[i] = snr
+        
+        # Process each modulation type
+        for modulation_type in sorted(os.listdir(self.root_dir)):
+            if self.mods_to_process and modulation_type not in self.mods_to_process:
+                continue
+                
             modulation_dir = os.path.join(self.root_dir, modulation_type)
-            if os.path.isdir(modulation_dir):
-                if self.mods_to_process and modulation_type not in self.mods_to_process:
-                    continue
-                modulation_types_set.add(modulation_type)
-                for snr_dir in sorted(os.listdir(modulation_dir)):
+            if not os.path.isdir(modulation_dir):
+                continue
+                
+            # Create modulation type to index mapping
+            if modulation_type not in self.modulation_labels:
+                idx = len(self.modulation_labels)
+                self.modulation_labels[modulation_type] = idx
+                self.inverse_modulation_labels[idx] = modulation_type
+            
+            # Process each SNR value
+            for snr_dir in sorted(os.listdir(modulation_dir)):
+                try:
+                    # Parse SNR value from directory name (e.g., "SNR_-20" -> -20)
+                    if not snr_dir.startswith('SNR_'):
+                        continue
+                    snr_value = int(snr_dir.split('_')[1])
+                    
+                    if snr_list and snr_value not in snr_list:
+                        continue
+                        
                     snr_path = os.path.join(modulation_dir, snr_dir)
-                    if os.path.isdir(snr_path):
-                        snr_value = int(snr_dir.split('_')[1])  # Extract SNR value
-                        if snr_list is None or snr_value in snr_list:
-                            snr_values_set.add(snr_value)
-                            for img_name in os.listdir(snr_path):
-                                if img_name.endswith('.png') and img_name.startswith(self.image_type):
-                                    img_path = os.path.join(snr_path, img_name)
-                                    image_paths.append(img_path)
-                                    modulation_labels_list.append(modulation_type)
-
-                                    # Optionally bucket SNR values (store the bucket label)
-                                    if self.use_snr_buckets:
-                                        snr_bucket_label = get_snr_bucket_label(snr_value)
-                                        snr_labels_list.append(snr_bucket_label)
-                                    else:
-                                        snr_labels_list.append(snr_value)
-
-        # Check if we have all the requested SNR values
-        if snr_list is not None:
-            missing_snrs = set(snr_list) - snr_values_set
-            if missing_snrs:
-                print(f"WARNING: The following SNR values were not found: {missing_snrs}")
-                print(f"Available SNR values: {sorted(list(snr_values_set))}")
-
-        # Create label mappings for modulations
-        modulation_types = sorted(list(modulation_types_set))
-        self.modulation_labels = {mod: idx for idx, mod in enumerate(modulation_types)}
-        self.inverse_modulation_labels = {idx: mod for mod, idx in self.modulation_labels.items()}
-
-        # Create label mappings for SNRs
-        if self.use_snr_buckets:
-            # Get bucket names like ['low', 'medium', 'high']
-            snr_label_names = get_snr_label_names()
-            self.snr_labels = {label: idx for idx, label in enumerate(snr_label_names)}
-            self.inverse_snr_labels = {idx: label for idx, label in enumerate(snr_label_names)}
-        else:
-            # Use raw SNR values
-            snr_values = sorted(list(snr_values_set))
-            self.snr_labels = {snr: idx for idx, snr in enumerate(snr_values)}
-            self.inverse_snr_labels = {idx: snr for idx, snr in enumerate(snr_values)}
-
-        # Convert modulation_labels_list and snr_labels_list from labels to indices
-        modulation_labels_list = [self.modulation_labels[mod] for mod in modulation_labels_list]
-        snr_labels_list = [self.snr_labels[snr] for snr in snr_labels_list]
-
-        return image_paths, modulation_labels_list, snr_labels_list 
+                    if not os.path.isdir(snr_path):
+                        continue
+                        
+                    # Process each image
+                    for image_file in sorted(os.listdir(snr_path)):
+                        if not image_file.endswith(('.png', '.jpg', '.jpeg')):
+                            continue
+                            
+                        image_path = os.path.join(snr_path, image_file)
+                        
+                        # Add to dataset
+                        self.image_paths.append(image_path)
+                        self.modulation_labels_list.append(self.modulation_labels[modulation_type])
+                        
+                        # Map SNR value to index
+                        if snr_value not in self.snr_labels:
+                            idx = len(self.snr_labels)
+                            self.snr_labels[snr_value] = idx
+                            self.inverse_snr_labels[idx] = snr_value
+                        self.snr_labels_list.append(self.snr_labels[snr_value])
+                        
+                except (ValueError, IndexError) as e:
+                    print(f"Warning: Could not parse SNR value from directory {snr_dir}: {str(e)}")
+                    continue
+        
+        # Save original dataset state
+        self.original_image_paths = self.image_paths.copy()
+        self.original_modulation_labels_list = self.modulation_labels_list.copy()
+        self.original_snr_labels_list = self.snr_labels_list.copy()
+        
+        print(f"Loaded {len(self.image_paths)} images")
+        print(f"SNR values: {sorted(list(self.snr_labels.keys()))}")
+        print(f"Modulation types: {sorted(list(self.modulation_labels.keys()))}")
 
     def __getitem__(self, idx):
         """

@@ -30,274 +30,190 @@ def get_dataset_property(dataset_obj, property_name):
         return getattr(dataset_obj, property_name)
 
 
-def validate(model, device, criterion_modulation, criterion_snr, criterion_dynamic=None, val_loader=None, 
-            use_autocast=False, use_curriculum=False, current_snr_list=None, use_snr_buckets=False, **kwargs):
+def validate_constellation(model, val_dataloader, criterion_modulation, criterion_snr, criterion_dynamic, device, 
+                            use_curriculum=False, curriculum_manager=None, 
+                            save_results_dir=None, epoch=None, 
+                            visualize=False, mod_classes=None):
     """
-    Validate the model on the validation set.
-    Returns validation loss, accuracies, and predictions for plotting.
+    Validate a constellation recognition model
     
     Args:
-        model: Model to validate
-        device: Device to validate on
-        criterion_modulation: Modulation loss function
-        criterion_snr: SNR loss function
-        criterion_dynamic: Dynamic loss function (optional)
-        val_loader: Validation data loader
-        use_autocast: Whether to use automatic mixed precision
-        use_curriculum: Whether curriculum learning is enabled
-        current_snr_list: Current list of SNR values for curriculum
-        use_snr_buckets: Whether SNR buckets are used
-        **kwargs: Additional arguments for backward compatibility
+        model: The PyTorch model to validate
+        val_dataloader: Validation data loader
+        criterion_modulation: Loss function for modulation classification
+        criterion_snr: Loss function for SNR classification
+        criterion_dynamic: Dynamic loss weighting function
+        device: Device to run validation on
+        use_curriculum: Whether to use curriculum learning
+        curriculum_manager: CurriculumManager instance if using curriculum
+        save_results_dir: Directory to save validation results
+        epoch: Current epoch number
+        visualize: Whether to visualize validation results
+        mod_classes: List of modulation class names for visualization
     
     Returns:
-        Tuple or Dict containing validation metrics and predictions, depending on the call pattern
+        val_loss, mod_accuracy, snr_accuracy, metrics_dict
     """
+    # Set model to evaluation mode
     model.eval()
+    
     val_loss = 0.0
-    modulation_loss_total = 0.0
-    snr_loss_total = 0.0
-    correct_modulation = 0
+    correct_mod = 0
     correct_snr = 0
     total = 0
-    correct_combined = 0  # Both modulation and SNR correct
-
-    # Lists to store predictions and true labels for plotting
-    all_pred_modulation_labels = []
-    all_true_modulation_labels = []
-    all_pred_snr_indices = []  # Store indices instead of values
-    all_true_snr_indices = []  # Store indices instead of values
     
-    # For curriculum learning, track per-SNR accuracy
-    snr_correct_per_class = {}
-    snr_total_per_class = {}
+    # Store ground truth and predictions for visualization
+    true_mod_labels = []
+    pred_mod_labels = []
+    true_snr_indices = []
+    pred_snr_indices = []
     
-    # Get SNR values from dataset using the helper function
-    dataset_obj = val_loader.dataset
-    snr_labels_dict = get_dataset_property(dataset_obj, 'snr_labels')
-    snr_values = list(snr_labels_dict.keys())
+    # For curriculum mode - track per-SNR accuracy and record a direct confusion matrix
+    metrics = {}
     
-    # For direct confusion matrix calculation in curriculum mode
-    if use_curriculum and current_snr_list:
-        # Map SNR values to their curriculum positions
-        curriculum_snr_values = sorted(current_snr_list)
-        snr_value_to_position = {val: idx for idx, val in enumerate(curriculum_snr_values)}
+    # Get the SNR values from the dataset for proper mapping
+    try:
+        if hasattr(val_dataloader.dataset, 'dataset'):
+            dataset_snr_labels = val_dataloader.dataset.dataset.snr_labels
+        else:
+            dataset_snr_labels = val_dataloader.dataset.snr_labels
+            
+        snr_values = list(dataset_snr_labels.keys())
+        metrics['snr_values'] = snr_values
+        print(f"Available SNR values for validation: {snr_values}")
+    except Exception as e:
+        print(f"Error getting SNR values from dataset: {str(e)}")
+        snr_values = []
+        
+    # Use curriculum SNR values if available
+    if use_curriculum and curriculum_manager is not None:
+        # Get current SNR values
+        current_snr_list = curriculum_manager.get_current_snr_list()
+        metrics['current_snr_list'] = current_snr_list
+        print(f"Current curriculum stage: {curriculum_manager.current_stage}")
+        print(f"Current SNR list: {current_snr_list}")
+        print(f"Length of current SNR list: {len(current_snr_list)}")
         
         # Initialize confusion matrix for curriculum SNRs
-        curriculum_cm = np.zeros((len(curriculum_snr_values), len(curriculum_snr_values)))
+        n_curr_classes = len(current_snr_list)
+        curriculum_cm = np.zeros((n_curr_classes, n_curr_classes))
         
-        # Store raw predictions and labels as actual SNR values
-        raw_true_snr_values = []
-        raw_pred_snr_values = []
-    
-    # Initialize SNR class counters if in curriculum mode
-    if use_curriculum and current_snr_list:
-        for snr in current_snr_list:
-            # Find the index for this SNR value
-            try:
-                snr_idx = list(snr_labels_dict.keys()).index(snr)
-                snr_correct_per_class[snr_idx] = 0
-                snr_total_per_class[snr_idx] = 0
-            except ValueError:
-                print(f"Warning: SNR value {snr} not found in dataset labels")
-
+        # Store mapping from SNR values to their curriculum indices
+        snr_to_curr_idx = {snr: i for i, snr in enumerate(sorted(current_snr_list))}
+        metrics['curriculum_snr_values'] = sorted(current_snr_list)
+        
+    # Disable gradient computation for validation
     with torch.no_grad():
-        for inputs, modulation_labels, snr_labels in tqdm(val_loader, desc="Validating", leave=False):
-            inputs = inputs.to(device)
-            modulation_labels = modulation_labels.to(device)
-            snr_labels = snr_labels.to(device)
-
-            # Use autocast for mixed precision if requested
-            context = autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu') if use_autocast else nullcontext()
+        for batch_idx, data in enumerate(val_dataloader):
+            inputs, mod_labels, snr_indices = \
+                data[0].to(device), data[1].to(device), data[2].to(device)
             
-            with context:
-                # Only pass inputs to the model
-                modulation_output, snr_output = model(inputs)
-                
-                # Calculate losses using criterion functions
-                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                loss_snr = criterion_snr(snr_output, snr_labels)
-                
-                # If criterion_dynamic is provided, use it to combine losses
-                if criterion_dynamic is not None:
-                    # Pass losses list to criterion_dynamic
-                    loss, _ = criterion_dynamic([loss_modulation, loss_snr])
-                else:
-                    # Default behavior if criterion_dynamic is not provided
-                    loss = loss_modulation + loss_snr
-
+            # Forward pass
+            mod_out, snr_out = model(inputs)
+            
+            # Calculate individual losses
+            mod_loss = criterion_modulation(mod_out, mod_labels)
+            snr_loss = criterion_snr(snr_out, snr_indices)
+            
+            # Combine losses using dynamic weighting if available
+            if criterion_dynamic is not None:
+                loss, _ = criterion_dynamic([mod_loss, snr_loss])
+            else:
+                loss = mod_loss + snr_loss
+            
+            # Update validation loss
             val_loss += loss.item()
-            modulation_loss_total += loss_modulation.item()
-            snr_loss_total += loss_snr.item()
-
-            # Get predicted classes
-            _, predicted_modulation = modulation_output.max(1)
-            _, predicted_snr = snr_output.max(1)
             
-            total += modulation_labels.size(0)
-            correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-            correct_snr += predicted_snr.eq(snr_labels).sum().item()
+            # Get predictions
+            _, mod_preds = torch.max(mod_out, 1)
+            _, snr_preds = torch.max(snr_out, 1)
             
-            # For curriculum learning, track per-SNR class accuracy
-            if use_curriculum and current_snr_list:
-                for i in range(len(snr_labels)):
+            # Update accuracy metrics
+            batch_size = mod_labels.size(0)
+            total += batch_size
+            correct_mod += (mod_preds == mod_labels).sum().item()
+            correct_snr += (snr_preds == snr_indices).sum().item()
+            
+            # Store for visualization
+            true_mod_labels.extend(mod_labels.cpu().numpy())
+            pred_mod_labels.extend(mod_preds.cpu().numpy())
+            true_snr_indices.extend(snr_indices.cpu().numpy())
+            pred_snr_indices.extend(snr_preds.cpu().numpy())
+            
+            # Track per-SNR accuracy for curriculum mode
+            if use_curriculum and curriculum_manager is not None:
+                # For each sample in batch, update the confusion matrix
+                for i in range(batch_size):
                     try:
-                        # Convert to actual SNR values
-                        true_idx = int(snr_labels[i].item())
-                        pred_idx = int(predicted_snr[i].item())
-                        
-                        if true_idx < len(snr_values):
-                            true_snr_value = snr_values[true_idx]
+                        # Get the actual SNR value for this sample
+                        if hasattr(val_dataloader.dataset, 'get_actual_snr_values'):
+                            true_snr_idx = snr_indices[i].item()
+                            pred_snr_idx = snr_preds[i].item()
                             
-                            # Only count if this SNR is in our curriculum
-                            if true_snr_value in current_snr_list:
-                                # Track per-class metrics
-                                if true_idx in snr_correct_per_class:
-                                    snr_total_per_class[true_idx] += 1
-                                    if pred_idx == true_idx:
-                                        snr_correct_per_class[true_idx] += 1
+                            # Safely convert indices to SNR values with bounds checking
+                            try:
+                                true_snr_val = val_dataloader.dataset.get_actual_snr_values(true_snr_idx)
+                                pred_snr_val = val_dataloader.dataset.get_actual_snr_values(pred_snr_idx)
                                 
-                                # For direct confusion matrix calculation
-                                if pred_idx < len(snr_values):
-                                    pred_snr_value = snr_values[pred_idx]
-                                    
-                                    # Store raw SNR values
-                                    raw_true_snr_values.append(true_snr_value)
-                                    raw_pred_snr_values.append(pred_snr_value)
-                                    
-                                    # Update curriculum confusion matrix if both values are in curriculum
-                                    if true_snr_value in snr_value_to_position and pred_snr_value in snr_value_to_position:
-                                        true_pos = snr_value_to_position[true_snr_value]
-                                        pred_pos = snr_value_to_position[pred_snr_value]
-                                        curriculum_cm[true_pos, pred_pos] += 1
-                    except (IndexError, ValueError) as e:
+                                # Check if these SNRs are in our current curriculum
+                                if true_snr_val in snr_to_curr_idx and pred_snr_val in snr_to_curr_idx:
+                                    true_curr_idx = snr_to_curr_idx[true_snr_val]
+                                    pred_curr_idx = snr_to_curr_idx[pred_snr_val]
+                                    curriculum_cm[true_curr_idx, pred_curr_idx] += 1
+                            except (IndexError, ValueError) as e:
+                                # Silently continue if conversion fails
+                                # We don't want to pollute logs with many errors
+                                pass
+                    except Exception as e:
+                        # Catch broader exceptions but don't halt validation
                         continue
-
-            # Store predictions and true labels
-            all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
-            all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
-            all_pred_snr_indices.extend(predicted_snr.cpu().numpy())  # Store indices
-            all_true_snr_indices.extend(snr_labels.cpu().numpy())    # Store indices
-
-    # Calculate average loss and accuracies
-    val_loss = val_loss / len(val_loader)
-    modulation_loss_total = modulation_loss_total / len(val_loader)
-    snr_loss_total = snr_loss_total / len(val_loader)
-    val_modulation_accuracy = 100.0 * correct_modulation / total
-    val_snr_accuracy = 100.0 * correct_snr / total
     
-    # Calculate SNR MAE (Mean Absolute Error) if possible
-    val_snr_mae = 0.0
-    try:
-        if hasattr(dataset_obj, 'get_actual_snr_values') or hasattr(dataset_obj, 'dataset') and hasattr(dataset_obj.dataset, 'get_actual_snr_values'):
-            # Calculate SNR MAE using predicted indices and actual SNR values
-            true_snr_values_for_mae = []
-            pred_snr_values_for_mae = []
-            
-            # Get the function to convert indices to actual SNR values
-            get_snr_func = None
-            if hasattr(dataset_obj, 'get_actual_snr_values'):
-                get_snr_func = dataset_obj.get_actual_snr_values
-            elif hasattr(dataset_obj, 'dataset') and hasattr(dataset_obj.dataset, 'get_actual_snr_values'):
-                get_snr_func = dataset_obj.dataset.get_actual_snr_values
-                
-            if get_snr_func:
-                success_count = 0
-                error_count = 0
-                for i in range(len(all_true_snr_indices)):
-                    try:
-                        true_idx = int(all_true_snr_indices[i])
-                        pred_idx = int(all_pred_snr_indices[i])
-                        
-                        true_val = get_snr_func(true_idx)
-                        pred_val = get_snr_func(pred_idx)
-                        
-                        true_snr_values_for_mae.append(true_val)
-                        pred_snr_values_for_mae.append(pred_val)
-                        success_count += 1
-                    except (IndexError, ValueError, TypeError) as e:
-                        error_count += 1
-                        # Skip this sample for MAE calculation
-                        continue
-                
-                # Calculate MAE if we have successful conversions
-                if true_snr_values_for_mae:
-                    abs_errors = [abs(true - pred) for true, pred in zip(true_snr_values_for_mae, pred_snr_values_for_mae)]
-                    val_snr_mae = sum(abs_errors) / len(abs_errors)
-                    
-                    # Report any errors that occurred
-                    if error_count > 0:
-                        percent_errors = (error_count / (success_count + error_count)) * 100
-                        print(f"Warning: {error_count} SNR value conversion errors ({percent_errors:.1f}%) during MAE calculation")
-                else:
-                    print("Warning: No valid SNR conversions for MAE calculation")
-                    val_snr_mae = 0.0
-        else:
-            # Fallback: use indices directly as a proxy for calculating MAE
-            abs_diffs = np.abs(np.array(all_true_snr_indices) - np.array(all_pred_snr_indices))
-            val_snr_mae = np.mean(abs_diffs) if len(abs_diffs) > 0 else 0.0
-    except Exception as e:
-        print(f"Warning: Could not calculate SNR MAE: {str(e)}")
-        val_snr_mae = 0.0
+    # Calculate average metrics
+    val_loss /= len(val_dataloader)
+    mod_accuracy = 100 * correct_mod / total
+    snr_accuracy = 100 * correct_snr / total
     
-    # Calculate per-SNR class accuracy for curriculum learning
-    snr_class_accuracies = {}
-    inverse_snr_labels = get_dataset_property(dataset_obj, 'inverse_snr_labels')
+    # Store metrics for visualization
+    metrics['mod_accuracy'] = mod_accuracy
+    metrics['snr_accuracy'] = snr_accuracy
     
-    if use_curriculum and current_snr_list:
-        for snr_idx in snr_correct_per_class:
-            if snr_total_per_class[snr_idx] > 0:
-                accuracy = 100.0 * snr_correct_per_class[snr_idx] / snr_total_per_class[snr_idx]
-                snr_value = inverse_snr_labels[snr_idx]
-                snr_class_accuracies[f"snr_{snr_value}db_accuracy"] = accuracy
-    
-    # Prepare and return validation metrics
-    metrics = {
-        'val_loss': val_loss,
-        'val_modulation_loss': modulation_loss_total,
-        'val_snr_loss': snr_loss_total,
-        'val_modulation_accuracy': val_modulation_accuracy,
-        'val_snr_accuracy': val_snr_accuracy,
-        'val_snr_mae': val_snr_mae,  # Add SNR MAE to metrics
-        'true_modulation_labels': all_true_modulation_labels,
-        'pred_modulation_labels': all_pred_modulation_labels,
-        'true_snr_indices': all_true_snr_indices,
-        'pred_snr_indices': all_pred_snr_indices,
-    }
-    
-    # Calculate combined accuracy (both modulation and SNR correct)
-    correct_combined = 0
-    for i in range(len(all_true_modulation_labels)):
-        if (all_true_modulation_labels[i] == all_pred_modulation_labels[i] and
-            all_true_snr_indices[i] == all_pred_snr_indices[i]):
-            correct_combined += 1
-    combined_accuracy = 100.0 * correct_combined / total if total > 0 else 0.0
-    
-    # Add combined accuracy to metrics
-    metrics['val_combined_accuracy'] = combined_accuracy
-    
-    # Add per-SNR metrics if in curriculum mode
-    if use_curriculum and current_snr_list:
-        metrics.update(snr_class_accuracies)
-        
-        # Add custom confusion matrix for curriculum mode
+    if use_curriculum and curriculum_manager is not None:
+        # Add curriculum metrics
         metrics['curriculum_cm'] = curriculum_cm
-        metrics['curriculum_snr_values'] = curriculum_snr_values
-        metrics['raw_true_snr_values'] = raw_true_snr_values
-        metrics['raw_pred_snr_values'] = raw_pred_snr_values
+        print(f"\nDirect Curriculum SNR Confusion Matrix:")
+        print(curriculum_cm)
         
-        # Calculate average accuracy across current curriculum SNRs
-        curriculum_snr_accuracies = [acc for k, acc in snr_class_accuracies.items()]
-        if curriculum_snr_accuracies:
-            metrics['curriculum_snr_avg_accuracy'] = sum(curriculum_snr_accuracies) / len(curriculum_snr_accuracies)
+        # Calculate overall accuracy from confusion matrix for verification
+        cm_diagonal_sum = np.sum(np.diag(curriculum_cm))
+        cm_total = np.sum(curriculum_cm)
+        cm_accuracy = 100 * cm_diagonal_sum / cm_total if cm_total > 0 else 0
+        print(f"Overall SNR accuracy from confusion matrix: {cm_accuracy:.2f}%")
+        print(f"Overall SNR accuracy from predictions: {snr_accuracy:.2f}%")
+        metrics['cm_snr_accuracy'] = cm_accuracy
     
-    # For backward compatibility with test_constellation.py, return tuple format if criterion_dynamic is None
-    if criterion_dynamic is None:
-        return (val_loss, modulation_loss_total, snr_loss_total, val_modulation_accuracy, 
-                val_snr_accuracy, combined_accuracy, 
-                np.array(all_true_modulation_labels), np.array(all_pred_modulation_labels),
-                np.array(all_true_snr_indices), np.array(all_pred_snr_indices))
+    # Visualize validation results if requested
+    if visualize and save_results_dir:
+        # Create visualization directory if it doesn't exist
+        os.makedirs(save_results_dir, exist_ok=True)
+        
+        # Plot confusion matrices
+        from src.validate_constellation import plot_validation_confusion_matrices
+        
+        # Pass metric information for visualization
+        plot_validation_confusion_matrices(
+            true_modulation=true_mod_labels,
+            pred_modulation=pred_mod_labels,
+            true_snr_indices=true_snr_indices,
+            pred_snr_indices=pred_snr_indices,
+            mod_classes=mod_classes,
+            save_dir=save_results_dir,
+            epoch=epoch,
+            use_curriculum=use_curriculum,
+            current_snr_list=curriculum_manager.get_current_snr_list() if use_curriculum and curriculum_manager else None,
+            metrics=metrics
+        )
     
-    return metrics
+    return val_loss, mod_accuracy, snr_accuracy, metrics
 
 
 def plot_confusion_matrix(y_true, y_pred, classes, title=None, normalize=False, save_path=None, cm=None):

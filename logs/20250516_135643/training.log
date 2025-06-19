@@ -1,0 +1,22 @@
+2025-05-16 13:56:43,254 - __main__ - INFO - Starting training with configuration:
+2025-05-16 13:56:43,254 - __main__ - INFO - data_dir: data/split_hdf5
+2025-05-16 13:56:43,254 - __main__ - INFO - batch_size: 32
+2025-05-16 13:56:43,254 - __main__ - INFO - num_workers: 4
+2025-05-16 13:56:43,254 - __main__ - INFO - model_type: swin
+2025-05-16 13:56:43,254 - __main__ - INFO - pretrained: False
+2025-05-16 13:56:43,254 - __main__ - INFO - epochs: 100
+2025-05-16 13:56:43,254 - __main__ - INFO - lr: 0.0001
+2025-05-16 13:56:43,254 - __main__ - INFO - weight_decay: 0.0001
+2025-05-16 13:56:43,254 - __main__ - INFO - device: cuda
+2025-05-16 13:56:43,254 - __main__ - INFO - use_curriculum: True
+2025-05-16 13:56:43,254 - __main__ - INFO - curriculum_stages: 6
+2025-05-16 13:56:43,254 - __main__ - INFO - curriculum_patience: 2
+2025-05-16 13:56:43,254 - __main__ - INFO - log_dir: None
+2025-05-16 13:56:43,254 - __main__ - INFO - save_freq: 5
+2025-05-16 13:56:43,254 - __main__ - INFO - Using device: cuda
+2025-05-16 13:56:43,254 - __main__ - INFO - Initializing model...
+2025-05-16 13:56:43,254 - __main__ - INFO - Setting up data loaders...
+2025-05-16 13:56:43,254 - __main__ - INFO - Setting up optimizer and scheduler...
+2025-05-16 13:56:43,254 - __main__ - INFO - Setting up loss functions...
+2025-05-16 13:56:43,254 - __main__ - INFO - Starting training...
+2025-05-16 13:56:43,254 - __main__ - INFO - Training completed!
