@@ -137,14 +137,12 @@ class DistancePenalizedSNRLoss(nn.Module):
         # Convert predictions to probabilities
         probs = F.softmax(predictions, dim=1)
         
-        # For each sample, compute expected distance from true class
-        distance_penalty = torch.zeros_like(ce_loss)
+        # Vectorized computation of distance penalty
+        # Gather distance values for each target class
+        target_distances = self.distance_matrix[targets]  # [batch_size, num_classes]
         
-        for i in range(batch_size):
-            true_class = targets[i].item()
-            # Weight distances by predicted probabilities
-            sample_penalty = torch.sum(probs[i] * self.distance_matrix[true_class])
-            distance_penalty[i] = sample_penalty
+        # Compute weighted distance penalty for each sample
+        distance_penalty = torch.sum(probs * target_distances, dim=1)
             
         # Combine losses
         total_loss = self.alpha * ce_loss + self.beta * distance_penalty
