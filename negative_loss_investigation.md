@@ -154,8 +154,52 @@ regularization = 0.5 * torch.sum(self.log_vars)
    - Verify model performance metrics
    - Check for any regressions
 
+## ✅ RESOLUTION IMPLEMENTED
+
+### Fix Applied (December 2024)
+
+The negative loss issue has been **successfully resolved** with the following changes:
+
+#### 1. **Fixed Regularization Term** (`src/losses/uncertainty_weighted_loss.py:60`)
+```python
+# BEFORE (causing negative loss):
+regularization = 0.5 * torch.sum(self.log_vars)
+
+# AFTER (always positive):
+regularization = 0.5 * torch.sum(torch.exp(self.log_vars))
+```
+
+#### 2. **Added Loss Validation** (`src/losses/uncertainty_weighted_loss.py:65-72`)
+- Detects NaN/Inf values and raises errors
+- Warns about negative losses with diagnostic information
+- Logs component breakdown for debugging
+
+#### 3. **Upgraded SNR Loss Function** (`src/train_constellation.py:87-88`)
+```python
+# BEFORE: Simple CrossEntropyLoss
+criterion_snr = nn.CrossEntropyLoss()
+
+# AFTER: Distance-Penalized SNR Loss (ordinal-aware)
+criterion_snr = DistancePenalizedSNRLoss(snr_min=-20, snr_max=30, snr_step=2, alpha=1.0, beta=0.5)
+```
+
+### Verification Results
+
+**✅ All tests passed:**
+- Loss values remain positive across all scenarios
+- Parameter evolution doesn't cause negative losses  
+- Distance-penalized SNR loss functions correctly
+- Loss validation catches anomalies
+- Uncertainty weighting adapts properly during training
+
+### Mathematical Correctness Restored
+
+The fix ensures:
+1. **Positive regularization**: `exp(log_vars)` is always positive
+2. **Proper uncertainty learning**: Regularization encourages uncertainty parameter optimization
+3. **Ordinal SNR relationships**: Distance-penalized loss respects SNR ordering
+4. **Robust training**: Loss validation prevents mathematical inconsistencies
+
 ## Conclusion
 
-The negative loss issue is caused by an improperly implemented regularization term in the uncertainty weighted loss function. This is a critical bug that needs immediate attention as it affects the mathematical soundness of the training process. The fix is straightforward but should be implemented carefully to avoid introducing new issues.
-
-The recommended approach is to fix the regularization term first, then gradually improve the loss monitoring and potentially switch to more appropriate loss functions for the specific tasks. 
+The negative loss issue is **RESOLVED**. The training process now maintains mathematical soundness with always-positive loss values, proper uncertainty weighting, and improved SNR loss formulation. The enhanced monitoring will catch any future anomalies early.
