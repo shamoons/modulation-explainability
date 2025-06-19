@@ -4,7 +4,6 @@ from sklearn.model_selection import train_test_split
 import torch
 import wandb
 from utils.image_utils import plot_f1_scores, plot_confusion_matrix
-from utils.config_utils import load_loss_config
 from validate_constellation import validate
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
@@ -38,7 +37,6 @@ def train(
     Log metrics after validation and plot confusion matrices and F1 scores.
     Uses discrete SNR prediction (26 classes from -20 to 30 dB in 2dB steps).
     """
-    alpha, beta = load_loss_config()
     save_dir = 'checkpoints'
 
     # Get the number of training and validation samples
@@ -52,8 +50,6 @@ def train(
         "snr_list": snr_list,
         # "num_train_samples": num_train_samples,
         # "num_val_samples": num_val_samples,
-        "alpha": alpha,
-        "beta": beta,
         "model": model.model_name,
         "base_lr": base_lr,
         "weight_decay": weight_decay,
@@ -113,9 +109,8 @@ def train(
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                 loss_snr = criterion_snr(snr_output, snr_labels)
 
-                # For now, use simple weighted combination to avoid gradient issues
-                # TODO: Re-enable uncertainty weighting once gradient flow is fixed
-                total_loss = alpha * loss_modulation + beta * loss_snr
+                # Use analytical uncertainty weighting for multi-task learning
+                total_loss, task_weights = uncertainty_weighter([loss_modulation, loss_snr])
 
                 # Backpropagation with scaled gradients (only for CUDA)
                 if scaler is not None:
@@ -161,8 +156,15 @@ def train(
         train_combined_accuracy = 100.0 * correct_both / total
         train_loss = running_loss / len(train_loader)
 
+        # Get current uncertainty weights and uncertainties
+        current_weights = uncertainty_weighter.get_uncertainties() if uncertainty_weighter else None
+        weight_mod, weight_snr = task_weights[0].item(), task_weights[1].item() if uncertainty_weighter else (0.5, 1.0)
+        
         print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
         print(f"  Train Loss (mod/snr): {train_loss:.4g} ({loss_modulation:.4g}/{loss_snr:.4g})")
+        print(f"  Task Weights (mod/snr): {weight_mod:.3f}/{weight_snr:.3f}")
+        if current_weights is not None:
+            print(f"  Uncertainties (mod/snr): {current_weights[0]:.3f}/{current_weights[1]:.3f}")
         print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")
         print(f"  SNR Accuracy: {train_snr_accuracy:.2f}%")
         print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
@@ -228,7 +230,7 @@ def train(
         print(f"  Combined Accuracy: {val_combined_accuracy:.2f}%")
 
         # Log other metrics to WandB
-        wandb.log({
+        log_dict = {
             "epoch": epoch + 1,
             "learning_rate": current_lr,
             "train_loss": train_loss,
@@ -243,4 +245,15 @@ def train(
             "confusion_matrix_snr": wandb.Image(fig_confusion_matrix_snr),
             "f1_scores_modulation": wandb.Image(fig_f1_scores_modulation),
             "f1_scores_snr": wandb.Image(fig_f1_scores_snr)
-        })
+        }
+        
+        # Add uncertainty weighting metrics if available
+        if uncertainty_weighter is not None:
+            log_dict.update({
+                "task_weight_modulation": weight_mod,
+                "task_weight_snr": weight_snr,
+                "uncertainty_modulation": current_weights[0].item() if current_weights is not None else 0,
+                "uncertainty_snr": current_weights[1].item() if current_weights is not None else 0
+            })
+        
+        wandb.log(log_dict)

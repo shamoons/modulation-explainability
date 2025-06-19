@@ -26,7 +26,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, epochs=100, base_lr=0.0000001, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=5):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=10):
     # Load data
     print("Loading data...")
 
@@ -139,16 +139,16 @@ def main(checkpoint=None, batch_size=64, snr_list=None, mods_to_process=None, ep
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train constellation model with optional checkpoint loading')
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
-    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=64)
-    parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load', default=None)
-    parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load', default=None)
-    parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
+    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=32)
+    parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load (default: all SNRs)', default=None)
+    parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load (default: all modulations)', default=None)
+    parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=50)
     parser.add_argument('--num_cycles', type=int, help='Number of cycles (unused now, but kept for compatibility)', default=4)
-    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=0.0000001)
+    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-4)
     parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
-    parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.15)
-    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing', default=5)
+    parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
+    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
 
     args = parser.parse_args()
 
