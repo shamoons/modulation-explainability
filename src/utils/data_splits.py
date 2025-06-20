@@ -26,13 +26,20 @@ def create_stratified_split(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio
     print("Creating stratified train/val/test split...")
     indices = list(range(len(dataset)))
     
-    # Get modulation and SNR labels for all samples
-    all_mod_labels = []
-    all_snr_labels = []
-    for i in indices:
-        _, mod_label, snr_label = dataset[i]
-        all_mod_labels.append(mod_label)
-        all_snr_labels.append(snr_label)
+    # Get modulation and SNR labels directly from dataset (much faster than __getitem__ calls)
+    if hasattr(dataset, 'modulation_labels_list') and hasattr(dataset, 'snr_labels_list'):
+        all_mod_labels = dataset.modulation_labels_list
+        all_snr_labels = dataset.snr_labels_list
+        print(f"Using cached labels from dataset ({len(all_mod_labels)} samples)")
+    else:
+        # Fallback to individual lookups if labels not cached
+        print("Dataset labels not cached, using individual lookups (slower)...")
+        all_mod_labels = []
+        all_snr_labels = []
+        for i in indices:
+            _, mod_label, snr_label = dataset[i]
+            all_mod_labels.append(mod_label)
+            all_snr_labels.append(snr_label)
     
     # Create combined labels for stratification (mod * num_snr_classes + snr)
     num_snr_classes = len(dataset.snr_labels)
@@ -86,15 +93,29 @@ def verify_stratification(dataset, train_idx, val_idx, test_idx):
         snr_counts = {}
         combined_counts = {}
         
-        for idx in indices:
-            _, mod_label, snr_label = dataset[idx]
-            mod_type = dataset.inverse_modulation_labels[mod_label]
-            snr_value = dataset.inverse_snr_labels[snr_label]
-            combined_key = (mod_type, snr_value)
-            
-            mod_counts[mod_type] = mod_counts.get(mod_type, 0) + 1
-            snr_counts[snr_value] = snr_counts.get(snr_value, 0) + 1
-            combined_counts[combined_key] = combined_counts.get(combined_key, 0) + 1
+        # Use cached labels for faster verification
+        if hasattr(dataset, 'modulation_labels_list') and hasattr(dataset, 'snr_labels_list'):
+            for idx in indices:
+                mod_label = dataset.modulation_labels_list[idx]
+                snr_label = dataset.snr_labels_list[idx]
+                mod_type = dataset.inverse_modulation_labels[mod_label]
+                snr_value = dataset.inverse_snr_labels[snr_label]
+                combined_key = (mod_type, snr_value)
+                
+                mod_counts[mod_type] = mod_counts.get(mod_type, 0) + 1
+                snr_counts[snr_value] = snr_counts.get(snr_value, 0) + 1
+                combined_counts[combined_key] = combined_counts.get(combined_key, 0) + 1
+        else:
+            # Fallback to individual lookups
+            for idx in indices:
+                _, mod_label, snr_label = dataset[idx]
+                mod_type = dataset.inverse_modulation_labels[mod_label]
+                snr_value = dataset.inverse_snr_labels[snr_label]
+                combined_key = (mod_type, snr_value)
+                
+                mod_counts[mod_type] = mod_counts.get(mod_type, 0) + 1
+                snr_counts[snr_value] = snr_counts.get(snr_value, 0) + 1
+                combined_counts[combined_key] = combined_counts.get(combined_key, 0) + 1
             
         return mod_counts, snr_counts, combined_counts
     
