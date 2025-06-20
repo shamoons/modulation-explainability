@@ -194,5 +194,16 @@ if __name__ == "__main__":
         args.snr_list = [int(snr) for snr in args.snr_list.split(',')]
     if args.mods_to_process is not None:
         args.mods_to_process = args.mods_to_process.split(',')
+    else:
+        # Default: exclude analog modulations (AM, FM, GMSK, OOK)
+        analog_mods = ['AM-DSB-SC', 'AM-DSB-WC', 'AM-SSB-SC', 'AM-SSB-WC', 'FM', 'GMSK', 'OOK']
+        # Get all available modulations from data directory
+        import os
+        all_mods = [d for d in os.listdir(args.data_dir) if os.path.isdir(os.path.join(args.data_dir, d))]
+        args.mods_to_process = [mod for mod in all_mods if mod not in analog_mods]
+        print(f"Using digital modulations only: {sorted(args.mods_to_process)}")
+        print(f"Excluded analog modulations: {sorted(analog_mods)}")
+        # Update number of modulation classes
+        args.num_mod_classes = len(args.mods_to_process)
 
     main(args)

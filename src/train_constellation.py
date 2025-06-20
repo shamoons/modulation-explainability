@@ -26,7 +26,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, max_lr=0.0001, weight_decay=1e-5, test_size=0.2, patience=10):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10):
     # Load data
     print("Loading data...")
 
@@ -43,7 +43,14 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     if mods_to_process is not None:
         mods_to_process = [mod.strip() for mod in mods_to_process.split(',')]
     else:
-        mods_to_process = None  # Load all modulation types
+        # Default: exclude analog modulations (AM, FM, GMSK, OOK)
+        analog_mods = ['AM-DSB-SC', 'AM-DSB-WC', 'AM-SSB-SC', 'AM-SSB-WC', 'FM', 'GMSK', 'OOK']
+        # Get all available modulations from constellation directory
+        import os
+        all_mods = [d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))]
+        mods_to_process = [mod for mod in all_mods if mod not in analog_mods]
+        print(f"Using digital modulations only: {sorted(mods_to_process)}")
+        print(f"Excluded analog modulations: {sorted(analog_mods)}")
 
     # Load full dataset (with modulation types and SNRs filtering)
     dataset = ConstellationDataset(
@@ -145,13 +152,11 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=32)
     parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load (default: all SNRs)', default=None)
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load (default: all modulations)', default=None)
-    parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=50)
-    parser.add_argument('--num_cycles', type=int, help='Number of cycles (unused now, but kept for compatibility)', default=4)
+    parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-4)
-    parser.add_argument('--max_lr', type=float, help='Max learning rate for the optimizer (not used with ReduceLROnPlateau)', default=0.0001)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
-    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
+    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=3)
 
     args = parser.parse_args()
 
@@ -162,7 +167,6 @@ if __name__ == "__main__":
         mods_to_process=args.mods_to_process,
         epochs=args.epochs,
         base_lr=args.base_lr,
-        max_lr=args.max_lr,
         weight_decay=args.weight_decay,
         patience=args.patience,
         test_size=args.test_size

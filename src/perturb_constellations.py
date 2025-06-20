@@ -172,8 +172,22 @@ def main():
                        help='Source directory containing constellation images')
     parser.add_argument('--output', type=str, default='perturbed_constellations',
                        help='Output directory for perturbed images')
+    parser.add_argument('--mods_to_process', type=str, default=None,
+                       help='Comma-separated list of modulation types to process (default: digital only)')
     
     args = parser.parse_args()
+    
+    # Handle modulation filtering
+    if args.mods_to_process is not None:
+        mods_to_process = [mod.strip() for mod in args.mods_to_process.split(',')]
+    else:
+        # Default: exclude analog modulations (AM, FM, GMSK, OOK)
+        analog_mods = ['AM-DSB-SC', 'AM-DSB-WC', 'AM-SSB-SC', 'AM-SSB-WC', 'FM', 'GMSK', 'OOK']
+        # Get all available modulations from source directory
+        all_mods = [d for d in os.listdir(args.source) if os.path.isdir(os.path.join(args.source, d))]
+        mods_to_process = [mod for mod in all_mods if mod not in analog_mods]
+        print(f"Using digital modulations only: {sorted(mods_to_process)}")
+        print(f"Excluded analog modulations: {sorted(analog_mods)}")
     
     # Validate inputs
     if not os.path.exists(args.source):
@@ -183,12 +197,22 @@ def main():
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
     
-    # Collect all image file paths
+    # Collect all image file paths (filtered by modulation types)
     image_paths = []
     for root, _, files in os.walk(args.source):
-        for file in files:
-            if file.lower().endswith('.png'):
-                image_paths.append(os.path.join(root, file))
+        # Check if this directory corresponds to a modulation we want to process
+        mod_name = os.path.basename(root) if os.path.basename(root) in mods_to_process else None
+        if not mod_name:
+            # Check if parent directory is a modulation type (for SNR subdirectories)
+            parent_dir = os.path.basename(os.path.dirname(root))
+            if parent_dir in mods_to_process:
+                mod_name = parent_dir
+        
+        # Only process files if they belong to desired modulation types
+        if mod_name:
+            for file in files:
+                if file.lower().endswith('.png'):
+                    image_paths.append(os.path.join(root, file))
     
     if not image_paths:
         print(f"No PNG images found in '{args.source}'")

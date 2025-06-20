@@ -242,17 +242,21 @@ def main():
     if args.mod_list is not None:
         mods_to_process = args.mod_list.split(',')
     else:
-        # Auto-detect available modulations from h5_dir
+        # Auto-detect available modulations from h5_dir, excluding analog by default
+        analog_mods = ['AM-DSB-SC', 'AM-DSB-WC', 'AM-SSB-SC', 'AM-SSB-WC', 'FM', 'GMSK', 'OOK']
         mods_to_process = []
         if os.path.exists(args.h5_dir):
             for item in sorted(os.listdir(args.h5_dir)):
                 item_path = os.path.join(args.h5_dir, item)
-                if os.path.isdir(item_path) and not item.startswith('.'):
+                if os.path.isdir(item_path) and not item.startswith('.') and item not in analog_mods:
                     mods_to_process.append(item)
         
         if not mods_to_process:
-            print(f"No modulation directories found in {args.h5_dir}")
+            print(f"No digital modulation directories found in {args.h5_dir}")
             return
+        
+        print(f"Using digital modulations only: {sorted(mods_to_process)}")
+        print(f"Excluded analog modulations: {sorted(analog_mods)}")
     
     image_types = args.image_types.split(',')
     
