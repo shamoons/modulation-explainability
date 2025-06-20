@@ -102,7 +102,10 @@ The project implements a **state-of-the-art multi-task learning approach** with:
    - Images are preprocessed to 224x224 and normalized
 
 3. **Enhanced Loss Functions** (`src/losses/uncertainty_weighted_loss.py`):
-   - **`AnalyticalUncertaintyWeightedLoss`**: SOTA uncertainty-based multi-task weighting
+   - **`AnalyticalUncertaintyWeightedLoss`**: SOTA uncertainty-based multi-task weighting with task collapse prevention
+     - Temperature scaling (T=3.0) for stable weighting
+     - Minimum weight constraints (10% per task)
+     - Conservative initialization and uncertainty clipping
    - **`DistancePenalizedSNRLoss`**: Distance-aware loss for discrete SNR prediction
    - Replaces traditional α/β weighting with learned uncertainty parameters
 
@@ -155,15 +158,22 @@ The testing pipeline evaluates models on:
 
 ### ✅ Completed High Priority Improvements
 1. **✅ Enhanced Multi-Task Learning**: 
-   - **IMPLEMENTED**: Analytical uncertainty-based weighting using 2024 SOTA methods
+   - **IMPLEMENTED**: Analytical uncertainty-based weighting using 2024 SOTA methods (Kirchdorfer et al.)
    - **IMPLEMENTED**: Dynamic task balancing that adapts during training
    - **IMPLEMENTED**: Learned uncertainty parameters that prevent task interference
+   - **ENHANCED**: Task collapse prevention with temperature scaling and minimum weight constraints
 
 2. **✅ SNR Estimation Refinement**:
    - **IMPLEMENTED**: Discrete SNR prediction with 26 classes (-20 to +30 dB in 2dB intervals)  
    - **IMPLEMENTED**: Distance-penalized loss function for accurate SNR classification
    - **REMOVED**: SNR bucket system entirely - now uses precise discrete prediction
    - **VERIFIED**: Training pipeline working with enhanced multi-task learning
+
+3. **✅ Uncertainty Weighting Stability**:
+   - **FIXED**: Task collapse prevention through enhanced analytical uncertainty weighting
+   - **IMPLEMENTED**: Conservative parameter initialization and uncertainty clipping
+   - **ADDED**: Minimum weight constraints (10% per task) to maintain task balance
+   - **ENHANCED**: Temperature scaling (T=3.0) for less aggressive task weighting
 
 ## Areas for Future Development (Based on Reviewer Feedback)
 
@@ -227,11 +237,12 @@ The testing pipeline evaluates models on:
 ### Updated Default Parameters (Dec 2024)
 The training script now uses optimized defaults for full dataset training:
 - **Batch Size**: 32 (memory-efficient for large dataset)
-- **Learning Rate**: 1e-4 (increased from 1e-7 for faster convergence)
-- **Epochs**: 50 (reasonable for initial full training)
-- **Patience**: 10 (more stable for large dataset)
+- **Learning Rate**: 1e-4 (reasonable for multi-task learning with uncertainty weighting)
+- **Epochs**: 100 (sufficient for uncertainty weighting convergence)
+- **Patience**: 3 (default for ReduceLROnPlateau)
 - **Dataset**: 17 digital modulations × 26 SNRs (442 classes total by default)
 - **Test Split**: 20% validation
+- **Uncertainty Weighting**: Temperature=3.0, min_weight=0.1 (prevents task collapse)
 
 ### Dataset Statistics
 - **Digital Modulation Classes**: 17 (excludes 7 analog modulations by default)
