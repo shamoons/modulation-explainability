@@ -5,8 +5,9 @@ Enhanced multi-task learning framework for Automatic Modulation Classification (
 ## Overview
 
 This project implements a state-of-the-art multi-task learning approach for wireless signal classification, featuring:
-- **Automatic Modulation Classification**: Identifies 24 modulation types
+- **Automatic Modulation Classification**: Identifies 17 digital modulation types (analog excluded by default)
 - **Discrete SNR Estimation**: Predicts SNR values from -20 to +30 dB (26 classes)
+- **Multi-Architecture Support**: ResNet18/34 and Vision Transformer (ViT) models
 - **Analytical Uncertainty Weighting**: Automatically balances task losses during training
 - **Perturbation-Based Explainability**: Analyzes critical constellation regions using PIS metric
 
@@ -48,11 +49,16 @@ uv run python src/convert_to_constellation.py \
 ### Basic Training
 
 ```bash
-# Train with default settings (all modulations, all SNRs)
+# Train with default settings (digital modulations only, ResNet18)
 uv run python src/train_constellation.py
+
+# Train with specific model architecture
+uv run python src/train_constellation.py --model_type vit      # Vision Transformer
+uv run python src/train_constellation.py --model_type resnet34 # Deeper ResNet
 
 # Train with specific parameters
 uv run python src/train_constellation.py \
+    --model_type vit \
     --batch_size 32 \
     --epochs 50 \
     --base_lr 1e-4 \
@@ -63,19 +69,21 @@ uv run python src/train_constellation.py \
 ### Advanced Training Options
 
 ```bash
-# Train on subset of modulations/SNRs
+# Train on subset of modulations/SNRs with ViT
 uv run python src/train_constellation.py \
+    --model_type vit \
     --mods_to_process "BPSK,QPSK,8PSK" \
     --snr_list "0,10,20" \
     --test_size 0.2
 
-# Resume from checkpoint
+# Resume from checkpoint (model type automatically detected)
 uv run python src/train_constellation.py \
     --checkpoint path/to/checkpoint.pth
 
-# Use specific device
+# Include analog modulations (override default exclusion)
 uv run python src/train_constellation.py \
-    --device cuda  # or mps for Apple Silicon, cpu for CPU-only
+    --mods_to_process "BPSK,QPSK,8PSK,AM-DSB-SC,FM" \
+    --model_type resnet34
 ```
 
 ### Hyperparameter Sweep with Weights & Biases
@@ -148,12 +156,17 @@ uv run python src/visualization.py
 
 ## Model Architecture
 
-The framework uses a ResNet-based architecture with:
-- **Shared Backbone**: ResNet18/34 for feature extraction
+The framework supports multiple architectures with:
+- **Flexible Backbones**: ResNet18/34 or Vision Transformer (ViT-B/16) for feature extraction
 - **Dual Task Heads**: 
-  - Modulation classification (24 classes)
+  - Modulation classification (17 digital classes by default)
   - SNR estimation (26 discrete classes)
 - **Uncertainty Weighting**: Automatic task balancing using learned parameters
+
+### Model Performance Characteristics
+- **ResNet18**: Fastest training (~94-99 it/s), good baseline performance
+- **ResNet34**: Deeper model, moderate speed, potentially better accuracy
+- **Vision Transformer**: Slowest (~3.8-4.0 it/s) but advanced attention mechanisms
 
 ## Key Features
 
@@ -218,11 +231,18 @@ uv run python -c "import torch; print(torch.cuda.is_available())"
 - Reduce batch size: `--batch_size 16`
 - Use gradient accumulation
 - Process fewer modulations/SNRs at once
+- Switch to ResNet from ViT: `--model_type resnet18`
 
 ### Slow Training
+- Use ResNet instead of ViT for faster training
 - Enable mixed precision training (automatic on CUDA)
 - Use larger batch sizes if memory allows
 - Ensure data is on fast storage (SSD)
+
+### Model Selection Guidelines
+- **Quick experiments**: Use `--model_type resnet18`
+- **Best performance**: Try `--model_type resnet34` or `--model_type vit`
+- **Complex modulations**: Consider ViT for attention-based feature learning
 
 ## Citation
 

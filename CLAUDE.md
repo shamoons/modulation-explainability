@@ -27,8 +27,9 @@ uv sync
 # Train model with default settings (enhanced multi-task learning)
 uv run python src/train_constellation.py
 
-# Train with custom parameters (discrete SNR prediction)
+# Train with custom parameters and model architecture
 uv run python src/train_constellation.py \
+    --model_type vit \
     --batch_size 32 \
     --snr_list "0,10,20" \
     --mods_to_process "BPSK,QPSK,8PSK" \
@@ -37,6 +38,11 @@ uv run python src/train_constellation.py \
     --weight_decay 1e-5 \
     --test_size 0.2 \
     --patience 10
+
+# Train with different architectures
+uv run python src/train_constellation.py --model_type resnet18  # Default, fastest
+uv run python src/train_constellation.py --model_type resnet34  # Deeper ResNet
+uv run python src/train_constellation.py --model_type vit       # Vision Transformer
 
 # Resume training from checkpoint
 uv run python src/train_constellation.py --checkpoint path/to/checkpoint.pth
@@ -74,18 +80,20 @@ uv run python test_hdf5_training.py
 
 ### Enhanced Multi-Task Learning System
 The project implements a **state-of-the-art multi-task learning approach** with:
-- **Shared Backbone**: ResNet18/34 extracts common features from constellation images
+- **Flexible Backbone Architectures**: ResNet18/34 or Vision Transformer (ViT) for feature extraction
 - **Task-Specific Heads**: 
-  - Modulation classification (20 classes: BPSK, QPSK, 8PSK, various QAM, etc.)
+  - Modulation classification (17 digital classes by default)
   - **Discrete SNR prediction** (26 classes: -20 to +30 dB in 2dB intervals)
 - **Analytical Uncertainty Weighting**: SOTA 2024 method that automatically balances task losses using learned uncertainty parameters
 
 ### Key Components
 
 1. **Models** (`src/models/`):
-   - `ConstellationResNet`: Enhanced ResNet backbone with dual heads supporting 26 discrete SNR classes
-   - `ConstellationVisionTransformer`: Alternative ViT-based architecture
-   - **Note**: Model now defaults to 26 SNR classes instead of 3 buckets
+   - `ConstellationResNet`: Enhanced ResNet18/34 backbone with dual heads supporting discrete SNR classes
+   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16) architecture for complex pattern recognition
+   - **Model Selection**: Choose architecture via `--model_type` (resnet18, resnet34, vit)
+   - **Performance Trade-offs**: ResNet faster (~94-99 it/s), ViT slower (~3.8-4.0 it/s) but potentially better representation learning
+   - **Default Dataset**: Excludes analog modulations (AM-DSB-SC, AM-DSB-WC, AM-SSB-SC, AM-SSB-WC, FM, GMSK, OOK)
 
 2. **Data Loading** (`src/loaders/`):
    - `ConstellationDataset`: Loads constellation images organized by modulation/SNR
@@ -132,7 +140,7 @@ The testing pipeline evaluates models on:
 ## Research Contributions
 
 ### Key Innovations
-1. **Multi-Task Learning Framework**: Joint prediction of modulation type (20 classes) and SNR buckets, enhancing utility in dynamic wireless environments
+1. **Multi-Task Learning Framework**: Joint prediction of modulation type (17 digital classes by default) and SNR levels (26 classes), enhancing utility in dynamic wireless environments
 2. **Constellation Diagram Augmentation**: Enhanced visual representations using binning, Gaussian smoothing, and normalization techniques
 3. **Perturbation-Based Explainability**: Systematic analysis using PIS metric to identify critical constellation regions
 4. **Progressive Perturbation Analysis**: Evaluation of classification degradation under varying perturbation levels
@@ -196,8 +204,10 @@ The testing pipeline evaluates models on:
 - **Constellation Images**: Generated from HDF5 using `convert_to_constellation.py`
 - **Training Data**: Can train directly from constellation images or HDF5 data
 - **Image Format**: 224x224 grayscale constellation diagrams
+- **Default Modulations**: Digital only (17 classes) - analog modulations excluded by default
 
 ### Key Features
+- ✅ **Multi-Architecture Support**: ResNet18/34 and Vision Transformer (ViT) models
 - ✅ **Uncertainty Weighting**: Automatically balances modulation vs. SNR loss
 - ✅ **Discrete SNR Classes**: 26 classes from -20 to +30 dB (2dB intervals)
 - ✅ **Distance-Penalized Loss**: SNR predictions penalized based on distance from true class
@@ -208,6 +218,7 @@ The testing pipeline evaluates models on:
 - ✅ Core training components tested and verified
 - ✅ HDF5 data loading pipeline working
 - ✅ Enhanced multi-task learning active and learning
+- ✅ Multi-architecture support (ResNet18/34, ViT) implemented and tested
 - ✅ Device compatibility (CUDA/MPS/CPU) implemented
 - ✅ Constellation image generation from split HDF5 data functional
 
@@ -219,14 +230,15 @@ The training script now uses optimized defaults for full dataset training:
 - **Learning Rate**: 1e-4 (increased from 1e-7 for faster convergence)
 - **Epochs**: 50 (reasonable for initial full training)
 - **Patience**: 10 (more stable for large dataset)
-- **Dataset**: All 24 modulations × 26 SNRs (default when no filters specified)
+- **Dataset**: 17 digital modulations × 26 SNRs (442 classes total by default)
 - **Test Split**: 20% validation
 
 ### Dataset Statistics
-- **Total Modulation Classes**: 24 (actual in current dataset)  
+- **Digital Modulation Classes**: 17 (excludes 7 analog modulations by default)
+- **Analog Modulations Excluded**: AM-DSB-SC, AM-DSB-WC, AM-SSB-SC, AM-SSB-WC, FM, GMSK, OOK
 - **SNR Classes**: 26 (-20 to +30 dB in 2dB intervals)
 - **Samples per Mod/SNR**: 4096 (excellent coverage)
-- **Total Dataset Size**: ~2.5M samples
+- **Total Dataset Size**: ~1.8M samples (digital only)
 - **Training Speed**: ~8-10 it/s on Apple M-series (MPS)
 - **Estimated Training Time**: ~2 hours per epoch
 
@@ -236,8 +248,52 @@ The training script now uses optimized defaults for full dataset training:
 - **MCP Integration**: Installed for advanced monitoring and analysis
 - **Install Command**: `claude mcp add wandb -e WANDB_API_KEY=your-key -- uvx --from git+https://github.com/wandb/wandb-mcp-server wandb_mcp_server`
 
+#### Efficient W&B Run Monitoring Commands
+For quick and comprehensive run analysis, use these MCP queries:
+
+```bash
+# Get comprehensive run overview (all metrics, system info, config)
+mcp__wandb__query_wandb_tool(
+    query="""
+    query GetRunDetails($entity: String!, $project: String!, $runId: String!) {
+        project(name: $project, entityName: $entity) {
+            run(name: $runId) {
+                id name displayName state
+                createdAt updatedAt heartbeatAt
+                config summaryMetrics
+                historyKeys
+                systemMetrics
+                tags { name }
+            }
+        }
+    }""",
+    variables={"entity": "shamoons", "project": "modulation-explainability", "runId": "eujpigwb"}
+)
+
+# Get training history for specific metrics
+mcp__wandb__query_wandb_tool(
+    query="""
+    query GetRunHistory($entity: String!, $project: String!, $runId: String!, $specs: [JSONString!]!) {
+        project(name: $project, entityName: $entity) {
+            run(name: $runId) {
+                id name
+                sampledHistory(specs: $specs) {
+                    step timestamp item
+                }
+            }
+        }
+    }""",
+    variables={
+        "entity": "shamoons", 
+        "project": "modulation-explainability", 
+        "runId": "eujpigwb",
+        "specs": ["{\"keys\": [\"loss\", \"mod_accuracy\", \"snr_accuracy\", \"learning_rate\"]}"]
+    }
+)
+```
+
 ### Recent Training Sessions
-- **Current Run**: peach-terrain-79 (sw6j57r7)
-- **Status**: Active multi-task learning with uncertainty weighting
-- **Initial Performance**: Above random chance (Mod: 9.45%, SNR: 8.40% at epoch 1)
+- **Current Run**: treasured-waterfall-89 (eujpigwb)
+- **Status**: Active multi-task learning with uncertainty weighting (digital modulations only)
+- **Digital Classes**: 17 modulation types (analog excluded by default)
 - **Expected Final Performance**: Mod accuracy ~85-95%, SNR accuracy ~60-80%

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from models.constellation_model import ConstellationResNet
-# from models.vision_transformer_model import ConstellationVisionTransformer
+from models.vision_transformer_model import ConstellationVisionTransformer
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
@@ -26,7 +26,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18"):
     # Load data
     print("Loading data...")
 
@@ -69,17 +69,24 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     print(f"Number of modulation classes: {num_modulation_classes}")
     print(f"Number of SNR classes: {num_snr_classes}")
 
-    # model = ConstellationVisionTransformer(
-    #     num_classes=num_modulation_classes,
-    #     snr_classes=num_snr_classes,
-    #     input_channels=input_channels
-    # )
-    model = ConstellationResNet(
-        num_classes=num_modulation_classes,
-        snr_classes=num_snr_classes,
-        input_channels=input_channels,
-        model_name="resnet18"
-    )
+    # Create model based on model_type
+    if model_type in ["resnet18", "resnet34"]:
+        model = ConstellationResNet(
+            num_classes=num_modulation_classes,
+            snr_classes=num_snr_classes,
+            input_channels=input_channels,
+            model_name=model_type
+        )
+    elif model_type == "vit":
+        model = ConstellationVisionTransformer(
+            num_classes=num_modulation_classes,
+            snr_classes=num_snr_classes,
+            input_channels=input_channels
+        )
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit")
+    
+    print(f"Using model: {model_type}")
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -95,11 +102,13 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     
     # Use Distance-Penalized SNR Loss for better ordinal relationships
     from losses.uncertainty_weighted_loss import DistancePenalizedSNRLoss
-    criterion_snr = DistancePenalizedSNRLoss(snr_min=-20, snr_max=30, snr_step=2, alpha=1.0, beta=0.5).to(device)
+    # Get actual SNR values from dataset to create appropriate loss function
+    actual_snr_values = sorted(list(dataset.inverse_snr_labels.values()))
+    criterion_snr = DistancePenalizedSNRLoss(snr_values=actual_snr_values, alpha=1.0, beta=0.5).to(device)
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
-    uncertainty_weighter = AnalyticalUncertaintyWeightedLoss(num_tasks=2, temperature=1.0, device=device)
+    uncertainty_weighter = AnalyticalUncertaintyWeightedLoss(num_tasks=2, temperature=3.0, device=device, min_weight=0.1)
 
     # Initialize optimizer (include uncertainty weighter parameters)
     model_params = list(model.parameters()) + list(uncertainty_weighter.parameters())
@@ -142,7 +151,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         base_lr=base_lr,
         weight_decay=weight_decay,
         patience=patience,
-        uncertainty_weighter=uncertainty_weighter  # Pass the uncertainty weighter
+        uncertainty_weighter=uncertainty_weighter,  # Pass the uncertainty weighter
+        model_type=model_type
     )
 
 
@@ -157,6 +167,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=3)
+    parser.add_argument('--model_type', type=str, help='Model architecture to use (resnet18, resnet34, vit)', default='resnet18', choices=['resnet18', 'resnet34', 'vit'])
 
     args = parser.parse_args()
 
@@ -169,5 +180,6 @@ if __name__ == "__main__":
         base_lr=args.base_lr,
         weight_decay=args.weight_decay,
         patience=args.patience,
-        test_size=args.test_size
+        test_size=args.test_size,
+        model_type=args.model_type
     )

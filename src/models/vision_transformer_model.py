@@ -11,7 +11,7 @@ class ConstellationVisionTransformer(nn.Module):
     2) SNR prediction
     """
 
-    def __init__(self, num_classes=11, snr_classes=26, input_channels=3, dropout_prob=0.5):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.6, model_name="vit_b_16"):
         """
         Initialize the ConstellationVisionTransformer model with two output heads.
 
@@ -25,7 +25,7 @@ class ConstellationVisionTransformer(nn.Module):
 
         # Load a Vision Transformer (ViT) model from torchvision
         self.model = vit_b_16(weights='DEFAULT')
-        self.model_name = "vit_b_16"
+        self.model_name = model_name
 
         # Modify the input embedding layer to accept the specified number of input channels
         if input_channels != 3:

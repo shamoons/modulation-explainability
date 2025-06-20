@@ -30,7 +30,8 @@ def train(
     base_lr=None,
     weight_decay=None,
     patience=1,
-    uncertainty_weighter=None
+    uncertainty_weighter=None,
+    model_type=None
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -51,6 +52,7 @@ def train(
         # "num_train_samples": num_train_samples,
         # "num_val_samples": num_val_samples,
         "model": model.model_name,
+        "model_type": model_type,
         "base_lr": base_lr,
         "weight_decay": weight_decay,
         "patience": patience
