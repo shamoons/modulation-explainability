@@ -1,7 +1,8 @@
 # src/training_constellation.py
 
-from sklearn.model_selection import train_test_split
 import torch
+import numpy as np
+from utils.data_splits import create_stratified_split, verify_stratification
 import wandb
 from utils.image_utils import plot_f1_scores, plot_confusion_matrix
 from validate_constellation import validate
@@ -50,14 +51,16 @@ def train(
         "epochs": epochs,
         "mod_list": mod_list,
         "snr_list": snr_list,
-        # "num_train_samples": num_train_samples,
-        # "num_val_samples": num_val_samples,
         "model": model.model_name,
         "model_type": model_type,
         "base_lr": base_lr,
         "weight_decay": weight_decay,
         "patience": patience,
-        "dropout": dropout
+        "dropout": dropout,
+        "train_split": 0.7,
+        "val_split": 0.15,
+        "test_split": 0.15,
+        "stratified_split": True
     })
 
     # Ensure save directory exists
@@ -69,12 +72,20 @@ def train(
     # Initialize GradScaler for mixed-precision training (only if CUDA available)
     scaler = GradScaler('cuda') if device.type == 'cuda' else None
 
+    # Create stratified train/val/test split (done once, not per epoch)
+    train_idx, val_idx, test_idx = create_stratified_split(dataset, random_state=42)
+    
+    # Verify stratification (optional - can be disabled for speed)
+    verify_stratification(dataset, train_idx, val_idx, test_idx)
+    
+    # Create samplers (fixed for entire training)
+    train_sampler = SubsetRandomSampler(train_idx)
+    val_sampler = SubsetRandomSampler(val_idx)
+    
+    # Track best epoch for final test evaluation
+    best_epoch = 0
+    
     for epoch in range(epochs):
-        indices = list(range(len(dataset)))
-        train_idx, val_idx = train_test_split(indices, test_size=test_size, shuffle=True)
-
-        train_sampler = SubsetRandomSampler(train_idx)
-        val_sampler = SubsetRandomSampler(val_idx)
 
         # Disable pin_memory for MPS
         use_pin_memory = device.type == 'cuda'
@@ -194,6 +205,7 @@ def train(
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            best_epoch = epoch + 1
             torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
             print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4g}")
 
@@ -261,3 +273,45 @@ def train(
             })
         
         wandb.log(log_dict)
+    
+    # Final evaluation on test set
+    print("\n" + "="*50)
+    print("FINAL EVALUATION ON TEST SET")
+    print("="*50)
+    
+    # Load best model
+    best_model_path = os.path.join(save_dir, f'best_model_epoch_{best_epoch}.pth')
+    if os.path.exists(best_model_path):
+        print(f"Loading best model from epoch {best_epoch}...")
+        model.load_state_dict(torch.load(best_model_path))
+    else:
+        print("Using final model (best model checkpoint not found)")
+    
+    # Create test loader
+    test_sampler = SubsetRandomSampler(test_idx)
+    use_pin_memory = device.type == 'cuda'
+    test_loader = DataLoader(dataset, batch_size=batch_size, sampler=test_sampler, 
+                            num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
+    
+    # Run validation on test set
+    test_loss, test_modulation_accuracy, test_snr_accuracy, test_combined_accuracy, _, _, _, _ = validate(
+        model, device, test_loader, criterion_modulation, criterion_snr, uncertainty_weighter
+    )
+    
+    print(f"\nFINAL TEST RESULTS:")
+    print(f"  Test Loss: {test_loss:.3f}")
+    print(f"  Test Modulation Accuracy: {test_modulation_accuracy:.2f}%")
+    print(f"  Test SNR Accuracy: {test_snr_accuracy:.2f}%")
+    print(f"  Test Combined Accuracy: {test_combined_accuracy:.2f}%")
+    
+    # Log final test results to wandb
+    wandb.log({
+        "final_test_loss": test_loss,
+        "final_test_modulation_accuracy": test_modulation_accuracy,
+        "final_test_snr_accuracy": test_snr_accuracy,
+        "final_test_combined_accuracy": test_combined_accuracy,
+        "best_epoch": best_epoch
+    })
+    
+    print(f"\nTraining completed! Best model saved at epoch {best_epoch}")
+    print(f"Final test accuracy: {test_combined_accuracy:.2f}%")
