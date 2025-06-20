@@ -31,7 +31,8 @@ def train(
     weight_decay=None,
     patience=1,
     uncertainty_weighter=None,
-    model_type=None
+    model_type=None,
+    dropout=0.2
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -55,7 +56,8 @@ def train(
         "model_type": model_type,
         "base_lr": base_lr,
         "weight_decay": weight_decay,
-        "patience": patience
+        "patience": patience,
+        "dropout": dropout
     })
 
     # Ensure save directory exists

@@ -26,7 +26,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18"):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2):
     # Load data
     print("Loading data...")
 
@@ -75,13 +75,15 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             num_classes=num_modulation_classes,
             snr_classes=num_snr_classes,
             input_channels=input_channels,
+            dropout_prob=dropout,
             model_name=model_type
         )
     elif model_type == "vit":
         model = ConstellationVisionTransformer(
             num_classes=num_modulation_classes,
             snr_classes=num_snr_classes,
-            input_channels=input_channels
+            input_channels=input_channels,
+            dropout_prob=dropout
         )
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit")
@@ -152,7 +154,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         weight_decay=weight_decay,
         patience=patience,
         uncertainty_weighter=uncertainty_weighter,  # Pass the uncertainty weighter
-        model_type=model_type
+        model_type=model_type,
+        dropout=dropout
     )
 
 
@@ -168,6 +171,7 @@ if __name__ == "__main__":
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=3)
     parser.add_argument('--model_type', type=str, help='Model architecture to use (resnet18, resnet34, vit)', default='resnet18', choices=['resnet18', 'resnet34', 'vit'])
+    parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.2)
 
     args = parser.parse_args()
 
@@ -181,5 +185,6 @@ if __name__ == "__main__":
         weight_decay=args.weight_decay,
         patience=args.patience,
         test_size=args.test_size,
-        model_type=args.model_type
+        model_type=args.model_type,
+        dropout=args.dropout
     )
