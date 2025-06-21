@@ -122,8 +122,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode='min',      # since we'll monitor validation loss, which we want to minimize
-        factor=0.5,      # reduce LR by a factor of 2
-        patience=patience,     # wait 10 epochs without improvement before reducing LR
+        factor=0.7,      # reduce LR by 30% (more conservative than 50%)
+        patience=patience,     # wait for patience epochs without improvement before reducing LR
         threshold=0.0001,
         threshold_mode='rel',
         cooldown=0,
@@ -169,9 +169,9 @@ if __name__ == "__main__":
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-4)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
-    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=3)
+    parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
     parser.add_argument('--model_type', type=str, help='Model architecture to use (resnet18, resnet34, vit)', default='resnet18', choices=['resnet18', 'resnet34', 'vit'])
-    parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.2)
+    parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.5)
 
     args = parser.parse_args()
 
