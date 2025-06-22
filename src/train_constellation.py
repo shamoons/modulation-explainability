@@ -171,7 +171,7 @@ if __name__ == "__main__":
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
     parser.add_argument('--model_type', type=str, help='Model architecture to use (resnet18, resnet34, vit)', default='resnet18', choices=['resnet18', 'resnet34', 'vit'])
-    parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.5)
+    parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
 
     args = parser.parse_args()
 

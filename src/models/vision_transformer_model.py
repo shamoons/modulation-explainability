@@ -11,7 +11,7 @@ class ConstellationVisionTransformer(nn.Module):
     2) SNR prediction
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.5, model_name="vit_b_16"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="vit_b_16"):
         """
         Initialize the ConstellationVisionTransformer model with two output heads.
 
@@ -19,7 +19,7 @@ class ConstellationVisionTransformer(nn.Module):
             num_classes (int): Number of output classes for modulation.
             snr_classes (int): Number of possible SNR classes.
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
-            dropout_prob (float): Probability of dropout (defaults to 0.5).
+            dropout_prob (float): Probability of dropout (defaults to 0.3).
         """
         super(ConstellationVisionTransformer, self).__init__()
 

@@ -8,7 +8,7 @@ from torch.amp import autocast
 
 # src/validate_constellation.py
 
-def validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=False):
+def validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter=None, use_autocast=False):
     model.eval()
 
     alpha, beta = load_loss_config()

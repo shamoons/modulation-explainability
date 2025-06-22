@@ -4,7 +4,7 @@ from torchvision import models
 
 
 class ConstellationResNet(nn.Module):
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.5, model_name="resnet18"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="resnet18"):
         super(ConstellationResNet, self).__init__()
 
         # Load a ResNet model from torchvision
