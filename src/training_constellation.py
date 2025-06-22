@@ -57,9 +57,7 @@ def train(
         "weight_decay": weight_decay,
         "patience": patience,
         "dropout": dropout,
-        "train_split": 0.7,
-        "val_split": 0.15,
-        "test_split": 0.15,
+        "batch_size": batch_size,
         "stratified_split": True
     })
 
@@ -73,10 +71,28 @@ def train(
     scaler = GradScaler('cuda') if device.type == 'cuda' else None
 
     # Create stratified train/val/test split (done once, not per epoch)
+    # Use default 80/10/10 split from create_stratified_split function
     train_idx, val_idx, test_idx = create_stratified_split(dataset, random_state=42)
     
     # Verify stratification (optional - can be disabled for speed)
     verify_stratification(dataset, train_idx, val_idx, test_idx)
+    
+    # Calculate actual split ratios for WandB logging
+    total_samples = len(dataset)
+    actual_train_ratio = len(train_idx) / total_samples
+    actual_val_ratio = len(val_idx) / total_samples
+    actual_test_ratio = len(test_idx) / total_samples
+    
+    # Update WandB config with actual split ratios and sample counts
+    wandb.config.update({
+        "train_split": actual_train_ratio,
+        "val_split": actual_val_ratio, 
+        "test_split": actual_test_ratio,
+        "train_samples": len(train_idx),
+        "val_samples": len(val_idx),
+        "test_samples": len(test_idx),
+        "total_samples": total_samples
+    })
     
     # Create samplers (fixed for entire training)
     train_sampler = SubsetRandomSampler(train_idx)

@@ -4,15 +4,15 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 
-def create_stratified_split(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, random_state=42):
+def create_stratified_split(dataset, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, random_state=42):
     """
     Create stratified train/validation/test split for multi-task dataset.
     
     Args:
         dataset: Dataset with modulation_labels_list and snr_labels_list attributes
-        train_ratio: Proportion for training set (default: 0.7)
-        val_ratio: Proportion for validation set (default: 0.15)
-        test_ratio: Proportion for test set (default: 0.15)
+        train_ratio: Proportion for training set (default: 0.8)
+        val_ratio: Proportion for validation set (default: 0.1)
+        test_ratio: Proportion for test set (default: 0.1)
         random_state: Random seed for reproducible splits
         
     Returns:
