@@ -110,7 +110,7 @@ The project implements a **state-of-the-art multi-task learning approach** with:
    - **Stratified Splitting**: `utils/data_splits.py` ensures balanced train/val/test distributions
 
 5. **Data Splitting Utilities** (`src/utils/data_splits.py`):
-   - **`create_stratified_split()`**: Creates 70/15/15 train/val/test splits with balanced class representation
+   - **`create_stratified_split()`**: Creates 80/10/10 train/val/test splits with balanced class representation
    - **`verify_stratification()`**: Validates that all (modulation, SNR) combinations are present in each split
    - **Fast Implementation**: Uses cached dataset labels for ~3000x speedup vs individual sample loading
    - **Reproducible**: Fixed random seeds ensure consistent splits across runs
@@ -176,12 +176,12 @@ The testing pipeline evaluates models on:
 
 3. **✅ Uncertainty Weighting Stability**:
    - **FIXED**: Task collapse prevention through enhanced analytical uncertainty weighting
-   - **IMPLEMENTED**: Conservative parameter initialization (log_vars=0.5) and uncertainty clipping [-2.0, 2.0]
+   - **IMPLEMENTED**: Original parameter initialization (log_vars=0.0) and uncertainty clipping [-2.0, 2.0]
    - **ADDED**: Minimum weight constraints (10% per task) to maintain task balance
-   - **ENHANCED**: Temperature scaling (T=3.0) for less aggressive task weighting
+   - **ENHANCED**: Temperature scaling (T=2.0) for balanced task weighting
    
 4. **✅ Data Pipeline Enhancements**:
-   - **IMPLEMENTED**: Stratified train/val/test splitting (70/15/15) with balanced class representation
+   - **IMPLEMENTED**: Stratified train/val/test splitting (80/10/10) with balanced class representation
    - **ADDED**: Efficient split caching using dataset labels for fast initialization
    - **ENHANCED**: Final test set evaluation after training completion
    - **OPTIMIZED**: Constellation conversion with multiprocessing support
@@ -256,8 +256,8 @@ The training script now uses optimized defaults for full dataset training:
 - **Patience**: 10 (epochs to wait before reducing LR)
 - **Dropout**: 0.3 (regularization to prevent overfitting)
 - **Dataset**: 17 digital modulations × 26 SNRs (442 classes total by default)
-- **Data Split**: 70% train / 15% validation / 15% test (stratified)
-- **Uncertainty Weighting**: Temperature=3.0, min_weight=0.1 (prevents task collapse)
+- **Data Split**: 80% train / 10% validation / 10% test (stratified)
+- **Uncertainty Weighting**: Temperature=2.0, min_weight=0.1 (prevents task collapse)
 - **LR Scheduler**: ReduceLROnPlateau with factor=0.7 (30% reduction)
 
 ### Dataset Statistics
@@ -340,7 +340,7 @@ mcp__wandb__query_wandb_tool(
 ### Task Collapse
 **Symptoms**: Task weights become extreme (e.g., 95%/5%)
 **Solutions**: Already fixed in current implementation with enhanced uncertainty weighting
-- Temperature=3.0 prevents aggressive weighting
+- Temperature=2.0 provides balanced dynamic weighting
 - Min_weight=0.1 ensures 10% minimum for each task
 
 ### Slow Training
@@ -367,3 +367,54 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Digital Classes**: 17 modulation types (analog excluded by default)
 - **Expected Final Performance**: Mod accuracy ~85-95%, SNR accuracy ~75-85%, Combined ~70-80%
 - **Key Improvements**: Task collapse prevention, stratified data splitting, final test evaluation
+
+## Training Run History & Changelog
+
+### Key Configuration Changes (2025-06-20 to 2025-06-22)
+
+#### wandering-violet-94 (2025-06-20) - Baseline Success ✅
+- **Model**: ResNet18
+- **Dropout**: 0.2
+- **Patience**: 3
+- **Uncertainty Weighting**: Original (temperature=1.0, no min_weight)
+- **Data Split**: Unknown (likely 70/15/15)
+- **Results**: 54.87% validation combined accuracy at epoch 28
+- **Status**: Successful continuous validation improvement
+
+#### treasured-waterfall-89 - Task Collapse ❌
+- **Issue**: Catastrophic SNR task collapse after epoch 3
+- **Task Weights**: 91.9%/8.1% → 100%/0% by epoch 4
+- **SNR Accuracy**: Dropped from 39.28% to 9.5%
+- **Root Cause**: Aggressive uncertainty weighting without stability controls
+
+#### desert-disco-92 - Enhanced Stability ✅
+- **Changes**: Temperature=3.0, min_weight=0.1, conservative init (0.5)
+- **Results**: Stable learning without task collapse through epochs 1-11
+- **Task Weights**: Remained balanced around 50%/50%
+- **Issue**: Validation plateaued early
+
+#### mild-water-102 (2025-06-22) - Current Configuration ⚠️
+- **Model**: ResNet34 (upgraded from ResNet18)
+- **Batch Size**: 1024 (32x increase)
+- **Dropout**: 0.3
+- **Data Split**: 80/10/10 (from 70/15/15)
+- **Uncertainty Weighting**: Temperature=3.0, min_weight=0.1
+- **Issue**: Severe overfitting detected (15.93% train-val gap by epoch 18)
+- **Status**: Validation accuracy stagnating/declining
+
+### Configuration Evolution Summary
+
+| Parameter | wandering-violet-94 | treasured-waterfall-89 | desert-disco-92 | mild-water-102 | Next Run |
+|-----------|-------------------|---------------------|-----------------|----------------|----------|
+| Model | ResNet18 | ResNet18 | ResNet18 | ResNet34 | ResNet18/34 |
+| Batch Size | ~32 | 32 | 32 | 1024 | 256-512 |
+| Dropout | 0.2 | 0.2 | 0.3 | 0.3 | 0.3-0.4 |
+| Temperature | 1.0 | 1.0 | 3.0 | 3.0 | **2.0** |
+| Min Weight | None | None | 0.1 | 0.1 | 0.1 |
+| Init | 0.0 | 0.0 | 0.5 | 0.5 | **0.0** |
+| Data Split | 70/15/15 | 70/15/15 | 70/15/15 | 80/10/10 | 80/10/10 |
+
+### Latest Changes (2025-06-22)
+- **Temperature**: 3.0 → 2.0 (balanced between original and conservative)
+- **Initialization**: 0.5 → 0.0 (reverted to original)
+- **Goal**: Achieve dynamic task weighting like wandering-violet-94 while preventing collapse

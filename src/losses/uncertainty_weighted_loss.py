@@ -26,7 +26,7 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
     to combinatorial optimization approaches.
     """
     
-    def __init__(self, num_tasks=2, temperature=3.0, device='cuda', min_weight=0.1):
+    def __init__(self, num_tasks=2, temperature=2.0, device='cuda', min_weight=0.1):
         super(AnalyticalUncertaintyWeightedLoss, self).__init__()
         
         self.num_tasks = num_tasks
@@ -35,8 +35,8 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
         self.min_weight = min_weight
         
         # Learnable uncertainty parameters (log variance for numerical stability)
-        # More conservative initialization to prevent task collapse
-        self.log_vars = nn.Parameter(torch.ones(num_tasks, device=device) * 0.5)
+        # Original initialization
+        self.log_vars = nn.Parameter(torch.zeros(num_tasks, device=device))
         
         # Store task losses for uncertainty computation
         self.task_losses = []
