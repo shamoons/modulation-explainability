@@ -2,7 +2,6 @@
 
 import torch
 from tqdm import tqdm
-from utils.config_utils import load_loss_config
 from torch.amp import autocast
 
 
@@ -10,8 +9,7 @@ from torch.amp import autocast
 
 def validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter=None, use_autocast=False):
     model.eval()
-
-    alpha, beta = load_loss_config()
+    
     val_loss = 0.0
     modulation_loss_total = 0.0
     snr_loss_total = 0.0
@@ -25,13 +23,14 @@ def validate(model, device, val_loader, criterion_modulation, criterion_snr, unc
     all_true_snr_labels = []
     all_pred_snr_labels = []
 
-    # Choose autocast context based on use_autocast flag and device
+    # Get device from model
     device = next(model.parameters()).device
-    autocast_context = autocast('cuda') if use_autocast and device.type == 'cuda' else torch.no_grad()
-
+    
     with torch.no_grad():
-        with autocast_context:
-            with tqdm(val_loader, desc="Validation", leave=False) as progress:
+        # Conditionally use autocast only for CUDA
+        if use_autocast and device.type == 'cuda':
+            with autocast('cuda'):
+                with tqdm(val_loader, desc="Validation", leave=False) as progress:
                 for inputs, modulation_labels, snr_labels in progress:
                     inputs = inputs.to(device)
                     modulation_labels = modulation_labels.to(device)
@@ -43,7 +42,14 @@ def validate(model, device, val_loader, criterion_modulation, criterion_snr, unc
                     # Compute losses for both modulation and SNR classification
                     loss_modulation = criterion_modulation(modulation_output, modulation_labels)
                     loss_snr = criterion_snr(snr_output, snr_labels)
-                    total_loss = alpha * loss_modulation + beta * loss_snr
+                    
+                    # Use uncertainty weighting
+                    if uncertainty_weighter is not None:
+                        total_loss, _ = uncertainty_weighter([loss_modulation, loss_snr])
+                    else:
+                        # Fallback - just sum the losses
+                        total_loss = loss_modulation + loss_snr
+                    
                     val_loss += total_loss.item()
                     modulation_loss_total += loss_modulation.item()
                     snr_loss_total += loss_snr.item()

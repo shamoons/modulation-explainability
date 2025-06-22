@@ -186,7 +186,7 @@ def train(
 
         # Perform validation at the end of each epoch
         # Use autocast also in validation to speed up inference
-        val_results = validate(model, device, criterion_modulation, criterion_snr, val_loader, use_autocast=True)
+        val_results = validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter, use_autocast=True)
         (
             val_loss,
             modulation_loss_total,
