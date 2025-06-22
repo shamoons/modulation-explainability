@@ -185,8 +185,9 @@ def train(
         print(f"  Combined Accuracy: {train_combined_accuracy:.2f}%")
 
         # Perform validation at the end of each epoch
-        # Use autocast also in validation to speed up inference
-        val_results = validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter, use_autocast=True)
+        # Only use autocast for CUDA devices
+        use_autocast_val = device.type == 'cuda'
+        val_results = validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter, use_autocast=use_autocast_val)
         (
             val_loss,
             modulation_loss_total,

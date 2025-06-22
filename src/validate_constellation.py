@@ -5,8 +5,6 @@ from tqdm import tqdm
 from torch.amp import autocast
 
 
-# src/validate_constellation.py
-
 def validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter=None, use_autocast=False):
     model.eval()
     
@@ -27,55 +25,56 @@ def validate(model, device, val_loader, criterion_modulation, criterion_snr, unc
     device = next(model.parameters()).device
     
     with torch.no_grad():
-        # Conditionally use autocast only for CUDA
-        if use_autocast and device.type == 'cuda':
-            with autocast('cuda'):
-                with tqdm(val_loader, desc="Validation", leave=False) as progress:
-                for inputs, modulation_labels, snr_labels in progress:
-                    inputs = inputs.to(device)
-                    modulation_labels = modulation_labels.to(device)
-                    snr_labels = snr_labels.to(device)
+        with tqdm(val_loader, desc="Validation", leave=False) as progress:
+            for inputs, modulation_labels, snr_labels in progress:
+                inputs = inputs.to(device)
+                modulation_labels = modulation_labels.to(device)
+                snr_labels = snr_labels.to(device)
 
-                    # Forward pass through the model
+                # Forward pass through the model with optional autocast for CUDA
+                if use_autocast and device.type == 'cuda':
+                    with autocast('cuda'):
+                        modulation_output, snr_output = model(inputs)
+                else:
                     modulation_output, snr_output = model(inputs)
 
-                    # Compute losses for both modulation and SNR classification
-                    loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                    loss_snr = criterion_snr(snr_output, snr_labels)
-                    
-                    # Use uncertainty weighting
-                    if uncertainty_weighter is not None:
-                        total_loss, _ = uncertainty_weighter([loss_modulation, loss_snr])
-                    else:
-                        # Fallback - just sum the losses
-                        total_loss = loss_modulation + loss_snr
-                    
-                    val_loss += total_loss.item()
-                    modulation_loss_total += loss_modulation.item()
-                    snr_loss_total += loss_snr.item()
+                # Compute losses for both modulation and SNR classification
+                loss_modulation = criterion_modulation(modulation_output, modulation_labels)
+                loss_snr = criterion_snr(snr_output, snr_labels)
+                
+                # Use uncertainty weighting
+                if uncertainty_weighter is not None:
+                    total_loss, _ = uncertainty_weighter([loss_modulation, loss_snr])
+                else:
+                    # Fallback - just sum the losses
+                    total_loss = loss_modulation + loss_snr
+                
+                val_loss += total_loss.item()
+                modulation_loss_total += loss_modulation.item()
+                snr_loss_total += loss_snr.item()
 
-                    # Predict labels
-                    _, predicted_modulation = modulation_output.max(1)
-                    _, predicted_snr = snr_output.max(1)
+                # Predict labels
+                _, predicted_modulation = modulation_output.max(1)
+                _, predicted_snr = snr_output.max(1)
 
-                    total += modulation_labels.size(0)
-                    correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                    correct_snr += predicted_snr.eq(snr_labels).sum().item()
-                    correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
+                total += modulation_labels.size(0)
+                correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
+                correct_snr += predicted_snr.eq(snr_labels).sum().item()
+                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
 
-                    # Collect true and predicted labels for confusion matrix and F1 score computation
-                    all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
-                    all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
-                    all_true_snr_labels.extend(snr_labels.cpu().numpy())
-                    all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
+                # Collect true and predicted labels for confusion matrix and F1 score computation
+                all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
+                all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
+                all_true_snr_labels.extend(snr_labels.cpu().numpy())
+                all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
 
-                    # Update progress bar with current metrics
-                    progress.set_postfix(
-                        loss=total_loss.item(),
-                        mod_accuracy=100.0 * correct_modulation / total,
-                        snr_accuracy=100.0 * correct_snr / total,
-                        combined_accuracy=100.0 * correct_both / total
-                    )
+                # Update progress bar with current metrics
+                progress.set_postfix(
+                    loss=total_loss.item(),
+                    mod_accuracy=100.0 * correct_modulation / total,
+                    snr_accuracy=100.0 * correct_snr / total,
+                    combined_accuracy=100.0 * correct_both / total
+                )
 
     # Compute final validation accuracies and loss
     val_modulation_accuracy = 100.0 * correct_modulation / total
