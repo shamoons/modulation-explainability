@@ -223,8 +223,11 @@ def train(
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_epoch = epoch + 1
-            torch.save(model.state_dict(), os.path.join(save_dir, f"best_model_epoch_{epoch+1}.pth"))
-            print(f"Best model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4g}")
+            # Include model name in checkpoint filename
+            model_name = model.model_name if hasattr(model, 'model_name') else 'unknown'
+            checkpoint_name = f"best_model_{model_name}_epoch_{epoch+1}.pth"
+            torch.save(model.state_dict(), os.path.join(save_dir, checkpoint_name))
+            print(f"Best model saved: {checkpoint_name} with validation loss: {best_val_loss:.4g}")
 
         fig_confusion_matrix_modulation = plot_confusion_matrix(
             all_true_modulation_labels,
@@ -297,9 +300,14 @@ def train(
     print("="*50)
     
     # Load best model
-    best_model_path = os.path.join(save_dir, f'best_model_epoch_{best_epoch}.pth')
+    model_name = model.model_name if hasattr(model, 'model_name') else 'unknown'
+    best_model_path = os.path.join(save_dir, f'best_model_{model_name}_epoch_{best_epoch}.pth')
+    # Fallback to old naming convention if new file doesn't exist
+    if not os.path.exists(best_model_path):
+        best_model_path = os.path.join(save_dir, f'best_model_epoch_{best_epoch}.pth')
+    
     if os.path.exists(best_model_path):
-        print(f"Loading best model from epoch {best_epoch}...")
+        print(f"Loading best model from: {os.path.basename(best_model_path)}")
         model.load_state_dict(torch.load(best_model_path))
     else:
         print("Using final model (best model checkpoint not found)")

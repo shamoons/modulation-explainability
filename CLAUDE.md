@@ -44,8 +44,8 @@ uv run python src/train_constellation.py --model_type resnet18  # Default, faste
 uv run python src/train_constellation.py --model_type resnet34  # Deeper ResNet
 uv run python src/train_constellation.py --model_type vit       # Vision Transformer
 
-# Resume training from checkpoint
-uv run python src/train_constellation.py --checkpoint path/to/checkpoint.pth
+# Resume training from checkpoint (now includes model name)
+uv run python src/train_constellation.py --checkpoint checkpoints/best_model_resnet18_epoch_15.pth
 
 # Convert HDF5 data to constellation images
 uv run python src/convert_to_constellation.py \
@@ -419,6 +419,19 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Issue**: SAME overfitting pattern (13.82% gap by epoch 14, LR already reduced)
 - **Status**: Following identical failure trajectory
 
+#### smooth-plant-106 (2025-06-23) - Vision Transformer Test 🚀
+- **Model**: Vision Transformer (ViT-B/16)
+- **Batch Size**: 256 (optimized for ViT memory usage)
+- **Dropout**: 0.2 (returned to baseline)
+- **Patience**: 3 (same as successful wandering-violet-94)
+- **Uncertainty Weighting**: Temperature=1.5, min_weight=0.05
+- **Data Split**: 80/10/10 (stratified)
+- **Early Results**: 
+  - Epoch 1: 19.47% combined accuracy (44.83% mod, 34.98% SNR)
+  - Training speed: ~2.63 it/s (slower than ResNet but expected)
+  - Task weights balanced (51.1%/48.9%)
+- **Status**: Currently training
+
 ### Configuration Evolution Summary
 
 | Parameter | wandering-violet-94 | mild-water-102 | northern-microwave-103 | faithful-fire-104 | **Next Run** | **Analysis** |
@@ -446,7 +459,7 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 3. **Stratified Splitting**: Added structured stratification
 4. **Training Pipeline**: Multiple enhancements
 
-### Latest Changes (2025-06-22)
+### Latest Changes (2025-06-22 to 2025-06-23)
 
 **Phase 1: Temperature & Initialization**
 - **Temperature**: 3.0 → 2.0 (balanced between original and conservative)
@@ -460,3 +473,8 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Temperature**: 2.0 → 1.5 (more dynamic, less over-smoothing)
 - **Min Weight**: 0.1 → 0.05 (allow natural specialization, prevent full collapse)
 - **Hypothesis**: Over-constraining multi-task learning was preventing natural adaptation
+
+**Phase 4: Architecture Exploration (ACTIVE)**
+- **Model Switch**: ResNet18 → Vision Transformer (ViT)
+- **Rationale**: ViT's self-attention may better capture constellation patterns
+- **Trade-off**: Slower training (~2.6 it/s vs ~8-10 it/s) but potentially better representations
