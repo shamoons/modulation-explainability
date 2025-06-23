@@ -26,7 +26,7 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
     to combinatorial optimization approaches.
     """
     
-    def __init__(self, num_tasks=2, temperature=2.0, device='cuda', min_weight=0.1):
+    def __init__(self, num_tasks=2, temperature=1.5, device='cuda', min_weight=0.05):
         super(AnalyticalUncertaintyWeightedLoss, self).__init__()
         
         self.num_tasks = num_tasks

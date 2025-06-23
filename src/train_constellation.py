@@ -110,7 +110,7 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
-    uncertainty_weighter = AnalyticalUncertaintyWeightedLoss(num_tasks=2, temperature=2.0, device=device, min_weight=0.1)
+    uncertainty_weighter = AnalyticalUncertaintyWeightedLoss(num_tasks=2, temperature=1.5, device=device, min_weight=0.05)
 
     # Initialize optimizer (include uncertainty weighter parameters)
     model_params = list(model.parameters()) + list(uncertainty_weighter.parameters())

@@ -177,8 +177,8 @@ The testing pipeline evaluates models on:
 3. **✅ Uncertainty Weighting Stability**:
    - **FIXED**: Task collapse prevention through enhanced analytical uncertainty weighting
    - **IMPLEMENTED**: Original parameter initialization (log_vars=0.0) and uncertainty clipping [-2.0, 2.0]
-   - **ADDED**: Minimum weight constraints (10% per task) to maintain task balance
-   - **ENHANCED**: Temperature scaling (T=2.0) for balanced task weighting
+   - **ADDED**: Minimum weight constraints (5% per task) to maintain task balance
+   - **ENHANCED**: Temperature scaling (T=1.5) for dynamic task weighting
    
 4. **✅ Data Pipeline Enhancements**:
    - **IMPLEMENTED**: Stratified train/val/test splitting (80/10/10) with balanced class representation
@@ -257,7 +257,7 @@ The training script now uses optimized defaults for full dataset training:
 - **Dropout**: 0.3 (regularization to prevent overfitting)
 - **Dataset**: 17 digital modulations × 26 SNRs (442 classes total by default)
 - **Data Split**: 80% train / 10% validation / 10% test (stratified)
-- **Uncertainty Weighting**: Temperature=2.0, min_weight=0.1 (prevents task collapse)
+- **Uncertainty Weighting**: Temperature=1.5, min_weight=0.05 (prevents task collapse)
 - **LR Scheduler**: ReduceLROnPlateau with factor=0.7 (30% reduction)
 
 ### Dataset Statistics
@@ -340,8 +340,8 @@ mcp__wandb__query_wandb_tool(
 ### Task Collapse
 **Symptoms**: Task weights become extreme (e.g., 95%/5%)
 **Solutions**: Already fixed in current implementation with enhanced uncertainty weighting
-- Temperature=2.0 provides balanced dynamic weighting
-- Min_weight=0.1 ensures 10% minimum for each task
+- Temperature=1.5 provides more dynamic weighting with some stability
+- Min_weight=0.05 ensures 5% minimum for each task (allows natural specialization)
 
 ### Slow Training
 **Solutions**:
@@ -393,7 +393,7 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Task Weights**: Remained balanced around 50%/50%
 - **Issue**: Validation plateaued early
 
-#### mild-water-102 (2025-06-22) - Current Configuration ⚠️
+#### mild-water-102 (2025-06-22) - Overfitting ❌
 - **Model**: ResNet34 (upgraded from ResNet18)
 - **Batch Size**: 1024 (32x increase)
 - **Dropout**: 0.3
@@ -402,19 +402,61 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Issue**: Severe overfitting detected (15.93% train-val gap by epoch 18)
 - **Status**: Validation accuracy stagnating/declining
 
+#### northern-microwave-103 (2025-06-22) - Temperature Fix Attempt ❌
+- **Model**: ResNet18 (back to baseline)
+- **Batch Size**: 1024 (still large)
+- **Dropout**: 0.3
+- **Uncertainty Weighting**: Temperature=2.0, min_weight=0.1, original init
+- **Issue**: Catastrophic overfitting (33.23% gap by epoch 26)
+- **Status**: Killed - worse than mild-water-102
+
+#### faithful-fire-104 (2025-06-22) - Aggressive Regularization ❌
+- **Model**: ResNet18
+- **Batch Size**: 256 (4x reduction)
+- **Dropout**: 0.4 (increased)
+- **Patience**: 5 (reduced)
+- **Uncertainty Weighting**: Temperature=2.0, min_weight=0.1, original init
+- **Issue**: SAME overfitting pattern (13.82% gap by epoch 14, LR already reduced)
+- **Status**: Following identical failure trajectory
+
 ### Configuration Evolution Summary
 
-| Parameter | wandering-violet-94 | treasured-waterfall-89 | desert-disco-92 | mild-water-102 | Next Run |
-|-----------|-------------------|---------------------|-----------------|----------------|----------|
-| Model | ResNet18 | ResNet18 | ResNet18 | ResNet34 | ResNet18/34 |
-| Batch Size | ~32 | 32 | 32 | 1024 | 256-512 |
-| Dropout | 0.2 | 0.2 | 0.3 | 0.3 | 0.3-0.4 |
-| Temperature | 1.0 | 1.0 | 3.0 | 3.0 | **2.0** |
-| Min Weight | None | None | 0.1 | 0.1 | 0.1 |
-| Init | 0.0 | 0.0 | 0.5 | 0.5 | **0.0** |
-| Data Split | 70/15/15 | 70/15/15 | 70/15/15 | 80/10/10 | 80/10/10 |
+| Parameter | wandering-violet-94 | mild-water-102 | northern-microwave-103 | faithful-fire-104 | **Next Run** | **Analysis** |
+|-----------|-------------------|----------------|----------------------|------------------|-------------|-------------|
+| Model | ResNet18 | ResNet34 | ResNet18 | ResNet18 | ResNet18 | ✅ Not the issue |
+| Batch Size | ~32 | 1024 | 1024 | 256 | 32 | ❌ Even 256 fails |
+| Dropout | 0.2 | 0.3 | 0.3 | 0.4 | **0.2** | ❌ More dropout = worse |
+| Temperature | 1.0 | 3.0 | 2.0 | 2.0 | **1.5** | ❓ Over-smoothing issue |
+| Min Weight | None | 0.1 | 0.1 | 0.1 | **0.05** | ❓ Over-constraining issue |
+| Init | 0.0 | 0.5 | 0.0 | 0.0 | 0.0 | ❓ May be the issue |
+| Data Split | 70/15/15 | 80/10/10 | 80/10/10 | 80/10/10 | 80/10/10 | ❓ May be the issue |
+| Patience | 3 | 10 | 10 | 5 | **3** | ❌ Faster = worse |
+
+### 🚨 **Critical Pattern Discovery**
+
+**ALL recent runs (mild-water-102, northern-microwave-103, faithful-fire-104) are failing at epochs 12-18** despite:
+- Different batch sizes (1024, 1024, 256)
+- Different dropout levels (0.3, 0.3, 0.4)  
+- Different patience settings (10, 10, 5)
+- Different models (ResNet34, ResNet18, ResNet18)
+
+**What Changed Since wandering-violet-94 Success:**
+1. **Data Split**: 70/15/15 → 80/10/10 (10% validation → 10% validation)
+2. **Uncertainty Weighting**: Original (temp=1.0, no min_weight) → Enhanced (temp=2.0-3.0, min_weight=0.1)
+3. **Stratified Splitting**: Added structured stratification
+4. **Training Pipeline**: Multiple enhancements
 
 ### Latest Changes (2025-06-22)
+
+**Phase 1: Temperature & Initialization**
 - **Temperature**: 3.0 → 2.0 (balanced between original and conservative)
 - **Initialization**: 0.5 → 0.0 (reverted to original)
-- **Goal**: Achieve dynamic task weighting like wandering-violet-94 while preventing collapse
+
+**Phase 2: Aggressive Regularization (FAILED)**
+- **Regularization**: Increased dropout 0.3 → 0.4, reduced batch size 1024 → 256
+- **Result**: IDENTICAL FAILURE PATTERN - suggests hyperparameters are NOT the root cause
+
+**Phase 3: Constraint Relaxation (CURRENT)**
+- **Temperature**: 2.0 → 1.5 (more dynamic, less over-smoothing)
+- **Min Weight**: 0.1 → 0.05 (allow natural specialization, prevent full collapse)
+- **Hypothesis**: Over-constraining multi-task learning was preventing natural adaptation
