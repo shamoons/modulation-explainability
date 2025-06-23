@@ -1,4 +1,27 @@
 # src/models/swin_transformer_model.py
+"""
+Swin Transformer implementation for constellation diagram classification.
+
+Based on "Swin Transformer: Hierarchical Vision Transformer using Shifted Windows"
+by Liu et al. (2021) - https://arxiv.org/abs/2103.14030
+
+The Swin Transformer uses hierarchical feature maps and shifted window attention,
+making it particularly well-suited for constellation diagrams which exhibit:
+1. Sparse spatial structure (most pixels are background)
+2. Local patterns that benefit from hierarchical processing
+3. Multi-scale features that emerge at different SNR levels
+
+Key advantages for constellation classification:
+- Window-based self-attention reduces computational complexity from O(n²) to O(n)
+- Hierarchical feature extraction captures both fine-grained and coarse patterns
+- Shifted windows enable cross-window connections for global modeling
+- Better inductive bias for sparse image data compared to standard ViT
+
+Citation:
+Liu, Z., Lin, Y., Cao, Y., Hu, H., Wei, Y., Zhang, Z., ... & Guo, B. (2021).
+Swin transformer: Hierarchical vision transformer using shifted windows.
+In Proceedings of the IEEE/CVF international conference on computer vision (pp. 10012-10022).
+"""
 import torch.nn as nn
 import torch
 try:
@@ -18,6 +41,10 @@ class ConstellationSwinTransformer(nn.Module):
     
     Supports Swin-Tiny, Swin-Small, and Swin-Base variants with hierarchical processing
     ideal for constellation diagrams' sparse spatial structure.
+    
+    The hierarchical attention mechanism is particularly effective for constellation 
+    diagrams where signal points cluster at different scales depending on modulation
+    type and SNR level.
     """
 
     def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny"):

@@ -7,35 +7,38 @@ import torch.nn.functional as F
 
 class AnalyticalUncertaintyWeightedLoss(nn.Module):
     """
-    Analytical Uncertainty-Based Loss Weighting for Multi-Task Learning
+    Homoscedastic Uncertainty-Based Loss Weighting for Multi-Task Learning
     
-    Based on the 2024 paper: "Analytical Uncertainty-Based Loss Weighting in Multi-Task Learning"
-    https://arxiv.org/abs/2408.07985
-    @misc{kirchdorfer2024analyticaluncertaintybasedlossweighting,
-      title={Analytical Uncertainty-Based Loss Weighting in Multi-Task Learning}, 
-      author={Lukas Kirchdorfer and Cathrin Elich and Simon Kutsche and Heiner Stuckenschmidt and Lukas Schott and Jan M. Köhler},
-      year={2024},
-      eprint={2408.07985},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2408.07985}, 
+    Based on the highly-cited 2018 paper: "Multi-Task Learning Using Uncertainty to Weigh Losses for Scene Geometry and Semantics"
+    https://arxiv.org/abs/1705.07115
+    @inproceedings{kendall2018multi,
+      title={Multi-task learning using uncertainty to weigh losses for scene geometry and semantics},
+      author={Kendall, Alex and Gal, Yarin and Cipolla, Roberto},
+      booktitle={Proceedings of the IEEE conference on computer vision and pattern recognition},
+      pages={7482--7491},
+      year={2018}
     }
     
-    This method computes analytically optimal uncertainty-based weights normalized by a 
-    softmax function with tunable temperature, providing a more efficient alternative 
-    to combinatorial optimization approaches.
+    This method learns homoscedastic uncertainty (task-dependent uncertainty) to automatically
+    balance losses in multi-task learning. The approach weighs each task's loss by the inverse
+    of its learned uncertainty, preventing tasks from dominating based on their relative scales.
+    
+    Key advantages:
+    - Well-established method with extensive validation (1000+ citations)
+    - Prevents task competition through independent weighting
+    - Principled uncertainty modeling with proper regularization
     """
     
     def __init__(self, num_tasks=2, temperature=1.5, device='cuda', min_weight=0.05):
         super(AnalyticalUncertaintyWeightedLoss, self).__init__()
         
         self.num_tasks = num_tasks
-        self.temperature = temperature
         self.device = device
         self.min_weight = min_weight
+        # Note: temperature parameter kept for backward compatibility but not used in Kendall method
         
-        # Learnable uncertainty parameters (log variance for numerical stability)
-        # Original initialization
+        # Learnable homoscedastic uncertainty parameters (log variance for numerical stability)
+        # Initialize to zeros following Kendall et al. (corresponds to sigma=1 initially)
         self.log_vars = nn.Parameter(torch.zeros(num_tasks, device=device))
         
         # Store task losses for uncertainty computation
@@ -43,14 +46,14 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
         
     def forward(self, task_losses):
         """
-        Compute uncertainty-weighted loss
+        Compute uncertainty-weighted loss using Kendall et al. formulation
         
         Args:
             task_losses: List of individual task losses [loss_1, loss_2, ...]
             
         Returns:
-            weighted_loss: Combined loss with analytical uncertainty weighting
-            weights: The computed task weights for monitoring
+            weighted_loss: Combined loss with homoscedastic uncertainty weighting
+            weights: The computed task weights for monitoring (derived from uncertainties)
         """
         # Convert to tensor if needed
         if isinstance(task_losses, list):
@@ -58,27 +61,31 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
         else:
             losses = task_losses
             
-        # Clip uncertainties to prevent extremes (log_vars ∈ [-2.0, 2.0] → uncertainty ∈ [0.135, 7.39])
+        # Clip log variances to prevent numerical instability
         clipped_log_vars = torch.clamp(self.log_vars, min=-2.0, max=2.0)
-            
-        # Compute uncertainty weights using analytical solution
-        # Weight = exp(-log_var) normalized by softmax with temperature
-        neg_log_vars = -clipped_log_vars / self.temperature
-        raw_weights = F.softmax(neg_log_vars, dim=0)
         
-        # Enforce minimum weights to preserve all tasks and prevent task collapse
-        weights = torch.clamp(raw_weights, min=self.min_weight)
-        weights = weights / weights.sum()  # Renormalize to ensure sum = 1
+        # Kendall et al. formulation: L = (1/(2*sigma^2)) * task_loss + 0.5 * log(sigma^2)
+        # where sigma^2 = exp(log_var)
+        sigmas_squared = torch.exp(clipped_log_vars)
         
-        # Compute weighted loss with regularization term
-        weighted_losses = weights * losses
+        # Compute individual task weights: 1/(2*sigma^2)
+        task_weights = 1.0 / (2.0 * sigmas_squared)
         
-        # Add uncertainty regularization term (proper formulation for analytical weighting)
-        # The regularization should encourage learning of uncertainties, not penalize them
-        # Added penalty for extreme log_vars to prevent over-confident uncertainties
-        regularization = 0.5 * torch.sum(torch.exp(clipped_log_vars)) + 0.1 * torch.sum(clipped_log_vars**2)
+        # Apply minimum weight constraint for stability
+        # Convert to relative weights for monitoring while preserving Kendall formulation
+        task_weights_clamped = torch.clamp(task_weights, min=self.min_weight)
         
+        # Compute weighted losses for each task
+        weighted_losses = task_weights_clamped * losses
+        
+        # Kendall regularization term: 0.5 * sum(log(sigma^2)) = 0.5 * sum(log_vars)
+        regularization = 0.5 * torch.sum(clipped_log_vars)
+        
+        # Total loss following Kendall et al.
         total_loss = torch.sum(weighted_losses) + regularization
+        
+        # Compute normalized weights for monitoring (approximation for display)
+        normalized_weights = task_weights_clamped / torch.sum(task_weights_clamped)
         
         # Validation: Ensure loss is mathematically valid
         if torch.isnan(total_loss) or torch.isinf(total_loss):
@@ -88,8 +95,9 @@ class AnalyticalUncertaintyWeightedLoss(nn.Module):
             print(f"  Weighted losses: {torch.sum(weighted_losses).item():.6f}")
             print(f"  Regularization: {regularization.item():.6f}")
             print(f"  Log vars: {self.log_vars.detach().cpu().numpy()}")
+            print(f"  Sigmas squared: {sigmas_squared.detach().cpu().numpy()}")
         
-        return total_loss, weights.detach()
+        return total_loss, normalized_weights.detach()
     
     def get_uncertainties(self):
         """Return current uncertainty values (exp of clipped log_vars)"""

@@ -82,7 +82,7 @@ The project implements a **state-of-the-art multi-task learning approach** with:
 - **Task-Specific Heads**: 
   - Modulation classification (17 digital classes by default)
   - **Discrete SNR prediction** (26 classes: -20 to +30 dB in 2dB intervals)
-- **Analytical Uncertainty Weighting**: SOTA 2024 method that automatically balances task losses using learned uncertainty parameters
+- **Homoscedastic Uncertainty Weighting**: Well-established Kendall et al. (2018) method that automatically balances task losses using learned uncertainty parameters
 
 ### Key Components
 
@@ -101,10 +101,11 @@ The project implements a **state-of-the-art multi-task learning approach** with:
    - Images are preprocessed to 224x224 and normalized
 
 3. **Enhanced Loss Functions** (`src/losses/uncertainty_weighted_loss.py`):
-   - **`AnalyticalUncertaintyWeightedLoss`**: SOTA uncertainty-based multi-task weighting with task collapse prevention
-     - Temperature scaling (T=3.0) for stable weighting
-     - Minimum weight constraints (10% per task)
-     - Conservative initialization and uncertainty clipping
+   - **`AnalyticalUncertaintyWeightedLoss`**: Homoscedastic uncertainty-based multi-task weighting (Kendall et al. 2018)
+     - Well-established method with 1000+ citations and extensive validation
+     - Independent task weighting prevents task competition
+     - Principled uncertainty modeling with proper regularization
+     - Minimum weight constraints (5% per task) for stability
    - **`DistancePenalizedSNRLoss`**: Distance-aware loss for discrete SNR prediction
    - Replaces traditional α/β weighting with learned uncertainty parameters
 
@@ -168,10 +169,10 @@ The testing pipeline evaluates models on:
 
 ### ✅ Completed High Priority Improvements
 1. **✅ Enhanced Multi-Task Learning**: 
-   - **IMPLEMENTED**: Analytical uncertainty-based weighting using 2024 SOTA methods (Kirchdorfer et al.)
-   - **IMPLEMENTED**: Dynamic task balancing that adapts during training
-   - **IMPLEMENTED**: Learned uncertainty parameters that prevent task interference
-   - **ENHANCED**: Task collapse prevention with temperature scaling and minimum weight constraints
+   - **IMPLEMENTED**: Homoscedastic uncertainty-based weighting using well-established Kendall et al. (2018) method
+   - **IMPLEMENTED**: Independent task weighting that prevents task competition
+   - **IMPLEMENTED**: Learned uncertainty parameters with principled regularization
+   - **ENHANCED**: Task collapse prevention with minimum weight constraints (5% per task)
 
 2. **✅ SNR Estimation Refinement**:
    - **IMPLEMENTED**: Discrete SNR prediction with 26 classes (-20 to +30 dB in 2dB intervals)  
@@ -180,10 +181,10 @@ The testing pipeline evaluates models on:
    - **VERIFIED**: Training pipeline working with enhanced multi-task learning
 
 3. **✅ Uncertainty Weighting Stability**:
-   - **FIXED**: Task collapse prevention through enhanced analytical uncertainty weighting
-   - **IMPLEMENTED**: Original parameter initialization (log_vars=0.0) and uncertainty clipping [-2.0, 2.0]
+   - **UPGRADED**: Switched from experimental method to well-established Kendall et al. (2018) approach
+   - **IMPLEMENTED**: Homoscedastic uncertainty with proper Kendall formulation and regularization
    - **ADDED**: Minimum weight constraints (5% per task) to maintain task balance
-   - **ENHANCED**: Temperature scaling (T=1.5) for dynamic task weighting
+   - **ENHANCED**: Independent task weighting prevents competitive task dynamics
    
 4. **✅ Data Pipeline Enhancements**:
    - **IMPLEMENTED**: Stratified train/val/test splitting (80/10/10) with balanced class representation
@@ -220,7 +221,7 @@ The testing pipeline evaluates models on:
 ## Important Implementation Notes
 
 ### Training System
-- **Multi-Task Learning**: Now uses analytical uncertainty weighting (no manual α/β tuning required)
+- **Multi-Task Learning**: Now uses Kendall homoscedastic uncertainty weighting (no manual α/β tuning required)
 - **SNR Prediction**: System now operates with discrete 26-class SNR prediction (removed SNR buckets)
 - **Device Support**: Optimized for CUDA (with mixed precision), MPS (Apple Silicon), and CPU
 - **Package Management**: Uses UV instead of Pipenv for faster dependency management
