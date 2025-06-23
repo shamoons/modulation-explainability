@@ -29,7 +29,7 @@ uv run python src/train_constellation.py
 
 # Train with custom parameters and model architecture
 uv run python src/train_constellation.py \
-    --model_type vit \
+    --model_type vit_b_16 \
     --batch_size 32 \
     --snr_list "0,10,20" \
     --mods_to_process "BPSK,QPSK,8PSK" \
@@ -40,9 +40,10 @@ uv run python src/train_constellation.py \
     --patience 10
 
 # Train with different architectures
-uv run python src/train_constellation.py --model_type resnet18  # Default, fastest
-uv run python src/train_constellation.py --model_type resnet34  # Deeper ResNet
-uv run python src/train_constellation.py --model_type vit       # Vision Transformer
+uv run python src/train_constellation.py --model_type resnet18   # Default, fastest
+uv run python src/train_constellation.py --model_type resnet34   # Deeper ResNet
+uv run python src/train_constellation.py --model_type vit_b_16   # Vision Transformer ViT/16
+uv run python src/train_constellation.py --model_type vit_b_32   # Vision Transformer ViT/32 (faster)
 
 # Resume training from checkpoint (now includes model name)
 uv run python src/train_constellation.py --checkpoint checkpoints/best_model_resnet18_epoch_15.pth
@@ -426,11 +427,15 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Patience**: 3 (same as successful wandering-violet-94)
 - **Uncertainty Weighting**: Temperature=1.5, min_weight=0.05
 - **Data Split**: 80/10/10 (stratified)
-- **Early Results**: 
-  - Epoch 1: 19.47% combined accuracy (44.83% mod, 34.98% SNR)
-  - Training speed: ~2.63 it/s (slower than ResNet but expected)
-  - Task weights balanced (51.1%/48.9%)
-- **Status**: Currently training
+- **Progress Through Epoch 16**:
+  - **Epoch 1**: 19.47% combined accuracy (44.83% mod, 34.98% SNR)
+  - **Epoch 16**: 26.12% combined accuracy (48.30% mod, 41.92% SNR)
+  - **Training speed**: ~2.6 it/s (slower than ResNet but expected)
+  - **Task weights**: 59.6% mod / 40.4% SNR (natural specialization)
+  - **Learning rate**: Reduced to 0.00007 (reduction occurred ~epoch 13)
+  - **Train-val gap**: 7.68% (healthy, no severe overfitting)
+- **Key Success**: Made it past epochs 12-18 where ResNet runs failed catastrophically
+- **Status**: Stable progression, avoiding overfitting pattern
 
 ### Configuration Evolution Summary
 

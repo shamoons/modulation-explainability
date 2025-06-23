@@ -78,17 +78,20 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             dropout_prob=dropout,
             model_name=model_type
         )
-    elif model_type == "vit":
+        print(f"Using model: {model_type}")
+    elif model_type in ["vit_b_16", "vit_b_32"]:
+        # Extract patch size from model type
+        patch_size = 16 if model_type == "vit_b_16" else 32
         model = ConstellationVisionTransformer(
             num_classes=num_modulation_classes,
             snr_classes=num_snr_classes,
             input_channels=input_channels,
-            dropout_prob=dropout
+            dropout_prob=dropout,
+            patch_size=patch_size
         )
+        print(f"Using model: {model_type} (patch_size={patch_size})")
     else:
-        raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit")
-    
-    print(f"Using model: {model_type}")
+        raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit_b_16, vit_b_32")
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -170,7 +173,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
-    parser.add_argument('--model_type', type=str, help='Model architecture to use (resnet18, resnet34, vit)', default='resnet18', choices=['resnet18', 'resnet34', 'vit'])
+    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='resnet18', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32'])
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
 
     args = parser.parse_args()

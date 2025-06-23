@@ -1,6 +1,6 @@
 # src/models/vision_transformer_model.py
 import torch.nn as nn
-from torchvision.models import vit_b_16
+from torchvision.models import vit_b_16, vit_b_32
 
 
 class ConstellationVisionTransformer(nn.Module):
@@ -9,9 +9,11 @@ class ConstellationVisionTransformer(nn.Module):
     The model outputs two things:
     1) Modulation classification
     2) SNR prediction
+    
+    Supports both ViT-B/16 (patch_size=16) and ViT-B/32 (patch_size=32) variants.
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="vit_b_16"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, patch_size=16):
         """
         Initialize the ConstellationVisionTransformer model with two output heads.
 
@@ -20,12 +22,21 @@ class ConstellationVisionTransformer(nn.Module):
             snr_classes (int): Number of possible SNR classes.
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
             dropout_prob (float): Probability of dropout (defaults to 0.3).
+            patch_size (int): Patch size for ViT (16 or 32). Defaults to 16.
         """
         super(ConstellationVisionTransformer, self).__init__()
 
-        # Load a Vision Transformer (ViT) model from torchvision
-        self.model = vit_b_16(weights='DEFAULT')
-        self.model_name = model_name
+        # Select the appropriate ViT model based on patch size
+        if patch_size == 16:
+            self.model = vit_b_16(weights='DEFAULT')
+            self.model_name = "vit_b_16"
+        elif patch_size == 32:
+            self.model = vit_b_32(weights='DEFAULT')
+            self.model_name = "vit_b_32"
+        else:
+            raise ValueError(f"Unsupported patch_size: {patch_size}. Choose 16 or 32.")
+        
+        self.patch_size = patch_size
 
         # Modify the input embedding layer to accept the specified number of input channels
         if input_channels != 3:

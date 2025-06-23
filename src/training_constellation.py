@@ -47,7 +47,7 @@ def train(
     # num_val_samples = len(val_loader.sampler)
 
     # Initialize WandB project
-    wandb.init(project="modulation-explainability", config={
+    wandb_config = {
         "epochs": epochs,
         "mod_list": mod_list,
         "snr_list": snr_list,
@@ -59,7 +59,14 @@ def train(
         "dropout": dropout,
         "batch_size": batch_size,
         "stratified_split": True
-    })
+    }
+    
+    # Add patch size info for ViT models
+    if model_type in ["vit_b_16", "vit_b_32"]:
+        patch_size = 16 if model_type == "vit_b_16" else 32
+        wandb_config["patch_size"] = patch_size
+    
+    wandb.init(project="modulation-explainability", config=wandb_config)
 
     # Ensure save directory exists
     os.makedirs(save_dir, exist_ok=True)
