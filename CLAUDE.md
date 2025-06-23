@@ -432,15 +432,55 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Patience**: 3 (same as successful wandering-violet-94)
 - **Uncertainty Weighting**: Temperature=1.5, min_weight=0.05
 - **Data Split**: 80/10/10 (stratified)
-- **Progress Through Epoch 16**:
+- **Progress Through Epoch 19** (Final - crashed due to external factors):
   - **Epoch 1**: 19.47% combined accuracy (44.83% mod, 34.98% SNR)
-  - **Epoch 16**: 26.12% combined accuracy (48.30% mod, 41.92% SNR)
+  - **Epoch 19**: 25.62% combined accuracy (47.78% mod, 41.43% SNR)
   - **Training speed**: ~2.6 it/s (slower than ResNet but expected)
-  - **Task weights**: 59.6% mod / 40.4% SNR (natural specialization)
-  - **Learning rate**: Reduced to 0.00007 (reduction occurred ~epoch 13)
-  - **Train-val gap**: 7.68% (healthy, no severe overfitting)
+  - **Task weights**: 57.9% mod / 42.1% SNR (natural specialization)
+  - **Learning rate**: Reduced to 0.000049 (multiple reductions)
+  - **Train-val gap**: 12.7% (38.3% train vs 25.6% val combined accuracy)
 - **Key Success**: Made it past epochs 12-18 where ResNet runs failed catastrophically
-- **Status**: Stable progression, avoiding overfitting pattern
+- **Status**: Stable progression, avoided overfitting until crash
+
+#### eternal-sound-108 (2025-06-23) - ViT/32 Breakthrough 🚀⚡
+- **Model**: Vision Transformer (ViT-B/32) - larger patch size for speed
+- **Batch Size**: 1024 (4x larger than ViT/16, leveraging faster processing)
+- **Dropout**: 0.2 (baseline successful setting)
+- **Patience**: 3 (same as successful baseline runs)
+- **Uncertainty Weighting**: Temperature=1.5, min_weight=0.05
+- **Data Split**: 80/10/10 (stratified)
+- **Progress Through Epoch 19** (Final results):
+  - **Epoch 1**: 10.94% combined accuracy (39.00% mod, 24.35% SNR)
+  - **Epoch 19**: 20.71% combined accuracy (46.64% mod, 34.84% SNR)
+  - **Training speed**: ~2.5 it/s (comparable to ViT/16 despite larger batch)
+  - **Task weights**: 63.3% mod / 36.7% SNR (healthy specialization)
+  - **Learning rate**: Reduced to 0.00007 (first reduction at epoch 19)
+  - **Train-val gap**: 6.3% (27.0% train vs 20.7% val combined accuracy)
+  - **Validation trend**: Steady improvement from 10.94% → 20.71% (+89% relative)
+- **Key Innovation**: ViT/32 achieves good accuracy with better training efficiency
+- **Status**: COMPLETED - Stable learning throughout, no overfitting
+
+#### zesty-salad-110 (2025-06-23) - Swin Transformer Success 🌟🚀
+- **Model**: Swin Transformer (Swin-Tiny) - hierarchical attention for sparse data
+- **Batch Size**: 256 (conservative start, efficient for Swin)
+- **Dropout**: 0.2 (baseline successful setting)
+- **Patience**: 3 (same as successful baseline runs)
+- **Uncertainty Weighting**: Temperature=1.5, min_weight=0.05 (original softmax method)
+- **Data Split**: 80/10/10 (stratified)
+- **Progress Through Epoch 3** (Final results):
+  - **Epoch 1**: 21.96% combined accuracy (45.21% mod, 37.72% SNR)
+  - **Epoch 3**: 26.13% combined accuracy (48.18% mod, 42.39% SNR)
+  - **Training speed**: ~3.27 it/s (30% faster than ViT models!)
+  - **Task weights**: 60.7% mod / 39.3% SNR (healthy specialization)
+  - **Learning rate**: 0.0001 (no reductions yet)
+  - **Train-val gap**: 1.7% (24.46% train vs 26.13% val - excellent generalization)
+  - **Performance**: BEST epoch 1 results of any architecture (21.96% vs ViT's 10.94-19.47%)
+- **Key Advantages**: 
+  - **Best Initial Performance**: Highest accuracy after epoch 1
+  - **Fastest Training**: 30% speed advantage over ViT models
+  - **Excellent Generalization**: Validation > training accuracy
+  - **Hierarchical Benefits**: Window attention ideal for constellation sparsity
+- **Status**: COMPLETED - Most promising architecture, combined speed + accuracy
 
 ### Configuration Evolution Summary
 
@@ -484,7 +524,25 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Min Weight**: 0.1 → 0.05 (allow natural specialization, prevent full collapse)
 - **Hypothesis**: Over-constraining multi-task learning was preventing natural adaptation
 
-**Phase 4: Architecture Exploration (ACTIVE)**
-- **Model Switch**: ResNet18 → Vision Transformer (ViT)
-- **Rationale**: ViT's self-attention may better capture constellation patterns
-- **Trade-off**: Slower training (~2.6 it/s vs ~8-10 it/s) but potentially better representations
+**Phase 4: Architecture Exploration (COMPLETED)**
+- **Model Switch**: ResNet18 → Vision Transformer (ViT) → Swin Transformer
+- **Rationale**: Transformer architectures better capture constellation patterns than CNNs
+- **Results**: Swin Transformer achieved best performance (26.13% combined accuracy, 3.27 it/s speed)
+
+**Phase 5: Uncertainty Method Upgrade (ACTIVE)**
+- **Method Switch**: Softmax competitive weighting → Kendall independent weighting
+- **Rationale**: Prevent task competition, allow independent uncertainty learning
+- **Expected Benefits**: More balanced task learning, prevent SNR weight collapse
+
+#### dark-oath-111 (2025-06-23) - Kendall Uncertainty Method Test 🔬⚖️
+- **Model**: Swin Transformer (Swin-Tiny) - proven best architecture
+- **Batch Size**: 256 (same as successful zesty-salad-110)
+- **Dropout**: 0.2 (baseline successful setting)
+- **Patience**: 3 (same as successful baseline runs)
+- **Uncertainty Weighting**: **Kendall et al. (2018) homoscedastic uncertainty** - independent task weighting
+- **Data Split**: 80/10/10 (stratified)
+- **Progress**: EARLY TRAINING (epoch 1 starting)
+  - **Expected Benefits**: More balanced task weights, prevent modulation/SNR competition
+  - **Method Change**: Independent uncertainty vs competitive softmax weighting
+  - **Key Test**: Will task weights remain more balanced throughout training?
+- **Status**: STARTING - Testing well-established uncertainty weighting vs previous softmax method
