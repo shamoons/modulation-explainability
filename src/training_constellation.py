@@ -66,6 +66,10 @@ def train(
         patch_size = 16 if model_type == "vit_b_16" else 32
         wandb_config["patch_size"] = patch_size
     
+    # Add architecture info for Swin models
+    if model_type in ["swin_tiny", "swin_small", "swin_base"]:
+        wandb_config["swin_variant"] = model_type
+    
     wandb.init(project="modulation-explainability", config=wandb_config)
 
     # Ensure save directory exists

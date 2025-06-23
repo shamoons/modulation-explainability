@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from models.constellation_model import ConstellationResNet
 from models.vision_transformer_model import ConstellationVisionTransformer
+from models.swin_transformer_model import ConstellationSwinTransformer
 from loaders.constellation_loader import ConstellationDataset
 from utils.device_utils import get_device
 from training_constellation import train
@@ -90,8 +91,17 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             patch_size=patch_size
         )
         print(f"Using model: {model_type} (patch_size={patch_size})")
+    elif model_type in ["swin_tiny", "swin_small", "swin_base"]:
+        model = ConstellationSwinTransformer(
+            num_classes=num_modulation_classes,
+            snr_classes=num_snr_classes,
+            input_channels=input_channels,
+            dropout_prob=dropout,
+            model_variant=model_type
+        )
+        print(f"Using model: {model_type} (Swin Transformer)")
     else:
-        raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit_b_16, vit_b_32")
+        raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit_b_16, vit_b_32, swin_tiny, swin_small, swin_base")
 
     # If checkpoint is provided, load the existing model state
     if checkpoint is not None and os.path.isfile(checkpoint):
@@ -173,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
-    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='resnet18', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32'])
+    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='resnet18', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32', 'swin_tiny', 'swin_small', 'swin_base'])
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
 
     args = parser.parse_args()

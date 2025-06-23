@@ -40,10 +40,13 @@ uv run python src/train_constellation.py \
     --patience 10
 
 # Train with different architectures
-uv run python src/train_constellation.py --model_type resnet18   # Default, fastest
-uv run python src/train_constellation.py --model_type resnet34   # Deeper ResNet
-uv run python src/train_constellation.py --model_type vit_b_16   # Vision Transformer ViT/16
-uv run python src/train_constellation.py --model_type vit_b_32   # Vision Transformer ViT/32 (faster)
+uv run python src/train_constellation.py --model_type resnet18     # Default, fastest
+uv run python src/train_constellation.py --model_type resnet34     # Deeper ResNet
+uv run python src/train_constellation.py --model_type vit_b_16     # Vision Transformer ViT/16
+uv run python src/train_constellation.py --model_type vit_b_32     # Vision Transformer ViT/32 (faster)
+uv run python src/train_constellation.py --model_type swin_tiny   # Swin Transformer (fastest, hierarchical)
+uv run python src/train_constellation.py --model_type swin_small  # Swin Transformer (balanced)
+uv run python src/train_constellation.py --model_type swin_base   # Swin Transformer (largest)
 
 # Resume training from checkpoint (now includes model name)
 uv run python src/train_constellation.py --checkpoint checkpoints/best_model_resnet18_epoch_15.pth
@@ -75,7 +78,7 @@ uv run python src/calculate_pid.py
 
 ### Enhanced Multi-Task Learning System
 The project implements a **state-of-the-art multi-task learning approach** with:
-- **Flexible Backbone Architectures**: ResNet18/34 or Vision Transformer (ViT) for feature extraction
+- **Flexible Backbone Architectures**: ResNet18/34, Vision Transformer (ViT), or Swin Transformer for feature extraction
 - **Task-Specific Heads**: 
   - Modulation classification (17 digital classes by default)
   - **Discrete SNR prediction** (26 classes: -20 to +30 dB in 2dB intervals)
@@ -85,9 +88,10 @@ The project implements a **state-of-the-art multi-task learning approach** with:
 
 1. **Models** (`src/models/`):
    - `ConstellationResNet`: Enhanced ResNet18/34 backbone with dual heads supporting discrete SNR classes
-   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16) architecture for complex pattern recognition
-   - **Model Selection**: Choose architecture via `--model_type` (resnet18, resnet34, vit)
-   - **Performance Trade-offs**: ResNet faster (~94-99 it/s), ViT slower (~3.8-4.0 it/s) but potentially better representation learning
+   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16 & ViT-B/32) architecture for complex pattern recognition
+   - `ConstellationSwinTransformer`: Swin Transformer (Tiny/Small/Base) with hierarchical processing for sparse constellation data
+   - **Model Selection**: Choose architecture via `--model_type` (resnet18, resnet34, vit_b_16, vit_b_32, swin_tiny, swin_small, swin_base)
+   - **Performance Trade-offs**: ResNet fastest (~8-10 it/s), ViT moderate (~2-6 it/s), Swin optimized for sparse data (~5-15 it/s expected)
    - **Default Dataset**: Excludes analog modulations (AM-DSB-SC, AM-DSB-WC, AM-SSB-SC, AM-SSB-WC, FM, GMSK, OOK)
 
 2. **Data Loading** (`src/loaders/`):
