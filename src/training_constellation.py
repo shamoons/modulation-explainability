@@ -58,10 +58,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "stratified_split": True,
-        "task_specific_features": True,  # We're using task-specific feature extraction
-        "uncertainty_weighting": "kendall",  # Kendall et al. 2018 homoscedastic uncertainty
-        "architecture_version": "task_specific_v1"  # Track architecture changes
+        "description": f"Testing task-specific feature extraction with {model_type} - separate attention/activation for mod vs SNR tasks to reduce competition"
     }
     
     # Add patch size info for ViT models

@@ -1,0 +1,66 @@
+# W&B Sweep Configuration for Architecture Comparison
+# Task-specific feature extraction across different model architectures
+# Bayesian optimization with early stopping for efficient exploration
+
+program: src/train_constellation.py
+method: bayes  # Bayesian optimization for intelligent hyperparameter search
+
+# Sweep parameters - Bayesian will intelligently sample these ranges
+parameters:
+  # Model architectures to compare
+  model_type:
+    values: [resnet18, resnet34, vit_b_32, swin_tiny]
+  
+  # Batch sizes optimized for memory constraints
+  batch_size:
+    values: [32, 64, 128]  # Bayesian will pick optimal for each architecture
+  
+  # Dropout regularization range
+  dropout:
+    distribution: uniform
+    min: 0.15
+    max: 0.35
+  
+  # Learning rate range for different architectures
+  base_lr:
+    distribution: log_uniform_values
+    min: 3e-5
+    max: 2e-4
+
+  # Fixed parameters
+  epochs:
+    value: 50
+  
+  patience:
+    value: 3
+    
+  weight_decay:
+    distribution: log_uniform_values
+    min: 1e-6
+    max: 1e-4
+
+# Sweep metadata
+name: "bayes_architecture_comparison"
+description: "Bayesian optimization across ResNet/ViT/Swin architectures with task-specific features and early stopping"
+
+# Aggressive early termination - stop poor performers quickly
+early_terminate:
+  type: hyperband
+  min_iter: 3      # Stop bad runs after just 3 epochs
+  max_iter: 50     # Max epochs if run is promising
+  s: 3             # More aggressive elimination
+  eta: 2           # Faster halving
+
+# Additional early stopping based on performance
+run_cap:
+  type: metric
+  metric: val_combined_accuracy
+  min_value: 0.15  # Stop runs that can't beat 15% (random ~4.5%)
+  
+# Metric to optimize with Bayesian acquisition
+metric:
+  name: val_combined_accuracy
+  goal: maximize
+
+# Start with more runs for Bayesian exploration, early termination will handle efficiency
+count: 20  # Bayesian will explore intelligently, early stopping prevents waste
