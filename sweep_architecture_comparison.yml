@@ -12,9 +12,9 @@ parameters:
   model_type:
     values: [resnet18, resnet34, vit_b_32, vit_b_16, swin_tiny]
   
-  # Batch sizes optimized for speed - larger batches = faster epochs
+  # Batch sizes optimized for memory efficiency - moderate sizes for stable training
   batch_size:
-    values: [256, 512, 1024]  # Larger batches for faster training
+    values: [128, 256, 512]  # Memory-efficient batch sizes
   
   # Dropout regularization - discrete steps
   dropout:
@@ -36,8 +36,8 @@ parameters:
     value: 3
 
 # Sweep metadata
-name: "bayes_large_batch_comparison"
-description: "High-speed Bayesian optimization with large batch sizes (256-1024) for faster epoch completion and deeper training insights"
+name: "bayes_memory_efficient_comparison"
+description: "Memory-efficient Bayesian optimization with moderate batch sizes (128-512) for stable training across all architectures"
 
 # Aggressive early termination - stop poor performers quickly
 early_terminate:
