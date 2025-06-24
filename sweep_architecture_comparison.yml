@@ -10,7 +10,7 @@ project: modulation-explainability  # Explicitly set the correct project
 parameters:
   # Model architectures to compare
   model_type:
-    values: [resnet18, resnet34, vit_b_32, vit_b_16, swin_tiny]
+    values: [resnet18, resnet34, vit_b_32, vit_b_16, vit_h_14, swin_tiny]
   
   # Batch sizes optimized for memory efficiency - moderate sizes for stable training
   batch_size:

@@ -44,6 +44,7 @@ uv run python src/train_constellation.py --model_type resnet18     # Default, fa
 uv run python src/train_constellation.py --model_type resnet34     # Deeper ResNet
 uv run python src/train_constellation.py --model_type vit_b_16     # Vision Transformer ViT/16
 uv run python src/train_constellation.py --model_type vit_b_32     # Vision Transformer ViT/32 (faster)
+uv run python src/train_constellation.py --model_type vit_h_14     # Vision Transformer ViT-Huge/14 (most detailed patches)
 uv run python src/train_constellation.py --model_type swin_tiny   # Swin Transformer (fastest, hierarchical)
 uv run python src/train_constellation.py --model_type swin_small  # Swin Transformer (balanced)
 uv run python src/train_constellation.py --model_type swin_base   # Swin Transformer (largest)
@@ -132,13 +133,13 @@ graph TD
 
 1. **Models** (`src/models/`):
    - `ConstellationResNet`: Enhanced ResNet18/34 backbone with **task-specific feature extraction** and dual heads
-   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16 & ViT-B/32) with **task-specific attention mechanisms**
+   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16, ViT-B/32, ViT-H/14) with **task-specific attention mechanisms**
    - `ConstellationSwinTransformer`: Swin Transformer (Tiny/Small/Base) with hierarchical processing and **task-specific branches**
    - **Task-Specific Feature Extraction**: All models now use separate attention and transformation paths for modulation vs SNR tasks
      - Different activation functions (GELU for mod, ReLU for SNR) create distinct feature distributions
      - Task-specific attention mechanisms prevent feature competition
      - Residual connections with weighted combination (70% task-specific, 30% shared)
-   - **Model Selection**: Choose architecture via `--model_type` (resnet18, resnet34, vit_b_16, vit_b_32, swin_tiny, swin_small, swin_base)
+   - **Model Selection**: Choose architecture via `--model_type` (resnet18, resnet34, vit_b_16, vit_b_32, vit_h_14, swin_tiny, swin_small, swin_base)
    - **Performance Trade-offs**: ResNet fastest (~8-10 it/s), ViT moderate (~2-6 it/s), Swin optimized for sparse data (~5-15 it/s expected)
    - **Default Dataset**: Excludes analog modulations (AM-DSB-SC, AM-DSB-WC, AM-SSB-SC, AM-SSB-WC, FM, GMSK, OOK)
 
@@ -383,28 +384,33 @@ mcp__wandb__query_wandb_tool(
 
 ---
 
-**NEW SWEEP - Large Batch High-Speed Training**: Created 2025-06-24
-- **Sweep ID**: 6wtilhal  
-- **Sweep Config**: `sweep_architecture_comparison.yml` (Large batch Bayesian optimization)
-- **Architectures**: ResNet18/34, ViT-B/16/32, Swin-Tiny  
-- **Parameters**: **Large batch sizes (256-1024)**, dropout (0.1-0.5), learning rate (1e-5 to 1e-3), weight decay (1e-6 to 1e-3)
-- **Strategy**: Fewer agents (2-3) with large batches for **4-8x faster epoch completion**
-- **Expected Benefits**: Reach epochs 5-10+ vs previous epochs 1-2, better convergence insights
-- **Early Stopping**: Hyperband (min 3 epochs) + performance threshold (15% accuracy)
-- **Status**: **READY TO START** 
-- **Sweep URL**: https://wandb.ai/shamoons/modulation-explainability/sweeps/6wtilhal
+**ACTIVE SWEEP - Memory-Efficient Bayesian Optimization**: 2025-06-24 (16:54 UTC - ongoing)
+- **Sweep ID**: gazqwob6 🔄 **ACTIVE**
+- **Duration**: 30+ minutes, 3 agents still running
+- **Sweep Config**: `sweep_architecture_comparison.yml` (Memory-efficient batch sizes 128-512)
+- **Architectures**: ResNet18/34, ViT-B/16/32, ViT-H/14, Swin-Tiny  
+- **Parameters**: Moderate batch sizes (128-512), dropout (0.1-0.5), learning rate (1e-5 to 1e-3), weight decay (1e-6 to 1e-3)
+- **Strategy**: Memory-efficient training after large batch OOM issues
+- **Current Status** (18:00 UTC - 1+ hours running): 
+  - **🏆 spring-sweep-2** (ResNet18): **25.49% val combined after epoch 3** - **APPROACHING PREVIOUS BEST** (25.11%)
+  - **⚡ clear-sweep-5** (ViT-B/32): 15.46% val combined after epoch 2 - steady progress
+  - **🐌 summer-sweep-3** (ViT-B/16): Still training epoch 1 after 1+ hours - **extremely slow**
+  - **❌ 2 Failed runs**: ViT-B/16 with large batch (512) and high LR (1e-3)
+- **Key Pattern**: ResNet18 speed dominance confirmed - **3x faster epoch completion**
+- **Bayesian Learning**: Algorithm penalizing ViT-B/16 + large batch/high LR combinations
+- **Sweep URL**: https://wandb.ai/shamoons/modulation-explainability/sweeps/gazqwob6
 
-#### Expected Memory Usage:
-- **ResNet18 + batch=1024**: ~8-10GB per agent
-- **ResNet34 + batch=1024**: ~10-12GB per agent  
-- **Swin/ViT + batch=512**: ~8-12GB per agent
-- **Total agents**: 2-3 concurrent (vs previous 7)
+#### Current Memory Usage (gazqwob6):
+- **ResNet18 + batch=256**: ~6-8GB per agent ✅
+- **ViT-B/16 + batch=128**: ~4-6GB per agent ✅
+- **ViT-B/32 + batch=256**: ~6-8GB per agent ✅
+- **Total agents**: 3 concurrent (stable memory usage)
 
-#### Previous Sweep Results Summary:
-- **🏆 Best Performance**: **dandy-sweep-2** (ResNet18) - **25.11% combined**
-- **Architecture Ranking**: ResNet18 > ResNet34 > Swin-Tiny (by speed and early performance)
-- **Key Insight**: Mid-range SNRs (-2 to 12 dB) consistently strongest
-- **Speed Advantage**: ResNet 3-4x faster than Swin for epoch completion
+#### Latest Performance Comparison (1+ Hours In):
+- **🏆 Current Leader**: **spring-sweep-2** (ResNet18) - **25.49% combined** (approaching previous 25.11% best)
+- **Architecture Speed Ranking**: ResNet18 >> ViT-B/32 >>> ViT-B/16 (3x+ difference)
+- **Training Efficiency**: ResNet18 completed 3 epochs vs ViT-B/32's 2 epochs vs ViT-B/16's <1 epoch  
+- **Key Discovery**: ViT-B/16 training speed severely impacted even with small batch (128)
 
 ---
 

@@ -2,7 +2,7 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from torchvision.models import vit_b_16, vit_b_32
+from torchvision.models import vit_b_16, vit_b_32, vit_h_14
 from .task_specific_extractor import TaskSpecificFeatureExtractor
 
 
@@ -13,7 +13,7 @@ class ConstellationVisionTransformer(nn.Module):
     1) Modulation classification
     2) SNR prediction
     
-    Supports both ViT-B/16 (patch_size=16) and ViT-B/32 (patch_size=32) variants.
+    Supports ViT-B/16 (patch_size=16), ViT-B/32 (patch_size=32), and ViT-H/14 (patch_size=14) variants.
     """
 
     def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, patch_size=16):
@@ -25,19 +25,22 @@ class ConstellationVisionTransformer(nn.Module):
             snr_classes (int): Number of possible SNR classes.
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
             dropout_prob (float): Probability of dropout (defaults to 0.3).
-            patch_size (int): Patch size for ViT (16 or 32). Defaults to 16.
+            patch_size (int): Patch size for ViT (14, 16, or 32). Defaults to 16.
         """
         super(ConstellationVisionTransformer, self).__init__()
 
         # Select the appropriate ViT model based on patch size
-        if patch_size == 16:
+        if patch_size == 14:
+            self.model = vit_h_14(weights='DEFAULT')
+            self.model_name = "vit_h_14"
+        elif patch_size == 16:
             self.model = vit_b_16(weights='DEFAULT')
             self.model_name = "vit_b_16"
         elif patch_size == 32:
             self.model = vit_b_32(weights='DEFAULT')
             self.model_name = "vit_b_32"
         else:
-            raise ValueError(f"Unsupported patch_size: {patch_size}. Choose 16 or 32.")
+            raise ValueError(f"Unsupported patch_size: {patch_size}. Choose 14, 16, or 32.")
         
         self.patch_size = patch_size
 
