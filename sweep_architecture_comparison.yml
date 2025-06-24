@@ -4,6 +4,7 @@
 
 program: src/train_constellation.py
 method: bayes  # Bayesian optimization for intelligent hyperparameter search
+project: modulation-explainability  # Explicitly set the correct project
 
 # Sweep parameters - Bayesian will intelligently sample these ranges
 parameters:
@@ -15,17 +16,17 @@ parameters:
   batch_size:
     values: [32, 64, 128]  # Bayesian will pick optimal for each architecture
   
-  # Dropout regularization range
+  # Dropout regularization - discrete steps
   dropout:
-    distribution: uniform
-    min: 0.15
-    max: 0.35
+    values: [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
   
-  # Learning rate range for different architectures
+  # Learning rate - discrete order of magnitude steps
   base_lr:
-    distribution: log_uniform_values
-    min: 3e-5
-    max: 2e-4
+    values: [3e-5, 5e-5, 8e-5, 1e-4, 1.5e-4, 2e-4]
+
+  # Weight decay - discrete order of magnitude steps  
+  weight_decay:
+    values: [1e-6, 5e-6, 1e-5, 5e-5, 1e-4]
 
   # Fixed parameters
   epochs:
@@ -33,11 +34,6 @@ parameters:
   
   patience:
     value: 3
-    
-  weight_decay:
-    distribution: log_uniform_values
-    min: 1e-6
-    max: 1e-4
 
 # Sweep metadata
 name: "bayes_architecture_comparison"
@@ -51,16 +47,7 @@ early_terminate:
   s: 3             # More aggressive elimination
   eta: 2           # Faster halving
 
-# Additional early stopping based on performance
-run_cap:
-  type: metric
-  metric: val_combined_accuracy
-  min_value: 0.15  # Stop runs that can't beat 15% (random ~4.5%)
-  
 # Metric to optimize with Bayesian acquisition
 metric:
   name: val_combined_accuracy
   goal: maximize
-
-# Start with more runs for Bayesian exploration, early termination will handle efficiency
-count: 20  # Bayesian will explore intelligently, early stopping prevents waste
