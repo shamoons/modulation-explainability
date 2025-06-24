@@ -79,10 +79,54 @@ uv run python src/calculate_pid.py
 ### Enhanced Multi-Task Learning System
 The project implements a **state-of-the-art multi-task learning approach** with:
 - **Flexible Backbone Architectures**: ResNet18/34, Vision Transformer (ViT), or Swin Transformer for feature extraction
+- **Task-Specific Feature Extraction**: Separate attention and transformation paths prevent task competition
 - **Task-Specific Heads**: 
   - Modulation classification (17 digital classes by default)
   - **Discrete SNR prediction** (26 classes: -20 to +30 dB in 2dB intervals)
 - **Homoscedastic Uncertainty Weighting**: Well-established Kendall et al. (2018) method that automatically balances task losses using learned uncertainty parameters
+
+### Current Architecture Diagram
+
+```mermaid
+graph TD
+    A[Constellation Image<br/>224x224x1] --> B[Backbone Model<br/>ResNet/ViT/Swin]
+    B --> C[Shared Features<br/>768/512 dimensions]
+    
+    C --> D[Task-Specific Feature Extractor]
+    
+    D --> E[Modulation Branch]
+    D --> F[SNR Branch]
+    
+    E --> E1[Mod Attention<br/>ReLU → Sigmoid]
+    E --> E2[GELU Activation<br/>BatchNorm + Dropout]
+    E1 --> E3[Mod Features]
+    E2 --> E3
+    
+    F --> F1[SNR Attention<br/>Tanh → Sigmoid]
+    F --> F2[ReLU Activation<br/>BatchNorm + Dropout]
+    F1 --> F3[SNR Features]
+    F2 --> F3
+    
+    C --> G[Residual Connections]
+    G --> E3
+    G --> F3
+    
+    E3 --> H[Modulation Head<br/>17 classes]
+    F3 --> I[SNR Head<br/>26 classes]
+    
+    H --> J[Modulation Loss]
+    I --> K[SNR Loss]
+    
+    J --> L[Kendall Uncertainty Weighting]
+    K --> L
+    
+    L --> M[Combined Loss]
+    
+    style D fill:#e1f5fe
+    style E fill:#f3e5f5
+    style F fill:#e8f5e8
+    style L fill:#fff3e0
+```
 
 ### Key Components
 
@@ -169,58 +213,19 @@ The testing pipeline evaluates models on:
 - **Multi-task benefits**: Superior SNR prediction and combined accuracy compared to single-task learning
 - **Robustness**: Maintains high accuracy across diverse modulation types under challenging noise conditions
 
-## Recent Enhancements (2024 Updates)
+## Key Enhancements & Future Work
 
-### ✅ Completed High Priority Improvements
-1. **✅ Enhanced Multi-Task Learning**: 
-   - **IMPLEMENTED**: Homoscedastic uncertainty-based weighting using well-established Kendall et al. (2018) method
-   - **IMPLEMENTED**: Independent task weighting that prevents task competition
-   - **IMPLEMENTED**: Learned uncertainty parameters with principled regularization
-   - **ENHANCED**: Task collapse prevention with minimum weight constraints (5% per task)
+### ✅ Recent Achievements (2024-2025)
+1. **Enhanced Multi-Task Learning**: Kendall et al. (2018) homoscedastic uncertainty weighting with task collapse prevention
+2. **Task-Specific Feature Extraction**: Separate attention/transformation paths for modulation vs SNR tasks  
+3. **Architecture Expansion**: Support for ResNet18/34, ViT-B/16/32, and Swin Transformer variants
+4. **Discrete SNR Prediction**: 26-class classification (-20 to +30 dB) with distance-penalized loss
+5. **Stratified Data Pipeline**: 80/10/10 train/val/test splits with balanced class representation
 
-2. **✅ SNR Estimation Refinement**:
-   - **IMPLEMENTED**: Discrete SNR prediction with 26 classes (-20 to +30 dB in 2dB intervals)  
-   - **IMPLEMENTED**: Distance-penalized loss function for accurate SNR classification
-   - **REMOVED**: SNR bucket system entirely - now uses precise discrete prediction
-   - **VERIFIED**: Training pipeline working with enhanced multi-task learning
-
-3. **✅ Uncertainty Weighting Stability**:
-   - **UPGRADED**: Switched from experimental method to well-established Kendall et al. (2018) approach
-   - **IMPLEMENTED**: Homoscedastic uncertainty with proper Kendall formulation and regularization
-   - **ADDED**: Minimum weight constraints (5% per task) to maintain task balance
-   - **ENHANCED**: Independent task weighting prevents competitive task dynamics
-   
-4. **✅ Data Pipeline Enhancements**:
-   - **IMPLEMENTED**: Stratified train/val/test splitting (80/10/10) with balanced class representation
-   - **ADDED**: Efficient split caching using dataset labels for fast initialization
-   - **ENHANCED**: Final test set evaluation after training completion
-   - **OPTIMIZED**: Constellation conversion with multiprocessing support
-
-## Areas for Future Development (Based on Reviewer Feedback)
-
-### High Priority Improvements
-
-3. **Improved High-Order Modulation Performance**:
-   - Address weak performance on 64QAM (66%) and 256QAM (79%)
-   - Implement feature enhancement techniques
-   - Add attention mechanisms for complex modulation schemes
-   - Explore adaptive data augmentation
-
-### Medium Priority Enhancements
-4. **Comprehensive Explainability**:
-   - Compare perturbation methods with Grad-CAM and other interpretability techniques
-   - Extend beyond pixel intensity to temporal and frequency-domain characteristics
-   - Investigate raw signal processing vs. constellation diagram conversion trade-offs
-
-5. **Experimental Validation**:
-   - Add comparisons with MCLDNN and CGDNet benchmarks
-   - Include training accuracy curves alongside validation curves
-   - Verify convergence behavior (current Fig 3b/3c show potential non-convergence)
-
-6. **Implementation Details**:
-   - ~~Document α and β parameter selection rationale~~ (Replaced by analytical uncertainty weighting)
-   - Clarify "augmentation" terminology usage
-   - Improve reproducibility with detailed implementation specifications
+### 🎯 Priority Improvements 
+- **High-Order Modulation Performance**: Address 64QAM/256QAM accuracy (current: 66%/79%)
+- **Comprehensive Explainability**: Compare perturbation methods with Grad-CAM techniques
+- **SOTA Benchmarking**: Add comparisons with MCLDNN, CGDNet, and MoE-AMC baselines
 
 ## Important Implementation Notes
 
@@ -237,24 +242,8 @@ The testing pipeline evaluates models on:
 - **Image Format**: 224x224 grayscale constellation diagrams
 - **Default Modulations**: Digital only (17 classes) - analog modulations excluded by default
 
-### Key Features
-- ✅ **Multi-Architecture Support**: ResNet18/34 and Vision Transformer (ViT) models
-- ✅ **Uncertainty Weighting**: Automatically balances modulation vs. SNR loss (no α/β tuning needed)
-- ✅ **Discrete SNR Classes**: 26 classes from -20 to +30 dB (2dB intervals)
-- ✅ **Distance-Penalized Loss**: SNR predictions penalized based on distance from true class
-- ✅ **Device-Adaptive**: No CUDA-specific warnings on MPS/CPU devices
-- ✅ **Stratified Data Splitting**: Ensures balanced train/val/test sets with all classes represented
-- ✅ **Verified Training**: Core pipeline tested and working with real constellation data
-
-### Verification Status
-- ✅ Core training components tested and verified
-- ✅ HDF5 data loading pipeline working
-- ✅ Enhanced multi-task learning active and learning (with task collapse prevention)
-- ✅ Multi-architecture support (ResNet18/34, ViT) implemented and tested
-- ✅ Device compatibility (CUDA/MPS/CPU) implemented with appropriate optimizations
-- ✅ Constellation image generation from split HDF5 data functional
-- ✅ Stratified data splitting with verification
-- ✅ Final test set evaluation integrated into training pipeline
+### System Status
+✅ **Fully Operational**: Multi-architecture training pipeline with task-specific feature extraction, Kendall uncertainty weighting, and stratified data splitting across CUDA/MPS/CPU devices
 
 ## Current Training Configuration
 
@@ -341,40 +330,11 @@ mcp__wandb__query_wandb_tool(
 )
 ```
 
-## Troubleshooting Common Issues
-
-### Overfitting (Large Train/Val Gap)
-**Symptoms**: Training accuracy >>95%, validation accuracy <<50%
-**Solutions**:
-- Increase dropout (try --dropout 0.4 or 0.5)
-- Reduce batch size (try --batch_size 512)
-- Increase weight decay (try --weight_decay 1e-4)
-- Monitor early stopping (training auto-stops when validation plateaus)
-
-### Task Collapse
-**Symptoms**: Task weights become extreme (e.g., 95%/5%)
-**Solutions**: Already fixed in current implementation with enhanced uncertainty weighting
-- Temperature=1.5 provides more dynamic weighting with some stability
-- Min_weight=0.05 ensures 5% minimum for each task (allows natural specialization)
-
-### Slow Training
-**Solutions**:
-- Use ResNet18 instead of ViT (--model_type resnet18)
-- Increase batch size if memory allows
-- Use CUDA device instead of MPS/CPU when available
-
-### Memory Issues
-**Solutions**:
-- Reduce batch size (--batch_size 16 or 32)
-- Use ResNet18 instead of ResNet34/ViT
-- Process fewer modulations/SNRs at once
-
-### Validation Function Errors
-**Common Error**: `'CrossEntropyLoss' object is not iterable`
-**Solution**: Ensure validate function calls use correct parameter order:
-```python
-validate(model, device, val_loader, criterion_modulation, criterion_snr, uncertainty_weighter)
-```
+## Quick Troubleshooting
+- **Overfitting**: Increase dropout (0.4-0.5), reduce batch size, monitor early stopping
+- **Task Collapse**: Fixed with Kendall uncertainty weighting (min_weight=0.05)  
+- **Memory Issues**: Reduce batch size, use ResNet18 instead of ViT/Swin
+- **Slow Training**: Use ResNet18 (fastest), increase batch size, prefer CUDA over MPS/CPU
 
 ### Recent Training Sessions
 - **Status**: Multi-task learning with Kendall homoscedastic uncertainty weighting (digital modulations only)
@@ -578,10 +538,59 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Patience**: 3 (standard setting)
 - **Uncertainty Weighting**: Kendall et al. (2018) homoscedastic uncertainty
 - **Data Split**: 80/10/10 (stratified)
-- **Early Progress (Epochs 1-4)**:
+- **Progress Through Epoch 3** (Final baseline results):
   - **Epoch 1**: 20.54% validation combined (43.54% mod, 35.38% SNR)
-  - **Epoch 3**: 25.22% validation combined (47.62% mod, 41.40% SNR)
-  - **Task weights**: 61.2%/38.8% (similar to previous runs)
-  - **Training speed**: ~3.26 it/s (consistent)
-- **Hypothesis**: Higher dropout should reduce overfitting at cost of slower learning
-- **Status**: ACTIVE - Testing aggressive regularization to break 28.33% ceiling
+  - **Epoch 2**: 23.83% validation combined (46.43% mod, 40.02% SNR)  
+  - **Epoch 3**: **25.22% validation combined (47.62% mod, 41.40% SNR)**
+  - **Training**: 23.08% combined (45.92% mod, 39.53% SNR) - good train/val balance
+  - **Task weights**: 61.2%/38.8% (61.2% mod, 38.8% SNR - healthy specialization)
+  - **Validation loss**: Improved from 1.762 → 1.613 (consistent decline)
+  - **Training speed**: ~3.26 it/s (consistent with previous Swin runs)
+- **Key Results**: 
+  - High dropout (0.5) prevents overfitting but limits peak performance
+  - Achieved 25.22% validation combined (vs 28.33% record with 0.2 dropout)
+  - Steady improvement trajectory suggests more epochs could help
+- **Status**: COMPLETED - Baseline established for task-specific feature extraction comparison
+
+#### wise-wood-113 (2025-06-24) - Swin Task-Specific Feature Extraction Test 🧠🔀
+- **Model**: Swin Transformer (Swin-Tiny) with **task-specific feature extraction architecture**
+- **Batch Size**: 256 (standard for Swin runs)
+- **Dropout**: **0.25** (balanced between 0.2 record and 0.5 regularization)
+- **Patience**: 3 (standard setting)
+- **Uncertainty Weighting**: Kendall et al. (2018) homoscedastic uncertainty
+- **Data Split**: 80/10/10 (stratified)
+- **Architecture Enhancement**: 
+  - Task-specific attention mechanisms (ReLU for mod, Tanh for SNR)
+  - Separate activation functions (GELU for mod, ReLU for SNR)  
+  - Residual connections with weighted combination (70% task-specific, 30% shared)
+  - Parameter overhead: ~800K additional parameters (2.8% increase)
+- **Status**: CANCELLED - User deleted from W&B, switching to ResNet18 test
+
+#### polished-yogurt-114 (2025-06-24) - ResNet18 Task-Specific Feature Extraction Test 🏗️🔀
+- **Model**: ResNet18 with **task-specific feature extraction architecture**
+- **Batch Size**: 256 (standard configuration)
+- **Dropout**: **0.25** (balanced between 0.2 record and 0.5 regularization)
+- **Patience**: 3 (standard setting)
+- **Uncertainty Weighting**: Kendall et al. (2018) homoscedastic uncertainty
+- **Data Split**: 80/10/10 (stratified)
+- **Architecture Enhancement**: 
+  - Task-specific attention mechanisms (ReLU for mod, Tanh for SNR)
+  - Separate activation functions (GELU for mod, ReLU for SNR)  
+  - Residual connections with weighted combination (70% task-specific, 30% shared)
+  - Parameter overhead: ~800K additional parameters (7% increase for ResNet18)
+- **Early Progress (Epoch 1)**:
+  - **W&B Run**: polished-yogurt-114 (run ID: ne1uppo8)
+  - **Status**: ACTIVE - Testing task-specific features on faster ResNet18 architecture
+- **Progress Through Epoch 6** (Current baseline with task-specific features):
+  - **Epoch 1**: 21.26% validation combined (45.10% mod, 37.49% SNR)
+  - **Epoch 5**: 27.17% validation combined (48.28% mod, 43.70% SNR)
+  - **Epoch 6**: In progress - Training shows 28.77% combined (49.46% mod, 45.23% SNR)
+  - **Training speed**: ~14.7 it/s (significantly faster than Swin's ~3.3 it/s)
+  - **Task weights**: 60.2%/39.8% (healthy specialization toward modulation)
+  - **Architecture**: ResNet18 with TaskSpecificFeatureExtractor (refactored to shared module)
+- **Key Observations**:
+  - **Speed advantage**: 4.5x faster training than Swin Transformer
+  - **Competitive performance**: Approaching Swin's 28.33% record despite simpler architecture
+  - **Stable task weights**: Consistent 60/40 split without extreme specialization
+  - **Good trajectory**: Steady improvement without overfitting signs through epoch 6
+- **Status**: ACTIVE - Testing task-specific features on fastest architecture (ResNet18)

@@ -58,7 +58,10 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "stratified_split": True
+        "stratified_split": True,
+        "task_specific_features": True,  # We're using task-specific feature extraction
+        "uncertainty_weighting": "kendall",  # Kendall et al. 2018 homoscedastic uncertainty
+        "architecture_version": "task_specific_v1"  # Track architecture changes
     }
     
     # Add patch size info for ViT models
