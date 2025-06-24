@@ -18,15 +18,15 @@ parameters:
   
   # Dropout regularization - discrete steps
   dropout:
-    values: [0.1, 0.25, 0.5]
+    values: [0.1, 0.5]
   
   # Learning rate - discrete order of magnitude steps
   base_lr:
-    values: [1e-5, 1e-4, 1e-3]
+    values: [1e-5, 1e-3]
 
   # Weight decay - discrete order of magnitude steps  
   weight_decay:
-    values: [1e-6, 1e-5, 1e-4, 1e-3]
+    values: [1e-6, 1e-3]
 
   # Fixed parameters
   epochs:

@@ -33,7 +33,7 @@ We systematically evaluated multiple deep learning architectures for constellati
 - **Strategy**: Multi-objective Bayesian optimization with early termination (Hyperband)
 - **Objective**: Maximize validation combined accuracy (modulation + SNR prediction)
 - **Search Space**: 
-  - Batch sizes: 128-512 (memory-constrained optimization)
+  - Batch sizes: 64-512 (extended range for memory-constrained architectures)
   - Learning rates: 1e-5 to 1e-3 (log-uniform sampling)
   - Dropout: 0.1-0.5 (regularization strength)
   - Weight decay: 1e-6 to 1e-3 (L2 penalty)
@@ -119,15 +119,21 @@ We systematically evaluated multiple deep learning architectures for constellati
 **Sweep Configuration**: 3-7 parallel agents with memory-efficient batch sizing
 **Early Termination**: Hyperband algorithm eliminates poor performers after 3 epochs
 **Memory Management**: GPU utilization optimization (6-8GB per agent with moderate batch sizes)
+**Batch Size Optimization**: Extended range (64-512) to accommodate diverse memory requirements across architectures
 
 #### Future Research Directions
 
 **Identified Promising Architectures**:
 1. **ResNet18**: Speed-accuracy champion (25.49% validation combined accuracy)
-2. **Swin-Tiny**: Hierarchical efficiency for sparse constellation patterns
+2. **Swin-Tiny**: Hierarchical efficiency for sparse constellation patterns (memory-constrained)
 3. **ViT-B/32**: Balanced transformer approach with reasonable computational cost
 
-**Planned Deep Training**: Focus computational resources on top 2-3 architectures for extended training campaigns (50+ epochs) based on early-stage evaluations.
+**Memory Constraint Discovery**:
+- **Swin-Tiny + Batch 128**: Exceeded memory limits when running concurrent with other models
+- **Solution**: Extended batch size range to include 64 for memory-constrained architectures
+- **Academic Impact**: Demonstrates real-world computational limitations affecting architecture selection
+
+**Planned Deep Training**: Focus computational resources on top 2-3 architectures for extended training campaigns (50+ epochs) based on early-stage evaluations and memory feasibility.
 
 ### Academic Significance
 
