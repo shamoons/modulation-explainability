@@ -202,9 +202,17 @@ def train(
         current_weights = uncertainty_weighter.get_uncertainties() if uncertainty_weighter else None
         weight_mod, weight_snr = task_weights[0].item(), task_weights[1].item() if uncertainty_weighter else (0.5, 1.0)
         
+        # Calculate actual Kendall weights for display
+        if current_weights is not None:
+            actual_weight_mod = 1.0 / (2.0 * current_weights[0]**2)
+            actual_weight_snr = 1.0 / (2.0 * current_weights[1]**2)
+        else:
+            actual_weight_mod, actual_weight_snr = weight_mod, weight_snr
+        
         print(f"Epoch [{epoch+1}/{epochs}] Training Results:")
         print(f"  Train Loss (mod/snr): {train_loss:.4g} ({loss_modulation:.4g}/{loss_snr:.4g})")
-        print(f"  Task Weights (mod/snr): {weight_mod:.3f}/{weight_snr:.3f}")
+        print(f"  Actual Weights (mod/snr): {actual_weight_mod:.3f}/{actual_weight_snr:.3f}")
+        print(f"  Relative Weights (mod/snr): {weight_mod:.1%}/{weight_snr:.1%}")
         if current_weights is not None:
             print(f"  Uncertainties (mod/snr): {current_weights[0]:.3f}/{current_weights[1]:.3f}")
         print(f"  Modulation Accuracy: {train_modulation_accuracy:.2f}%")

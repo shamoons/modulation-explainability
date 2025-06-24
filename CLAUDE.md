@@ -87,9 +87,13 @@ The project implements a **state-of-the-art multi-task learning approach** with:
 ### Key Components
 
 1. **Models** (`src/models/`):
-   - `ConstellationResNet`: Enhanced ResNet18/34 backbone with dual heads supporting discrete SNR classes
-   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16 & ViT-B/32) architecture for complex pattern recognition
-   - `ConstellationSwinTransformer`: Swin Transformer (Tiny/Small/Base) with hierarchical processing for sparse constellation data
+   - `ConstellationResNet`: Enhanced ResNet18/34 backbone with **task-specific feature extraction** and dual heads
+   - `ConstellationVisionTransformer`: Vision Transformer (ViT-B/16 & ViT-B/32) with **task-specific attention mechanisms**
+   - `ConstellationSwinTransformer`: Swin Transformer (Tiny/Small/Base) with hierarchical processing and **task-specific branches**
+   - **Task-Specific Feature Extraction**: All models now use separate attention and transformation paths for modulation vs SNR tasks
+     - Different activation functions (GELU for mod, ReLU for SNR) create distinct feature distributions
+     - Task-specific attention mechanisms prevent feature competition
+     - Residual connections with weighted combination (70% task-specific, 30% shared)
    - **Model Selection**: Choose architecture via `--model_type` (resnet18, resnet34, vit_b_16, vit_b_32, swin_tiny, swin_small, swin_base)
    - **Performance Trade-offs**: ResNet fastest (~8-10 it/s), ViT moderate (~2-6 it/s), Swin optimized for sparse data (~5-15 it/s expected)
    - **Default Dataset**: Excludes analog modulations (AM-DSB-SC, AM-DSB-WC, AM-SSB-SC, AM-SSB-WC, FM, GMSK, OOK)
@@ -277,11 +281,15 @@ The training script now uses optimized defaults for full dataset training:
 
 ### Training Performance Expectations
 - **Early Learning**: Combined accuracy starts ~15-20% (above 0.23% random baseline)
-- **Task Balance**: 50/50 uncertainty weighting maintained throughout early training
+- **Task Balance**: Kendall method maintains better balance (55%/45%) vs softmax (60%/40%)
 - **LR Reduction**: First reduction typically occurs around epochs 10-15
-- **Task Specialization**: Natural weight differentiation emerges (typically 52% mod / 48% SNR)
-- **Common Issues**: Overfitting can occur with insufficient regularization (monitor train/val gap)
-- **Final Performance**: Modern training achieves 85-95% modulation, 75-85% SNR, 70-80% combined accuracy
+- **Task Specialization**: Gradual weight differentiation emerges without extreme shifts
+- **Common Issues**: Overfitting occurs after validation plateau (monitor train/val gap)
+- **Realistic Performance** (based on extensive testing):
+  - **Validation Combined**: 28-29% plateau (best: 28.33% with Kendall + Swin)
+  - **Modulation**: 49-50% validation accuracy
+  - **SNR**: 43-44% validation accuracy
+  - **Training**: Can reach 40%+ but overfits significantly
 
 ### W&B Integration
 - **Project**: modulation-explainability
@@ -369,10 +377,17 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 ```
 
 ### Recent Training Sessions
-- **Status**: Multi-task learning with enhanced uncertainty weighting (digital modulations only)
+- **Status**: Multi-task learning with Kendall homoscedastic uncertainty weighting (digital modulations only)
 - **Digital Classes**: 17 modulation types (analog excluded by default)
-- **Expected Final Performance**: Mod accuracy ~85-95%, SNR accuracy ~75-85%, Combined ~70-80%
-- **Key Improvements**: Task collapse prevention, stratified data splitting, final test evaluation
+- **Best Achieved Performance**: 28.33% validation combined accuracy (dark-oath-111)
+  - Modulation: 49.13% validation accuracy
+  - SNR: 43.69% validation accuracy
+  - Swin Transformer + Kendall method = optimal combination
+- **Key Improvements**: 
+  - Kendall method prevents task competition (+2.2% vs softmax method)
+  - Task weights more balanced (55.4%/44.6% vs 60.7%/39.3%)
+  - Stratified data splitting ensures balanced evaluation
+  - Swin Transformer architecture superior to ResNet/ViT for constellation data
 
 ## Training Run History & Changelog
 
@@ -541,8 +556,32 @@ validate(model, device, val_loader, criterion_modulation, criterion_snr, uncerta
 - **Patience**: 3 (same as successful baseline runs)
 - **Uncertainty Weighting**: **Kendall et al. (2018) homoscedastic uncertainty** - independent task weighting
 - **Data Split**: 80/10/10 (stratified)
-- **Progress**: EARLY TRAINING (epoch 1 starting)
-  - **Expected Benefits**: More balanced task weights, prevent modulation/SNR competition
-  - **Method Change**: Independent uncertainty vs competitive softmax weighting
-  - **Key Test**: Will task weights remain more balanced throughout training?
-- **Status**: STARTING - Testing well-established uncertainty weighting vs previous softmax method
+- **Progress Through Epoch 33** (Final results):
+  - **Epoch 1**: 21.52% combined accuracy (45.45% mod, 37.17% SNR)
+  - **Epoch 11**: 28.20% peak validation combined accuracy (49.67% mod, 43.82% SNR)
+  - **Epoch 33**: 28.33% validation combined accuracy (49.13% mod, 43.69% SNR)
+  - **Training**: 40.56% combined (56.02% mod, 57.77% SNR) - severe overfitting
+  - **Training speed**: ~3.27 it/s (consistent with previous Swin runs)
+  - **Task weights**: 55.4% mod / 44.6% SNR (more balanced than softmax method!)
+  - **Learning rate**: Reduced to 0.0000168 (6x reductions)
+  - **Train-val gap**: 12.23% (40.56% train vs 28.33% val - overfitting)
+- **Key Success**: **Kendall method achieved +2.2% improvement over previous best (26.13%)**
+  - Best validation: 28.33% (stable from epochs 11-33)
+  - More balanced task weights throughout training
+  - Prevented task collapse seen in earlier runs
+- **Status**: COMPLETED - Kendall method validated as superior to softmax weighting
+
+#### peach-water-112 (2025-06-24) - High Dropout Regularization Test 🛡️
+- **Model**: Swin Transformer (Swin-Tiny) - proven best architecture
+- **Batch Size**: 256 (standard for Swin runs)
+- **Dropout**: **0.5** (2.5x increase from baseline 0.2)
+- **Patience**: 3 (standard setting)
+- **Uncertainty Weighting**: Kendall et al. (2018) homoscedastic uncertainty
+- **Data Split**: 80/10/10 (stratified)
+- **Early Progress (Epochs 1-4)**:
+  - **Epoch 1**: 20.54% validation combined (43.54% mod, 35.38% SNR)
+  - **Epoch 3**: 25.22% validation combined (47.62% mod, 41.40% SNR)
+  - **Task weights**: 61.2%/38.8% (similar to previous runs)
+  - **Training speed**: ~3.26 it/s (consistent)
+- **Hypothesis**: Higher dropout should reduce overfitting at cost of slower learning
+- **Status**: ACTIVE - Testing aggressive regularization to break 28.33% ceiling

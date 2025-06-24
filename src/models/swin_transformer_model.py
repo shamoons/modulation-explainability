@@ -24,12 +24,88 @@ In Proceedings of the IEEE/CVF international conference on computer vision (pp. 
 """
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 try:
     from torchvision.models import swin_t, swin_s, swin_b
 except ImportError:
     # Fallback for older torchvision versions
     print("Warning: Swin models not available in this torchvision version. Install torchvision>=0.13.0")
     swin_t = swin_s = swin_b = None
+
+
+class TaskSpecificFeatureExtractor(nn.Module):
+    """
+    Task-specific feature extraction that creates different representations for each task
+    before applying task heads. This prevents task competition at the feature level.
+    
+    Uses different transformations and attention mechanisms to create task-specific
+    feature spaces, then applies residual connections and gating to preserve information.
+    """
+    
+    def __init__(self, input_dim, task_dim, dropout_prob=0.3):
+        super().__init__()
+        
+        # Different activation functions to create different feature distributions
+        self.mod_branch = nn.Sequential(
+            nn.Linear(input_dim, task_dim),
+            nn.GELU(),  # Different activation for modulation task
+            nn.BatchNorm1d(task_dim),
+            nn.Dropout(dropout_prob)
+        )
+        
+        self.snr_branch = nn.Sequential(
+            nn.Linear(input_dim, task_dim),
+            nn.ReLU(),  # Different activation for SNR task
+            nn.BatchNorm1d(task_dim),
+            nn.Dropout(dropout_prob)
+        )
+        
+        # Task-specific attention mechanisms
+        self.mod_attention = nn.Sequential(
+            nn.Linear(input_dim, input_dim // 8),
+            nn.ReLU(),
+            nn.Linear(input_dim // 8, input_dim),
+            nn.Sigmoid()
+        )
+        
+        self.snr_attention = nn.Sequential(
+            nn.Linear(input_dim, input_dim // 8),
+            nn.Tanh(),  # Different activation
+            nn.Linear(input_dim // 8, input_dim),
+            nn.Sigmoid()
+        )
+        
+        # Residual projections to preserve information
+        self.mod_residual = nn.Linear(input_dim, task_dim) if input_dim != task_dim else nn.Identity()
+        self.snr_residual = nn.Linear(input_dim, task_dim) if input_dim != task_dim else nn.Identity()
+        
+    def forward(self, shared_features):
+        """
+        Extract task-specific features using different attention patterns and transformations.
+        
+        Args:
+            shared_features: Features from the backbone model
+            
+        Returns:
+            tuple: (modulation_features, snr_features)
+        """
+        # Apply task-specific attention to shared features
+        mod_attended = shared_features * self.mod_attention(shared_features)
+        snr_attended = shared_features * self.snr_attention(shared_features)
+        
+        # Transform through task-specific branches
+        mod_features = self.mod_branch(mod_attended)
+        snr_features = self.snr_branch(snr_attended)
+        
+        # Add residual connections to preserve information
+        mod_residual = self.mod_residual(shared_features)
+        snr_residual = self.snr_residual(shared_features)
+        
+        # Weighted combination instead of simple addition
+        mod_features = 0.7 * mod_features + 0.3 * mod_residual
+        snr_features = 0.7 * snr_features + 0.3 * snr_residual
+        
+        return mod_features, snr_features
 
 
 class ConstellationSwinTransformer(nn.Module):
@@ -98,11 +174,12 @@ class ConstellationSwinTransformer(nn.Module):
         # Remove the existing classifier head
         self.model.head = nn.Identity()
 
-        # Shared feature transformation layer
-        self.shared_transform = nn.Linear(in_features, in_features // 4)
-        self.relu = nn.ReLU()
-        self.batch_norm = nn.BatchNorm1d(in_features // 4)
-        self.dropout = nn.Dropout(p=dropout_prob)
+        # Task-specific feature extractors that create different representations
+        self.task_specific_extractor = TaskSpecificFeatureExtractor(
+            input_dim=in_features,
+            task_dim=in_features // 4,
+            dropout_prob=dropout_prob
+        )
 
         # Output heads for modulation and SNR
         self.modulation_head = nn.Linear(in_features // 4, num_classes)
@@ -119,15 +196,13 @@ class ConstellationSwinTransformer(nn.Module):
             tuple: (modulation output, snr output)
         """
         # Extract hierarchical features using Swin Transformer
-        features = self.model(x)
+        shared_features = self.model(x)
 
-        # Apply shared transformation, activation, batch normalization, and dropout
-        features = self.relu(self.shared_transform(features))
-        features = self.batch_norm(features)
-        features = self.dropout(features)
+        # Task-specific feature extraction and fusion
+        mod_features, snr_features = self.task_specific_extractor(shared_features)
 
         # Output heads
-        modulation_output = self.modulation_head(features)  # Predict modulation class
-        snr_output = self.snr_head(features)  # Predict SNR class
+        modulation_output = self.modulation_head(mod_features)  # Predict modulation class
+        snr_output = self.snr_head(snr_features)  # Predict SNR class
 
         return modulation_output, snr_output
