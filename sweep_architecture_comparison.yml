@@ -14,7 +14,7 @@ parameters:
   
   # Batch sizes optimized for memory efficiency - moderate sizes for stable training
   batch_size:
-    values: [128, 256, 512]  # Memory-efficient batch sizes
+    values: [64, 128, 256, 512]  # Memory-efficient batch sizes
   
   # Dropout regularization - discrete steps
   dropout:
