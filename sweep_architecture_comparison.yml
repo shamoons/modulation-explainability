@@ -10,23 +10,23 @@ project: modulation-explainability  # Explicitly set the correct project
 parameters:
   # Model architectures to compare
   model_type:
-    values: [resnet18, resnet34, vit_b_32, swin_tiny]
+    values: [resnet18, resnet34, vit_b_32, vit_b_16, swin_tiny]
   
-  # Batch sizes optimized for memory constraints
+  # Batch sizes optimized for speed - larger batches = faster epochs
   batch_size:
-    values: [32, 64, 128]  # Bayesian will pick optimal for each architecture
+    values: [256, 512, 1024]  # Larger batches for faster training
   
   # Dropout regularization - discrete steps
   dropout:
-    values: [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    values: [0.1, 0.25, 0.5]
   
   # Learning rate - discrete order of magnitude steps
   base_lr:
-    values: [3e-5, 5e-5, 8e-5, 1e-4, 1.5e-4, 2e-4]
+    values: [1e-5, 1e-4, 1e-3]
 
   # Weight decay - discrete order of magnitude steps  
   weight_decay:
-    values: [1e-6, 5e-6, 1e-5, 5e-5, 1e-4]
+    values: [1e-6, 1e-5, 1e-4, 1e-3]
 
   # Fixed parameters
   epochs:
@@ -36,8 +36,8 @@ parameters:
     value: 3
 
 # Sweep metadata
-name: "bayes_architecture_comparison"
-description: "Bayesian optimization across ResNet/ViT/Swin architectures with task-specific features and early stopping"
+name: "bayes_large_batch_comparison"
+description: "High-speed Bayesian optimization with large batch sizes (256-1024) for faster epoch completion and deeper training insights"
 
 # Aggressive early termination - stop poor performers quickly
 early_terminate:

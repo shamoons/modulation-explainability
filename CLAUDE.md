@@ -378,27 +378,83 @@ mcp__wandb__query_wandb_tool(
 This section will be updated as sweep results come in. Use this format to track findings:
 
 **Bayesian Architecture Comparison Sweep**: Created 2025-06-24
+- **Sweep ID**: 38l3qtga  
 - **Sweep Config**: `sweep_architecture_comparison.yml` (Bayesian optimization + early stopping)
 - **Architectures**: ResNet18/34, ViT-B/32, Swin-Tiny
-- **Parameters**: Batch size (32-128), dropout (0.15-0.35), learning rate (3e-5 to 2e-4), weight decay (1e-6 to 1e-4)
+- **Parameters**: Batch size (32-128), dropout (0.1-0.4), learning rate (3e-5 to 2e-4), weight decay (1e-6 to 1e-4)
 - **Early Stopping**: Hyperband (min 3 epochs) + performance threshold (15% accuracy)
-- **Status**: PENDING - Launch with `wandb sweep sweep_architecture_comparison.yml`
+- **Status**: **ACTIVE** - 7 agents running in parallel (81% GPU utilization)
+- **Sweep URL**: https://wandb.ai/shamoons/modulation-explainability/sweeps/38l3qtga
 
-#### Sweep Run Results (Update as completed):
+#### Sweep Run Results (7 Active Runs) - **UPDATED 16:10 UTC**:
 
-**Run 1**: [Architecture] - [Status]
-- **Config**: batch_size=X, dropout=X, base_lr=X, weight_decay=X
-- **Results**: X% validation combined accuracy (X% mod, X% SNR)
-- **Notes**: Key observations about performance/behavior
+**Run 1 (fiery-sweep-1)**: Swin-Tiny - **RUNNING**
+- **Config**: batch_size=32, dropout=0.35, base_lr=0.00015, weight_decay=1e-5
+- **Run ID**: hpvpz17r
+- **Status**: Running ~1.5 hours (since 14:33 UTC)
+- **Performance**: No metrics yet (Swin training very slow)
+- **Notes**: High dropout configuration struggling
 
-**Run 2**: [Architecture] - [Status]
-- [Similar format...]
+**Run 2 (dandy-sweep-2)**: ResNet18 - **RUNNING** 🔥
+- **Config**: batch_size=128, dropout=0.2, base_lr=5e-5, weight_decay=5e-6
+- **Run ID**: socgc8eb  
+- **Status**: **Epoch 2 completed** (running 1.5+ hours)
+- **Current Performance**: **25.11% combined** (45.59% mod, 42.02% SNR)
+- **Task Balance**: 60.4% mod / 39.6% SNR (good specialization)
+- **SNR Pattern**: Strong performance in mid-range SNRs (-2 to 12 dB), drops off at extremes
+- **Notes**: Steady improvement from epoch 1 to 2
 
-#### Key Findings from Sweep:
-- **Best Architecture**: TBD
-- **Optimal Hyperparameters**: TBD  
-- **Performance Ranking**: TBD
-- **Efficiency Analysis**: TBD (training speed vs accuracy trade-offs)
+**Run 3 (fine-sweep-3)**: Swin-Tiny - **RUNNING**
+- **Config**: batch_size=32, dropout=0.2, base_lr=8e-5, weight_decay=1e-4
+- **Run ID**: rjwpr4xn
+- **Status**: Running ~1.5 hours (since 14:35 UTC)
+- **Performance**: No metrics yet (Swin training slow)
+- **Notes**: High weight decay variant
+
+**Run 4 (dry-sweep-4)**: Swin-Tiny - **RUNNING**
+- **Config**: batch_size=32, dropout=0.2, base_lr=5e-5, weight_decay=5e-5
+- **Run ID**: m3vl1evq
+- **Status**: Running ~1.5 hours (since 14:36 UTC)
+- **Performance**: No metrics yet (Swin training slow)
+- **Notes**: Moderate configuration
+
+**Run 5 (hearty-sweep-5)**: ResNet34 - **RUNNING** ⭐
+- **Config**: batch_size=128, dropout=0.2, base_lr=5e-5, weight_decay=1e-4
+- **Run ID**: lh5kxnl6
+- **Status**: **Epoch 1 completed** (running 1.5+ hours)
+- **Current Performance**: **23.29% combined** (44.51% mod, 40.84% SNR)
+- **Task Balance**: 52.5% mod / 47.5% SNR (excellent balance!)
+- **Notes**: More balanced task weights than ResNet18, slightly lower overall performance
+
+**Run 6 (glad-sweep-6)**: ResNet18 - **RUNNING** 🏆
+- **Config**: batch_size=64, dropout=0.25, base_lr=2e-4, weight_decay=1e-6
+- **Run ID**: 8zdjvavu
+- **Status**: **Epoch 1 completed** (running 1.5+ hours)
+- **Current Performance**: **24.82% combined** (45.91% mod, 41.33% SNR) 
+- **Task Balance**: 60.7% mod / 39.3% SNR (specialization toward modulation)
+- **Notes**: Strong validation performance with highest learning rate
+
+**Run 7 (exalted-sweep-7)**: ResNet18 - **RUNNING**
+- **Config**: batch_size=32, dropout=0.25, base_lr=1e-4, weight_decay=1e-4
+- **Run ID**: mruzcqh3
+- **Status**: Running ~1.5 hours (since 14:42 UTC)
+- **Performance**: Still in epoch 1 (smallest batch size = slowest training)
+- **Notes**: Potentially optimal config but slowest to complete
+
+#### Updated Findings from Sweep (After ~1.5 Hours):
+- **🏆 Current Leader**: **dandy-sweep-2** (ResNet18) - **25.11% combined accuracy**
+  - 45.59% modulation accuracy, 42.02% SNR accuracy 
+  - Excellent progression: epoch 1 (16.17% mod) → epoch 2 (45.59% mod)
+- **🥈 Strong Runner-up**: **glad-sweep-6** (ResNet18) - **24.82% combined accuracy**
+  - 45.91% modulation, 41.33% SNR (epoch 1 only, still improving)
+- **ResNet Architecture Dominance**: ResNet18/34 completing epochs while Swin-Tiny still struggling
+- **Task Balance Insights**:
+  - **ResNet34**: Most balanced task weights (52.5%/47.5%) 
+  - **ResNet18**: Tends toward modulation specialization (60%+/40%-)
+- **Training Speed**: ResNet >>>>> Swin Transformer (3-4x faster epoch completion)
+- **SNR Performance Pattern**: Mid-range SNRs (-2 to 12 dB) consistently strongest across ResNet runs
+- **Learning Rate Impact**: 2e-4 (glad-sweep-6) and 5e-5 (dandy-sweep-2) both performing excellently
+- **Batch Size Trade-off**: 128 (faster epochs) vs 32-64 (potentially better final performance)
 
 ---
 

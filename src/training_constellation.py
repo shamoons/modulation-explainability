@@ -61,14 +61,6 @@ def train(
         "description": f"Testing task-specific feature extraction with {model_type} - separate attention/activation for mod vs SNR tasks to reduce competition"
     }
     
-    # Add patch size info for ViT models
-    if model_type in ["vit_b_16", "vit_b_32"]:
-        patch_size = 16 if model_type == "vit_b_16" else 32
-        wandb_config["patch_size"] = patch_size
-    
-    # Add architecture info for Swin models
-    if model_type in ["swin_tiny", "swin_small", "swin_base"]:
-        wandb_config["swin_variant"] = model_type
     
     wandb.init(project="modulation-explainability", config=wandb_config)
 
