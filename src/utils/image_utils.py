@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import torch
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, f1_score
+import json
+import pandas as pd
 
 
 def save_image(image: np.ndarray, file_path: str, cmap: str = 'gray', background: str = 'white') -> None:
@@ -166,10 +168,31 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     ax.set_title(f"{label_type} Normalized Confusion Matrix - Epoch {epoch + 1}")
     fig.tight_layout()
 
-    # Save the normalized confusion matrix
+    # Save the normalized confusion matrix image
     file_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_normalized.png")
     fig.savefig(file_path)
     plt.close(fig)
+
+    # Save the raw confusion matrix data as CSV
+    csv_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_confusion_matrix.csv")
+    cm_df = pd.DataFrame(cm_normalized)
+    if label_names is not None:
+        cm_df.index = label_names
+        cm_df.columns = label_names
+    cm_df.to_csv(csv_path)
+
+    # Save confusion matrix metadata as JSON
+    json_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_confusion_matrix_metadata.json")
+    metadata = {
+        "epoch": epoch + 1,
+        "label_type": label_type,
+        "matrix_shape": cm.shape,
+        "total_samples": np.sum(cm),
+        "accuracy": np.trace(cm_normalized) / len(cm_normalized) if len(cm_normalized) > 0 else 0,
+        "label_names": label_names if label_names is not None else list(range(cm.shape[0]))
+    }
+    with open(json_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
 
     return fig  # Return the figure object
 
@@ -205,5 +228,28 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
     file_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}.png")
     fig.savefig(file_path)
     plt.close(fig)
+
+    # Save F1 scores as CSV
+    csv_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}_scores.csv")
+    f1_df = pd.DataFrame({
+        'label_name': label_names,
+        'f1_score': f1_scores
+    })
+    f1_df.to_csv(csv_path, index=False)
+
+    # Save F1 scores metadata as JSON
+    json_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}_metadata.json")
+    metadata = {
+        "epoch": epoch + 1,
+        "label_type": label_type,
+        "num_classes": len(label_names),
+        "mean_f1_score": float(np.mean(f1_scores)),
+        "std_f1_score": float(np.std(f1_scores)),
+        "min_f1_score": float(np.min(f1_scores)),
+        "max_f1_score": float(np.max(f1_scores)),
+        "label_names": label_names
+    }
+    with open(json_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
 
     return fig  # Return the figure object

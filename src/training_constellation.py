@@ -58,7 +58,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"Testing task-specific feature extraction with {model_type} - separate attention/activation for mod vs SNR tasks to reduce competition"
+        "description": f"Testing {model_type} with FIXED SHUFFLING - per-epoch train data shuffling for better generalization (prev runs had fixed epoch ordering causing val>train)"
     }
     
     
@@ -97,14 +97,17 @@ def train(
         "total_samples": total_samples
     })
     
-    # Create samplers (fixed for entire training)
-    train_sampler = SubsetRandomSampler(train_idx)
-    val_sampler = SubsetRandomSampler(val_idx)
+    # Create samplers - val is fixed, train shuffles each epoch
+    val_sampler = SubsetRandomSampler(val_idx)  # Validation doesn't need shuffling
     
     # Track best epoch for final test evaluation
     best_epoch = 0
     
     for epoch in range(epochs):
+        
+        # Shuffle train indices each epoch for better generalization
+        np.random.shuffle(train_idx)
+        train_sampler = SubsetRandomSampler(train_idx)
 
         # Disable pin_memory for MPS
         use_pin_memory = device.type == 'cuda'
