@@ -2,21 +2,21 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: still-snow-152 (seyymov1)
+## Current Active Run: vague-wave-153 (3yk3v97s)
 
-**Status**: ✅ **RUNNING** (Started June 25, 2025, 14:38:47 UTC)  
+**Status**: ✅ **RUNNING** (Started June 25, 2025, 15:10:43 UTC)  
 **Architecture**: Swin Transformer Tiny  
 **Phase**: **Enhanced Training with Shuffling + Analysis Export**
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters)
-- **Checkpoint**: Resumed from `best_model_swin_tiny_epoch_4.pth` (snowy-valley-151)
+- **Checkpoint**: Resumed from `best_model_swin_tiny_epoch_1.pth` (snowy-valley-151)
 - **Training**: Batch=32, LR=1e-4, Dropout=0.3, Weight Decay=1e-5, Epochs=100
-- **Enhancements**: ✅ Data Shuffling + ✅ CSV/JSON Analysis Export
+- **Enhancements**: ✅ Data Shuffling + ✅ CSV/JSON Analysis Export (Fixed)
 
-### Early Performance (Epoch 1)
-- Loss: 1.945, Modulation: 46.53%, SNR: 37.28%
-- **Positive**: Matches epoch 4 checkpoint baseline, successful resume
+### Early Performance (Epoch 1, Live)
+- Loss: 1.748, Modulation: 46.25%, SNR: 39.28%
+- **Positive**: Strong SNR improvement, JSON export fix applied
 
 ---
 
@@ -96,7 +96,7 @@ Training Run Documentation for Modulation Classification Research
 
 ### Research Progression
 1. **Phase 1** (snowy-valley-151): Proof of concept - breakthrough capability
-2. **Phase 2** (still-snow-152): Optimization - enhanced training methodology
+2. **Phase 2** (vague-wave-153): Optimization - enhanced training methodology
 3. **Phase 3** (Future): Analysis + scaling to larger Swin variants
 
 ---
