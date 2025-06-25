@@ -49,7 +49,7 @@ class ConstellationSwinTransformer(nn.Module):
     type and SNR level.
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=True):
         """
         Initialize the ConstellationSwinTransformer model with two output heads.
 
@@ -59,6 +59,7 @@ class ConstellationSwinTransformer(nn.Module):
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
             dropout_prob (float): Probability of dropout (defaults to 0.3).
             model_variant (str): Swin variant ('swin_tiny', 'swin_small', 'swin_base'). Defaults to 'swin_tiny'.
+            use_task_specific (bool): Whether to use task-specific feature extraction (defaults to True).
         """
         super(ConstellationSwinTransformer, self).__init__()
 
@@ -80,6 +81,7 @@ class ConstellationSwinTransformer(nn.Module):
             raise ValueError(f"Unsupported model_variant: {model_variant}. Choose from: swin_tiny, swin_small, swin_base")
         
         self.model_variant = model_variant
+        self.use_task_specific = use_task_specific
 
         # Modify the input layer to accept the specified number of input channels
         if input_channels != 3:
@@ -100,16 +102,20 @@ class ConstellationSwinTransformer(nn.Module):
         # Remove the existing classifier head
         self.model.head = nn.Identity()
 
-        # Task-specific feature extractors that create different representations
-        self.task_specific_extractor = TaskSpecificFeatureExtractor(
-            input_dim=in_features,
-            task_dim=in_features // 4,
-            dropout_prob=dropout_prob
-        )
-
-        # Output heads for modulation and SNR
-        self.modulation_head = nn.Linear(in_features // 4, num_classes)
-        self.snr_head = nn.Linear(in_features // 4, snr_classes)
+        if self.use_task_specific:
+            # Task-specific feature extractors that create different representations
+            self.task_specific_extractor = TaskSpecificFeatureExtractor(
+                input_dim=in_features,
+                task_dim=in_features // 4,
+                dropout_prob=dropout_prob
+            )
+            # Output heads for modulation and SNR (reduced feature dimension)
+            self.modulation_head = nn.Linear(in_features // 4, num_classes)
+            self.snr_head = nn.Linear(in_features // 4, snr_classes)
+        else:
+            # Direct heads without task-specific processing
+            self.modulation_head = nn.Linear(in_features, num_classes)
+            self.snr_head = nn.Linear(in_features, snr_classes)
 
     def forward(self, x):
         """
@@ -124,11 +130,16 @@ class ConstellationSwinTransformer(nn.Module):
         # Extract hierarchical features using Swin Transformer
         shared_features = self.model(x)
 
-        # Task-specific feature extraction and fusion
-        mod_features, snr_features = self.task_specific_extractor(shared_features)
-
-        # Output heads
-        modulation_output = self.modulation_head(mod_features)  # Predict modulation class
-        snr_output = self.snr_head(snr_features)  # Predict SNR class
+        if self.use_task_specific:
+            # Task-specific feature extraction and fusion
+            mod_features, snr_features = self.task_specific_extractor(shared_features)
+            
+            # Output heads
+            modulation_output = self.modulation_head(mod_features)  # Predict modulation class
+            snr_output = self.snr_head(snr_features)  # Predict SNR class
+        else:
+            # Direct prediction from shared features
+            modulation_output = self.modulation_head(shared_features)  # Predict modulation class
+            snr_output = self.snr_head(shared_features)  # Predict SNR class
 
         return modulation_output, snr_output
