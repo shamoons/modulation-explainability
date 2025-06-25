@@ -184,12 +184,12 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     # Save confusion matrix metadata as JSON
     json_path = os.path.join(output_dir, f"{label_type}_epoch_{epoch + 1}_confusion_matrix_metadata.json")
     metadata = {
-        "epoch": epoch + 1,
+        "epoch": int(epoch + 1),
         "label_type": label_type,
-        "matrix_shape": cm.shape,
-        "total_samples": np.sum(cm),
-        "accuracy": np.trace(cm_normalized) / len(cm_normalized) if len(cm_normalized) > 0 else 0,
-        "label_names": label_names if label_names is not None else list(range(cm.shape[0]))
+        "matrix_shape": [int(x) for x in cm.shape],
+        "total_samples": int(np.sum(cm)),
+        "accuracy": float(np.trace(cm_normalized) / len(cm_normalized) if len(cm_normalized) > 0 else 0),
+        "label_names": label_names if label_names is not None else [int(x) for x in range(cm.shape[0])]
     }
     with open(json_path, 'w') as f:
         json.dump(metadata, f, indent=2)
@@ -240,9 +240,9 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
     # Save F1 scores metadata as JSON
     json_path = os.path.join(output_dir, f"{label_type}_f1_epoch_{epoch + 1}_metadata.json")
     metadata = {
-        "epoch": epoch + 1,
+        "epoch": int(epoch + 1),
         "label_type": label_type,
-        "num_classes": len(label_names),
+        "num_classes": int(len(label_names)),
         "mean_f1_score": float(np.mean(f1_scores)),
         "std_f1_score": float(np.std(f1_scores)),
         "min_f1_score": float(np.min(f1_scores)),
