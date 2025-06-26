@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=True):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False):
     # Load data
     print("Loading data...")
 
@@ -103,10 +103,12 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             input_channels=input_channels,
             dropout_prob=dropout,
             model_variant=model_type,
-            use_task_specific=use_task_specific
+            use_task_specific=use_task_specific,
+            use_dilated_preprocessing=use_dilated_preprocessing
         )
         task_specific_status = "with task-specific extraction" if use_task_specific else "without task-specific extraction"
-        print(f"Using model: {model_type} (Swin Transformer, {task_specific_status})")
+        dilated_status = "with dilated preprocessing" if use_dilated_preprocessing else "without dilated preprocessing"
+        print(f"Using model: {model_type} (Swin Transformer, {task_specific_status}, {dilated_status})")
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit_b_16, vit_b_32, vit_h_14, swin_tiny, swin_small, swin_base")
 
@@ -192,7 +194,8 @@ if __name__ == "__main__":
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
     parser.add_argument('--model_type', type=str, help='Model architecture to use', default='resnet18', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
-    parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=True)
+    parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=False)
+    parser.add_argument('--use_dilated_preprocessing', type=str2bool, help='Use dilated CNN preprocessing for global context (Swin only)', default=False)
 
     args = parser.parse_args()
 
@@ -208,5 +211,6 @@ if __name__ == "__main__":
         test_size=args.test_size,
         model_type=args.model_type,
         dropout=args.dropout,
-        use_task_specific=args.use_task_specific
+        use_task_specific=args.use_task_specific,
+        use_dilated_preprocessing=args.use_dilated_preprocessing
     )

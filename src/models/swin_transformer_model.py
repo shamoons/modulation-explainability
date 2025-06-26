@@ -49,7 +49,7 @@ class ConstellationSwinTransformer(nn.Module):
     type and SNR level.
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=True):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=False, use_dilated_preprocessing=False):
         """
         Initialize the ConstellationSwinTransformer model with two output heads.
 
@@ -59,7 +59,8 @@ class ConstellationSwinTransformer(nn.Module):
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
             dropout_prob (float): Probability of dropout (defaults to 0.3).
             model_variant (str): Swin variant ('swin_tiny', 'swin_small', 'swin_base'). Defaults to 'swin_tiny'.
-            use_task_specific (bool): Whether to use task-specific feature extraction (defaults to True).
+            use_task_specific (bool): Whether to use task-specific feature extraction (defaults to False).
+            use_dilated_preprocessing (bool): Whether to use dilated CNN preprocessing for global context (defaults to False).
         """
         super(ConstellationSwinTransformer, self).__init__()
 
@@ -82,13 +83,45 @@ class ConstellationSwinTransformer(nn.Module):
         
         self.model_variant = model_variant
         self.use_task_specific = use_task_specific
+        self.use_dilated_preprocessing = use_dilated_preprocessing
+        
+        # Dilated CNN preprocessing for global constellation context
+        if self.use_dilated_preprocessing:
+            self.dilated_preprocessing = nn.Sequential(
+                # Layer 1: Point detection (RF: 3x3)
+                nn.Conv2d(input_channels, 32, kernel_size=3, dilation=1, padding=1),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
+                
+                # Layer 2: Local clusters (RF: 7x7)
+                nn.Conv2d(32, 64, kernel_size=3, dilation=2, padding=2),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                
+                # Layer 3: Inter-cluster patterns (RF: 15x15)
+                nn.Conv2d(64, 96, kernel_size=3, dilation=4, padding=4),
+                nn.BatchNorm2d(96),
+                nn.ReLU(inplace=True),
+                
+                # Layer 4: Global constellation spread (RF: 31x31)
+                nn.Conv2d(96, 96, kernel_size=3, dilation=8, padding=8),
+                nn.BatchNorm2d(96),
+                nn.ReLU(inplace=True),
+                
+                # Compress to 3 channels for Swin input
+                nn.Conv2d(96, 3, kernel_size=1, padding=0)
+            )
+            # Update Swin input to expect 3 channels from preprocessing
+            swin_input_channels = 3
+        else:
+            swin_input_channels = input_channels
 
         # Modify the input layer to accept the specified number of input channels
-        if input_channels != 3:
+        if swin_input_channels != 3:
             # Swin uses features.0.0 as the first conv layer (patch embedding)
             first_conv = self.model.features[0][0]
             self.model.features[0][0] = nn.Conv2d(
-                input_channels,
+                swin_input_channels,
                 first_conv.out_channels,
                 kernel_size=first_conv.kernel_size,
                 stride=first_conv.stride,
@@ -127,6 +160,10 @@ class ConstellationSwinTransformer(nn.Module):
         Returns:
             tuple: (modulation output, snr output)
         """
+        # Apply dilated preprocessing if enabled
+        if self.use_dilated_preprocessing:
+            x = self.dilated_preprocessing(x)
+        
         # Extract hierarchical features using Swin Transformer
         shared_features = self.model(x)
 

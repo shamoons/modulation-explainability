@@ -58,7 +58,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"Testing {model_type} with FIXED SHUFFLING - per-epoch train data shuffling for better generalization (prev runs had fixed epoch ordering causing val>train)"
+        "description": f"FULL SNR DILATED CNN EXPERIMENT - {model_type} with dilated CNN preprocessing for global constellation context. Testing if multi-scale receptive fields (3x3->63x63) can improve both modulation and SNR classification across ALL SNRs (-20 to 30dB). Dilated pyramid extracts: point detection->local clusters->inter-cluster patterns->global spread. Baseline: 27.58% combined accuracy without preprocessing."
     }
     
     
