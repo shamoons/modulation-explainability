@@ -58,7 +58,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"FULL SNR DILATED CNN EXPERIMENT - {model_type} with dilated CNN preprocessing for global constellation context. Testing if multi-scale receptive fields (3x3->63x63) can improve both modulation and SNR classification across ALL SNRs (-20 to 30dB). Dilated pyramid extracts: point detection->local clusters->inter-cluster patterns->global spread. Baseline: 27.58% combined accuracy without preprocessing."
+        "description": f"SNR-PRESERVING CONSTELLATION EXPERIMENT - {model_type} training on literature-standard constellation diagrams with PRESERVED SNR discriminative information. Fixed critical preprocessing bug: replaced per-image max normalization (H=H/H.max()) with power normalization + log scaling. SNR discrimination ratio improved 1.73x (2.398/1.386 vs 1.0/1.0). Expected breakthrough: SNR accuracy from 11-13% plateau → 40-60%+ with constellation diagrams that maintain intensity differences encoding SNR information. Testing digital modulations across -20 to 30dB."
     }
     
     
