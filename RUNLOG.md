@@ -2,40 +2,62 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: splendid-pyramid-154 (npkzgbuw) - HIGH SNR EXPERIMENT
+## Current Active Run: stellar-bush-156 (184gfu5n) - DILATED CNN PREPROCESSING EXPERIMENT
 
-**Status**: 🔬 **RUNNING** (Started June 26, 2025, 07:50:00 UTC)  
-**Architecture**: Swin Transformer Tiny  
-**Phase**: **High SNR Only Training Experiment**
+**Status**: 🧪 **RUNNING** (Started June 26, 2025, 09:01:11 UTC)  
+**Architecture**: Swin Transformer Tiny + Dilated CNN Preprocessing  
+**Phase**: **Global Context Multi-Scale Feature Extraction**
 
 ### Configuration
-- **Model**: swin_tiny (~28M parameters) 
-- **Training**: Batch=32, LR=1e-4, Dropout=0.3, Weight Decay=1e-5, Epochs=100
-- **SNR Range**: **14-30 dB ONLY** (9 SNR levels: 14,16,18,20,22,24,26,28,30)
-- **Classes**: 153 total (17 modulations × 9 SNRs)
-- **Dataset**: 626,688 samples (vs 1.8M in full dataset)
+- **Model**: swin_tiny (~28M parameters) + Dilated CNN Preprocessing
+- **Training**: Batch=24, LR=1e-4, Dropout=0.3, Weight Decay=1e-5, Epochs=100
+- **SNR Range**: **FULL RANGE** (-20 to 30 dB, all 26 SNR levels)
+- **Classes**: 442 total (17 modulations × 26 SNRs)
+- **Dataset**: 1,810,432 samples (full dataset)
+- **Innovation**: Task-specific extraction disabled, dilated preprocessing enabled
+
+### Dilated CNN Architecture
+**Multi-Scale Receptive Field Pyramid**:
+- **Layer 1**: 3×3 conv, dilation=1 → Point detection (RF: 3×3)
+- **Layer 2**: 3×3 conv, dilation=2 → Local clusters (RF: 7×7)  
+- **Layer 3**: 3×3 conv, dilation=4 → Inter-cluster patterns (RF: 15×15)
+- **Layer 4**: 3×3 conv, dilation=8 → Global constellation spread (RF: 31×31)
+- **Output**: 96→3 channels for Swin input
 
 ### Experiment Hypothesis
-Training exclusively on high SNRs (14-30 dB) to test whether:
-1. Model can learn pure geometric patterns without noise-based features
-2. High SNR performance improves when not competing with low SNR patterns
-3. Performance degradation at high SNRs is due to training bias or inherent ambiguity
+Testing whether global constellation context improves classification:
+1. **SNR Discrimination**: Can global spread patterns distinguish SNR levels?
+2. **Modulation Consistency**: Will global context reduce training volatility?
+3. **Multi-Scale Features**: Do different dilation rates capture complementary patterns?
 
 ### Baseline Comparison
-**Full-Range Training (vague-wave-153) High SNR Performance**:
-- 14 dB: F1 = 0.830
-- 16 dB: F1 = 0.714  
-- 18 dB: F1 = 0.481
-- 20 dB: F1 = 0.312
-- 22 dB: F1 = 0.257
-- 24 dB: F1 = 0.122
-- 26 dB: F1 = 0.286
-- 28 dB: F1 = 0.106
-- 30 dB: F1 = 0.135
+**Previous Best (vague-wave-153) - Standard Swin**:
+- **Combined Accuracy**: 27.58% (modulation: 49.22%, SNR: 43.24%)
+- **Training Volatility**: High (16APSK: 0.627→0.278)
+- **Architecture**: Standard 7×7 Swin windows only
 
 ### Initial Progress
-- **Epoch 1 Start**: Loss=3.292, Mod Acc=6.17%, SNR Acc=10.66%
-- **Status**: Training normally at 27.12 it/s
+- **Epoch 1 Start**: Loss=3.74, Mod Acc=7.74%, SNR Acc=8.04%
+- **Training Speed**: 15.86 it/s (slower due to preprocessing overhead)
+- **Status**: Normal initialization, dilated preprocessing active
+
+---
+
+## Completed Run: splendid-pyramid-154 (npkzgbuw) - HIGH SNR EXPERIMENT
+
+**Status**: ✅ **COMPLETED** (June 26, 2025, High SNR Only)  
+**Architecture**: Swin Transformer Tiny  
+**Phase**: **High SNR Geometric Pattern Learning**
+
+### Key Findings
+- **SNR Classification**: Complete failure (11-13% accuracy, random guessing)
+- **Modulation Classification**: Success with geometric patterns (BPSK: 99.4%, QPSK: 98.4%)
+- **Critical Insight**: High SNR levels are visually indistinguishable in constellation diagrams
+- **Literature Validation**: Confirms that SNR estimation requires noise-based features, not geometry
+
+### Final Performance (Epoch 6)
+- **Combined Accuracy**: 6.98% (modulation: 53.21%, SNR: 12.82%)
+- **Conclusion**: Constellation-based SNR classification fundamentally limited at high SNRs
 
 ---
 

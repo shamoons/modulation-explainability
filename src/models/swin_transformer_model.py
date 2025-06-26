@@ -92,21 +92,25 @@ class ConstellationSwinTransformer(nn.Module):
                 nn.Conv2d(input_channels, 32, kernel_size=3, dilation=1, padding=1),
                 nn.BatchNorm2d(32),
                 nn.ReLU(inplace=True),
+                nn.Dropout2d(dropout_prob),
                 
                 # Layer 2: Local clusters (RF: 7x7)
                 nn.Conv2d(32, 64, kernel_size=3, dilation=2, padding=2),
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True),
+                nn.Dropout2d(dropout_prob),
                 
                 # Layer 3: Inter-cluster patterns (RF: 15x15)
                 nn.Conv2d(64, 96, kernel_size=3, dilation=4, padding=4),
                 nn.BatchNorm2d(96),
                 nn.ReLU(inplace=True),
+                nn.Dropout2d(dropout_prob),
                 
                 # Layer 4: Global constellation spread (RF: 31x31)
                 nn.Conv2d(96, 96, kernel_size=3, dilation=8, padding=8),
                 nn.BatchNorm2d(96),
                 nn.ReLU(inplace=True),
+                nn.Dropout2d(dropout_prob),
                 
                 # Compress to 3 channels for Swin input
                 nn.Conv2d(96, 3, kernel_size=1, padding=0)
