@@ -1,0 +1,458 @@
+\documentclass{ELSP}
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+	\usepackage[]{microtype}
+	\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\IfFileExists{parskip.sty}{%
+	\usepackage{parskip}
+}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+	pdfcreator={ELSP}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+	\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{times}
+\usepackage{mathptmx}
+\usepackage{color}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\geometry{a4paper,top=2.5cm,bottom=1.9cm,left=1.75cm,right=1.75cm,headsep=12px}
+\usepackage{float}
+\usepackage{enumerate}
+\usepackage{stfloats}
+\usepackage{ragged2e}
+\usepackage{titlesec}
+%\titleformat*{\section}{\fontsize{12pt}{12pt}\selectfont\bfseries}
+%\titleformat*{\subsection}{\fontsize{12pt}{12pt}\selectfont\emph}
+%\titleformat*{\subsubsection}{\fontsize{12pt}{12pt}\selectfont}
+
+\titleformat{\section}[hang]
+  {\fontsize{12pt}{12pt}\selectfont\bfseries\color[RGB]{0,131,255}} 
+  {\thesection}{0.5em}{}
+
+
+\titleformat{\subsection}[hang]
+  {\fontsize{12pt}{12pt}\selectfont\emph} 
+  {\thesubsection}{0.5em}{}
+
+
+\titleformat{\subsubsection}[hang]
+  {\fontsize{12pt}{12pt}\selectfont} 
+  {\thesubsubsection}{0.5em}{}
+
+\setlength{\parindent}{2em}
+\setlength{\baselineskip}{17pt}
+\setlength{\parskip}{12pt}
+
+
+% \setlength{\bibitemsep}{\baselineskip}
+% \setlength{\parskip}{12pt}
+
+% \usepackage{fontspec}
+% \setmainfont{Times New Roman}
+%ELSP fancy
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{Paper type}}}
+\fancyhead[L]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{Journal}}}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{1.4pt}
+\fancypagestyle{firstpage}
+{
+	\fancyhf{}
+	\setlength{\headsep}{6px}
+	\fancyhead[R]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{Journal}}}
+	\fancyhead[L]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{ELSP}}}
+	%\fancyfoot[R]{\thepage}
+	\fancyfoot[L]{\sffamily \footnotesize Author {\em et al}. Journal Year (Issue): XXXX}
+	\renewcommand{\headrulewidth}{1.4pt}
+}
+
+\captionsetup{labelfont={bf},labelformat={default},labelsep=period,margin=4em,format=plain}
+
+\begin{document}
+
+
+
+%\hfill \textbf{\large Type of the paper}
+\thispagestyle{firstpage}
+
+\let\thefootnote\relax
+\footnotetext{
+\newline
+\newline
+	\begin{minipage}[h]{0.15\linewidth}
+	\includegraphics{fig/cc.png}
+	\end{minipage}
+	\hfill
+	\begin{minipage}[h]{0.8\linewidth}
+		\footnotesize{Copyright©Year by the authors. Published by ELSP. 
+			This work is licensed under a Creative Commons Attribution 4.0 
+			International License, which permits unrestricted use, distribution, 
+			and reproduction in any medium provided the original work is properly cited}
+	\end{minipage}
+
+}
+
+\setstretch{1.24}
+\begin{flushleft}
+% \papertype{paper type}
+{\sffamily \small \noindent {Paper Type $\mid$ Received Day Mon Year; Accepted Day Mon Year; Published Day Mon Year}}\\
+%Example
+%\timeline{15 May 2022}{17 July 2022}{20 September 2022}
+{\sffamily\small{https://doi.org/10.55092/xxxx}}
+
+\papertitle{Title of the paper}
+
+\newcontent The title should be concise, informative and meaningful. It should
+include key terms to make it easier to be found via searching. Please
+avoid long systemic names, obscure abbreviations, acronyms or symbols or
+formulas. Avoid phrases such as ``on the'', ``a study of'', ``research
+on'', ``report on'' ``regarding'', and ``use of'', omit ``the'' at the
+beginning of the title.
+
+\authorname{First Name} {Last Name} {1},
+\authorname{First Name} {Last Name} {2}
+\textbf{and} 
+\authornameCorres{First Name} {Last Name}{2,}{*}
+
+\formatintroduction{1}{Department, Institution, City, Country}
+\formatintroduction{2}{Department, Institution, City, Country}
+
+\newcontent Note: Pease list all authors' full names and institutions. If an
+author's current address is different from the address where the work
+was carried out, please add note. The general note symbol should be used
+in the following order: *,†,‡,§,¶,**,††,‡‡. Author Contribution:
+we encourage authors to make specific attributions of contribution and
+responsibility in the acknowledgements of the article, otherwise all
+co-authors will be taken to share full responsibility for all of the
+paper. Authors may wish to use a taxonomy such as
+\href{http://credit.niso.org/}{CRediT} to describe the contributions of
+each author.
+
+\authoremail{Correspondence author(s)} {E-mail1(s): XX.}
+\end{flushleft}
+\noindent\textbf{\textcolor[RGB]{0,131,255}{Highlights:}}\\
+\newline
+Highlights are three to five bullet points that help increase the discoverability of your article via search engines. These bullet points should capture the novel results of your research as well as new methods that were used during the study (if any). Think of them as the "elevator pitch" of your article. Please include terms that you know your readers will be looking for online. Don't try to capture all ideas, concepts or conclusions as highlights are meant to be short: 85 characters or fewer, including spaces.
+\begin{itemize}
+    \item Highlight 1
+    \item Highlight 2
+    \item ...
+\end{itemize}
+
+\noindent\textbf{\textbf{\textcolor[RGB]{0,131,255}{Abstract:}}} Abstract is a brief summary of the article. The
+abstract determines the scope of paper. It should be concise,
+informative, self-contained. For a research paper, state the major
+problem or the purpose of the paper, indicate the methods used,
+summarize main results obtained and major conclusions. It should not
+include undefined acronyms/abbreviations and table numbers, figure
+numbers, references or equations or section number. Trial registration
+number should be included in the abstract if have. Normally, the
+abstract should be less than 300 words.
+
+\noindent\textbf{\textcolor[RGB]{0,131,255}{Keywords:}} Please supply up to 10 keywords, main 3 or 4 key phrases and at least 3 or 4 additional key words to make it more discoverable in search engines like google, web of science. 
+
+
+\section{Introduction}
+
+The introduction gives a concise and appropriate background of the
+problem under investigation, and the significance, scope and limits of
+the work. Outline what have done via citing pertinent references. State what your work differs from previous work. Please spell out those highly specialized terms and abbreviations used in the article to make it
+accessible for readers.
+
+% The introduction gives a concise and appropriate background of the
+% problem under investigation, and the significance, scope and limits of
+% the work. Outline what have done via citing pertinent references. State
+% what your work differs from previous work. Please spell out those highly
+% specialized terms and abbreviations used in the article to make it
+% accessible for readers.
+
+% The introduction gives a concise and appropriate background of the
+% problem under investigation, and the significance, scope and limits of
+% the work. Outline what have done via citing pertinent references. State
+% what your work differs from previous work. Please spell out those highly
+% specialized terms and abbreviations used in the article to make it
+% accessible for readers.
+
+
+\section{Methods}
+
+Sufficient details of the experiment, methods, simulation, calculation,
+statistical test or analysis should be given so that the method could be
+repeated by another researcher and the results reproduced. Note and
+emphasize any hazards such as explosive or toxicity, better with a
+separate section by the heading ``Caution''. In theoretical papers, 
+this section can be called ``Theoretical Basis'' or ``Theoretical
+Calculations''.
+
+
+\section{Results}
+
+Summarize the data collected and the statistical treatment. Use
+equations, figures and tables for clarity and brevity. Extensive but relevant data should be included in the supporting information.
+
+\subsection{Equations}
+
+
+\begin{quote}
+	\[{2{x^T}(t)x(t - \tau) = {x^T}(t){Q^{ - \frac{1}{2}}}x(t - \tau) \ le \frac{1}{\alpha }{x^T}(t)Px(t) + \alpha {x^T}(t - \tau)x(t - \tau)}\eqno(1)\]
+	\[ i\hbar\frac{\partial \psi}{\partial t}
+	= \frac{-\hbar^2}{2m} \left(
+	\frac{\partial^2}{\partial x^2}
+	+ \frac{\partial^2}{\partial y^2}
+	+ \frac{\partial^2}{\partial z^2}
+	\right) \psi + V \psi\eqno(2)\]
+	%{[}add an equation here; use MS Word or MathType equation function{]}\hfill {(1)}
+\end{quote}
+
+
+\subsection{Tables}
+
+\begin{center}
+	\textbf{Table 1.} Table Caption.
+\end{center}
+
+\begin{center}
+	\begin{longtable}[]{@{}
+			>{\centering\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+			>{\centering\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+			>{\centering\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+		\toprule
+		
+		\begin{minipage}[b]{\linewidth}\raggedright
+			\centering\textbf{Title 1}
+		\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+			\centering\textbf{Title 2}
+		\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+			\centering\textbf{Title 3}
+		\end{minipage} \\
+		\midrule
+		\endhead
+		entry 1 & data \textsuperscript{a} & data \textsuperscript{b} \\
+		entry 2 & data & data \\
+		\bottomrule
+	\end{longtable}
+\end{center}
+\vspace{-4em}
+\textsuperscript{a} Table footnotes should be given as superscript letters such as a, b etc.; \textsuperscript{b} The footnotes should appear at the foot of the table.
+
+
+\subsection{Figures}
+
+Every figure must have a caption that includes figure numbers and a
+brief, informative description, preferably in non-sentence format. Text
+in the figure legend should be with same fronts (Times News Roman) and
+size (12pt). Figures should be numbered in the order in which they are
+referred to in the text, using sequential numerals (e.g. figure 1,
+figure 2, etc.). If there is more than one part to a figure (e.g. figure
+1(a), figure 1(b), etc.), the parts should be identified by a lower-case
+letter in parentheses close to or within the area of the figure. For
+figures copied from other publication, permission is needed. Please add
+references of the figure caption and put appropriate credit lines like:
+Reprinted with permission {[}1{]}. Copyright 2021 Elsevier.
+
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=4cm,height=3cm]{fig/fig1.png}
+	\includegraphics[width=4cm,height=3cm]{fig/fig1.png}
+	\caption{ Figure Caption 1 {[}1{]}. Reprinted with permission {[}1{]}. Copyright 2021 Elsevier.}
+\end{figure}
+
+
+\subsection{Enumerate}
+\subsubsection{Example}
+\textbf{example:}
+
+\begin{enumerate}[(1)]
+	\setlength{\itemindent}{2em}
+	\item item one
+	\item item two
+	\item item three
+\end{enumerate}
+
+\textbf{another type:}
+\begin{enumerate}[(1)]
+	\setlength{\itemindent}{2em}
+	%\setlength{\labelsep}{2em}
+	\item item one
+	\begin{itemize}
+		\setlength{\itemindent}{2em}
+		\item[a.] sub item one
+		\item[b.] sub item two
+	\end{itemize}
+	\item item two
+	\item item three
+\end{enumerate}
+
+\textbf{bullet type:}
+\begin{itemize}
+	\setlength{\itemindent}{1em}
+	\item[$\bullet$] item one
+	\item[$\bullet$] item two
+	\item[$\bullet$] item three
+\end{itemize}
+
+\section{Conclusion}
+%\textbf{\large 4. Conclusion}
+
+The purpose is to interpret and compare results and point out the
+features and limitation of the work. Relate the research to current
+knowledge in the field.
+
+\section{Supplementary data}
+
+The authors confirm that the supplementary data are available within this article.
+
+\section*{Acknowledgments}
+ 
+Funding: All sources of financial support for the project \textbf{must}
+be disclosed in the acknowledgements section. The name of the funding
+agency and the grant number should be given, for example: This work was
+funded by the National Foundation of Science with grant number
+XXX. Author should fill the grant number information during the
+submission stage. Please make sure the grant number is correctly
+written.
+
+\section*{Author’s contribution}
+
+Please make specific attributions of author
+contribution and responsibility in this part and follow
+\href{https://casrai.org/credit/}{CRediT} to define the roles of
+co-authors.
+
+\section*{Conflicts of Interests}
+
+Authors are required to disclose any potential
+conflict(s) of interest like employment, consulting fees, research
+contracts, stock ownership, patent licenses, honoraria, advisory
+affiliations etc.
+
+\section*{Ethical statement}
+
+For research involving human experiments, please add “The study was performed in accordance with the Declaration of Helsinki and approved by the name of the Ethics Committee or Institutional Review Board (approval date, and approval number must be included)”.
+For research involving animal experiments, please add “The study was approved by the name of the Ethics Committee or Institutional Review Board (approval date, and approval number must be included)”.
+If ethical approval is not required, authors must provide an exemption from the Ethics Committee or Institutional Review Board, or a detailed statement because approval is not required.
+
+
+\section*{References}
+Direct quotations from another author's work should be cited as
+footnote. For publications that are Accepted or submitted or In
+preparation, please just add a note at the end of the corresponding
+reference.
+\setlength{\parindent}{0em}
+
+
+\textbf{Journal articles}
+
+Journal references must include the author names, abbreviated journal
+title, year of publication, volume (optional) and page range. For more
+than five authors, the name of the author should be given followed by
+\textit{et al}. A collaborative group of authors or by a corporate body is
+accepted.
+
+{[}1{]} Rafalskyi, D, Martínez, JM, Habl, L. Title of the paper. \textit{Nature} 2021, 24(2):361‐369. DOI.
+
+\textbf{Books and Book Chapters}
+
+Book references must include the author or the editor names, book title,
+publisher, city of the publisher and year of publication.
+
+
+{[}2{]} Copstead LE, Banasik JL. \textit{Pathophysiology}, 3rd ed. St Louis: Elsevier, 2005. pp.123-126.
+{[}3{]} Copstead LE, Banasik JL. Chapter title. In	\textit{Pathophysiology}, 3rd ed. St Louis: Elsevier, 2005. Pp. 123-126.
+
+\textbf{Book Series}
+
+Book series that are periodicals but are not journals could be styled
+either as books or journals.
+
+Author 1; Author 2; Author 3; In Title; Editor 1, Editor 2, Eds.; Series
+title; Publisher: Place of Publication, Year; Pagination.
+
+{[}4{]} Copstead LE, Banasik JL. \textit{Lignocellulose Biodegradation};
+	Saha BC, Hayashi K, Eds. ACS Symposium Series 889; ACS: Washington DC,
+	2004.
+
+\textbf{Conference-series}
+
+Conference series should include the title of the conference and the
+title of the series but not the publisher.
+
+{[}5{]} Holstein BR Title of the conferences. \textit{J. Phys.: Conf.
+		Ser.} 2009, \textbf{173,} 012019
+
+\textbf{Conference proceedings}
+
+Conference proceedings should include the presented work and the
+conference proceeding title and the publisher.
+
+{[}6{]} Chiu, AS, Yip, H. From CM to TCM: A case study of the Tung Wah
+	Hospital in Hong Kong since 1870 (title of the presentation). In
+	\textit{Conference Proceedings}, conference name, Paris, July 6-10,
+	2015. City: Publisher, Year of publication. Page rage or article
+	number (Optional).
+
+\textbf{Thesis}\\
+Thesis should include the title of the thesis. Level of thesis,
+university, year.
+
+{[}7{]} Breton, JC Title of the thesis. Ph.D. Degree, University of
+	Lille, France, 2018.
+
+\textbf{Patent}
+
+The patent should include the patent owner, title, number and the date.
+
+{[}8{]} Sheem SK. Low-cost Fiber optic pressure sensor. U.S. Patent
+	6,738,537, 2004.
+
+\textbf{Dataset}
+
+The citation of the dataset should contain the title of the author.
+title of the dataset, the publisher, the place of publication, the data
+entry number, URL (if available).
+
+{[}9{]} Department of Premier and Cabinet.\textit{~PROV environmental
+		sustainability}.~Melbourne: Public Record Office~Victoria, 2015.
+	Available:~http://data.vic.gov.au/data/dataset/prov-environmental-sustainability
+	(accessed on Day Month Year).
+
+\textbf{Website}
+
+General websites are not recommended. If you have to cite the website,
+please use this format.
+
+{[}10{]} Author (If any). Title of the website. URL (accessed on Day
+	Month Year).
+
+ 
+  
+
+\end{document}
+	
