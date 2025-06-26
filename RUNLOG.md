@@ -2,11 +2,11 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: stellar-bush-156 (184gfu5n) - DILATED CNN PREPROCESSING EXPERIMENT
+## Current Active Run: azure-sponge-157 (l8cw7pxz) - DILATED CNN + DROPOUT EXPERIMENT
 
-**Status**: 🧪 **RUNNING** (Started June 26, 2025, 09:01:11 UTC)  
-**Architecture**: Swin Transformer Tiny + Dilated CNN Preprocessing  
-**Phase**: **Global Context Multi-Scale Feature Extraction**
+**Status**: 🧪 **RUNNING** (Started June 26, 2025, 09:11:54 UTC)  
+**Architecture**: Swin Transformer Tiny + Dilated CNN Preprocessing + Dropout  
+**Phase**: **Regularized Global Context Multi-Scale Feature Extraction**
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) + Dilated CNN Preprocessing
@@ -17,12 +17,12 @@ Training Run Documentation for Modulation Classification Research
 - **Innovation**: Task-specific extraction disabled, dilated preprocessing enabled
 
 ### Dilated CNN Architecture
-**Multi-Scale Receptive Field Pyramid**:
-- **Layer 1**: 3×3 conv, dilation=1 → Point detection (RF: 3×3)
-- **Layer 2**: 3×3 conv, dilation=2 → Local clusters (RF: 7×7)  
-- **Layer 3**: 3×3 conv, dilation=4 → Inter-cluster patterns (RF: 15×15)
-- **Layer 4**: 3×3 conv, dilation=8 → Global constellation spread (RF: 31×31)
-- **Output**: 96→3 channels for Swin input
+**Regularized Multi-Scale Receptive Field Pyramid**:
+- **Layer 1**: 3×3 conv, dilation=1 → BatchNorm → ReLU → Dropout(0.3) → Point detection (RF: 3×3)
+- **Layer 2**: 3×3 conv, dilation=2 → BatchNorm → ReLU → Dropout(0.3) → Local clusters (RF: 7×7)  
+- **Layer 3**: 3×3 conv, dilation=4 → BatchNorm → ReLU → Dropout(0.3) → Inter-cluster patterns (RF: 15×15)
+- **Layer 4**: 3×3 conv, dilation=8 → BatchNorm → ReLU → Dropout(0.3) → Global constellation spread (RF: 31×31)
+- **Output**: 96→3 channels (no dropout to preserve features for Swin)
 
 ### Experiment Hypothesis
 Testing whether global constellation context improves classification:
@@ -37,9 +37,10 @@ Testing whether global constellation context improves classification:
 - **Architecture**: Standard 7×7 Swin windows only
 
 ### Initial Progress
-- **Epoch 1 Start**: Loss=3.74, Mod Acc=7.74%, SNR Acc=8.04%
-- **Training Speed**: 15.86 it/s (slower due to preprocessing overhead)
-- **Status**: Normal initialization, dilated preprocessing active
+- **Epoch 1 Start**: Loss=3.637, Mod Acc=6.33%, SNR Acc=7.83%
+- **Training Speed**: 13.91 it/s (slower due to preprocessing + dropout overhead)
+- **Status**: Normal initialization, regularized dilated preprocessing active
+- **Architecture**: Improved with uniform 0.3 dropout in all preprocessing layers
 
 ---
 

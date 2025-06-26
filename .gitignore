@@ -3,6 +3,7 @@ wandb/
 __pycache__/
 output/
 constellation/
+constellation_diagrams/
 .DS_Store
 *.pth
 atik/
