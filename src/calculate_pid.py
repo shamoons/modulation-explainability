@@ -34,7 +34,7 @@ def calculate_average_changes_by_perturbation(base_dir, modulation_folders, snr_
         print(f"Processing Perturbation: {perturbation_name}")
         for modulation in modulation_folders:
             for snr in snr_folders:
-                original_dir = os.path.join(base_dir, f"constellation/{modulation}/{snr}/")
+                original_dir = os.path.join(base_dir, f"constellation_diagrams/{modulation}/{snr}/")
 
                 if not os.path.exists(original_dir):
                     print(f"Original directory not found: {original_dir}")
@@ -75,7 +75,7 @@ def calculate_average_changes_by_perturbation(base_dir, modulation_folders, snr_
 
 if __name__ == "__main__":
     base_dir = ""  # Specify the base directory path
-    modulation_folders = os.listdir(os.path.join(base_dir, "constellation"))
+    modulation_folders = os.listdir(os.path.join(base_dir, "constellation_diagrams"))
     snr_folders = [f"SNR_{i}" for i in range(-20, 30, 2)]
 
     perturbation_mapping = {

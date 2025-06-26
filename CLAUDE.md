@@ -60,7 +60,7 @@ uv run python src/convert_to_constellation.py \
 # Test model on perturbed and non-perturbed data
 uv run python src/test_constellation.py \
     --model_checkpoint <path_to_checkpoint> \
-    --data_dir constellation \
+    --data_dir constellation_diagrams \
     --perturbation_dir <path_to_perturbation_dir>
 
 # Run hyperparameter sweep with W&B

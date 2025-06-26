@@ -32,7 +32,7 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     print("Loading data...")
 
     image_type = 'grayscale'
-    root_dir = "constellation"
+    root_dir = "constellation_diagrams"
     torch.random.manual_seed(42)
 
     # Parse snr_list and mods_to_process if provided

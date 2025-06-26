@@ -168,7 +168,7 @@ def main():
                        help='Number of parallel workers (auto-detects optimal count)')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed for reproducible perturbations')
-    parser.add_argument('--source', type=str, default='constellation',
+    parser.add_argument('--source', type=str, default='constellation_diagrams',
                        help='Source directory containing constellation images')
     parser.add_argument('--output', type=str, default='perturbed_constellations',
                        help='Output directory for perturbed images')

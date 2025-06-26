@@ -218,7 +218,7 @@ def process_modulation_snr_set(args):
                 # Save images
                 for image_type in image_types:
                     save_images_batch(heatmaps[:actual_batch_size], 
-                                    'constellation', 
+                                    'constellation_diagrams', 
                                     modulation_type, 
                                     snr_value, 
                                     batch_start_idx, 
@@ -318,7 +318,7 @@ def main():
     for result in results:
         print(result)
     
-    print(f"\nCompleted! Images saved to: constellation/")
+    print(f"\nCompleted! Images saved to: constellation_diagrams/")
 
 
 if __name__ == "__main__":
