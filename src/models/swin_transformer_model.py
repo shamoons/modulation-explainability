@@ -84,6 +84,7 @@ class ConstellationSwinTransformer(nn.Module):
         self.model_variant = model_variant
         self.use_task_specific = use_task_specific
         self.use_dilated_preprocessing = use_dilated_preprocessing
+        self.dropout_prob = dropout_prob
         
         # Dilated CNN preprocessing for global constellation context
         if self.use_dilated_preprocessing:
@@ -170,6 +171,9 @@ class ConstellationSwinTransformer(nn.Module):
         
         # Extract hierarchical features using Swin Transformer
         shared_features = self.model(x)
+        
+        # Apply dropout to shared features for regularization
+        shared_features = F.dropout(shared_features, p=self.dropout_prob, training=self.training)
 
         if self.use_task_specific:
             # Task-specific feature extraction and fusion

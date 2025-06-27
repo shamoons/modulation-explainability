@@ -58,7 +58,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"SNR-PRESERVING CONSTELLATION EXPERIMENT - {model_type} training on literature-standard constellation diagrams with PRESERVED SNR discriminative information. Fixed critical preprocessing bug: replaced per-image max normalization (H=H/H.max()) with power normalization + log scaling. SNR discrimination ratio improved 1.73x (2.398/1.386 vs 1.0/1.0). Expected breakthrough: SNR accuracy from 11-13% plateau → 40-60%+ with constellation diagrams that maintain intensity differences encoding SNR information. Testing digital modulations across -20 to 30dB."
+        "description": f"SNR-PRESERVING + ENHANCED REGULARIZATION - {model_type} with dilated CNN preprocessing AND post-Swin dropout (p={dropout}) for overfitting prevention. Early stopping (patience=5) added. Architecture: Dilated CNN (multi-scale) → Swin → DROPOUT → Heads. Previous run showed immediate overfitting without post-Swin dropout. This run tests if additional regularization can maintain high performance while preventing train/val divergence. Bounded SNR 0-30dB, literature-standard constellation generation with preserved SNR information."
     }
     
     
@@ -103,7 +103,16 @@ def train(
     # Track best epoch for final test evaluation
     best_epoch = 0
     
+    # Early stopping variables
+    early_stopping_patience = 5  # Stop if no improvement for 5 epochs
+    epochs_no_improve = 0
+    early_stop = False
+    
     for epoch in range(epochs):
+        if early_stop:
+            print(f"\nEarly stopping triggered! No improvement for {early_stopping_patience} epochs.")
+            print(f"Best model was from epoch {best_epoch} with validation loss: {best_val_loss:.4g}")
+            break
         
         # Shuffle train indices each epoch for better generalization
         np.random.shuffle(train_idx)
@@ -237,11 +246,17 @@ def train(
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_epoch = epoch + 1
+            epochs_no_improve = 0  # Reset counter
             # Include model name in checkpoint filename
             model_name = model.model_name if hasattr(model, 'model_name') else 'unknown'
             checkpoint_name = f"best_model_{model_name}_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), os.path.join(save_dir, checkpoint_name))
             print(f"Best model saved: {checkpoint_name} with validation loss: {best_val_loss:.4g}")
+        else:
+            epochs_no_improve += 1
+            print(f"No improvement in validation loss. Patience: {epochs_no_improve}/{early_stopping_patience}")
+            if epochs_no_improve >= early_stopping_patience:
+                early_stop = True
 
         fig_confusion_matrix_modulation = plot_confusion_matrix(
             all_true_modulation_labels,
