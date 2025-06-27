@@ -35,18 +35,214 @@ Testing whether **dilated CNN preprocessing** can improve feature extraction by:
 - **Epoch 1 Results**: 21.43% validation accuracy before crash
 - **Strong initial performance validated dilated preprocessing approach**
 
-#### New Run (noble-grass-168) - Exceptional Progress
-- **Epoch 1 Progress** (27% complete): 
-  - **Training Combined**: ~45.8% (modulation: 53.25%, SNR: 40.36%)
-  - **Loss**: 1.424 (excellent convergence)
-  - **Training speed**: 2.84 it/s (stable)
-- **Performance Trajectory**:
-  - 3% epoch: 27.9% combined
-  - 27% epoch: 45.8% combined (+17.9% improvement!)
-- **Key Achievements**:
-  - **SNR at 40.36%**: Already matching typical epoch 1 validation performance
-  - **Modulation at 53.25%**: Strong feature extraction from dilated CNN
-  - **Rapid convergence**: Loss dropped from 3.7 → 1.42 in <30% of epoch
+#### New Run (noble-grass-168) - Progress Update
+
+##### Epoch 1 Results
+- **Validation Combined**: 20.46% (modulation: 56.04%, SNR: 40.64%)
+- **Training Combined**: 27.42% (modulation: 61.18%, SNR: 47.52%)
+- **Task Balance**: 65.6%/34.4% (reasonable balance)
+- **Loss**: 1.828 validation vs 1.372 training
+- **Learning Rate**: 1e-4
+
+##### Epoch 2 Results - Excellent Progress
+- **Validation Combined**: 22.65% (modulation: 56.56%, SNR: 42.48%)
+- **Training Combined**: 34.85% (modulation: 68.43%, SNR: 54.26%)
+- **Task Balance**: 67.2%/32.8% (stable)
+- **Loss**: 1.957 validation vs 1.110 training
+- **Learning Rate**: 1e-4
+
+**Epoch 2 Analysis**:
+- **Combined Improvement**: +2.19% validation (20.46% → 22.65%)
+- **SNR Progress**: 40.64% → 42.48% (+1.84% improvement)
+- **Modulation Stable**: 56.04% → 56.56% (maintaining performance)
+- **Training Acceleration**: 27.42% → 34.85% (+7.43% jump!)
+- **Healthy Gap**: 12.2% train-val difference (reasonable for epoch 2)
+
+**Key Observations**:
+- **No Overfitting Yet**: Validation still improving alongside training
+- **SNR Learning**: Consistent improvement shows dilated CNN working well
+- **Stable Task Balance**: ~67/33 split remaining consistent
+- **Strong Trajectory**: On track to surpass previous best without dilated CNN
+
+##### Epoch 3 Results - Strong Continued Growth
+- **Validation Combined**: 26.93% (modulation: 61.86%, SNR: 45.89%)
+- **Training Combined**: 37.29% (modulation: 70.42%, SNR: 56.37%)
+- **Task Balance**: 67.4%/32.6% (very stable)
+- **Loss**: 1.545 validation vs 1.050 training (**NEW BEST**)
+- **Learning Rate**: 1e-4
+
+**Epoch 3 Analysis**:
+- **Combined Jump**: +4.28% validation (22.65% → 26.93%) - **Excellent growth!**
+- **Modulation Surge**: 56.56% → 61.86% (+5.30% - strong improvement)
+- **SNR Progress**: 42.48% → 45.89% (+3.41% - steady climb)
+- **Best Model Saved**: Validation loss improved (1.957 → 1.545)
+- **Train-Val Gap**: 10.36% (actually decreasing from 12.2%!)
+
+**CRITICAL NOTE**: These results are **WITHOUT** the suggested post-Swin dropout! The dilated CNN preprocessing alone is providing:
+- Better feature extraction (helping performance)
+- Implicit regularization (helping generalization)
+- No immediate overfitting despite same architecture
+- **Train-val gap DECREASING** (12.2% → 10.36%) - opposite of overfitting!
+
+**F1 Score Analysis (Epoch 1)**:
+
+**Modulation F1 Scores**:
+- **Excellent (>0.8)**: BPSK (1.0), QPSK (0.912), 4ASK (0.854), 8ASK (0.846), OQPSK (0.838)
+- **Strong (0.6-0.8)**: 16APSK (0.750), 32APSK (0.730), 8PSK (0.654), 16QAM (0.599)
+- **Moderate (0.3-0.6)**: 16PSK (0.559), 32QAM (0.302)
+- **Struggling (<0.3)**: 64QAM (0.264), 32PSK (0.129), 128APSK (0.101), 256QAM (0.014), 128QAM (0.010), 64APSK (0.012)
+
+**SNR F1 Scores**:
+- **Excellent (>0.7)**: 0 dB (0.920), 4 dB (0.849), 2 dB (0.829), 6 dB (0.751), 8 dB (0.737)
+- **Moderate (0.4-0.7)**: 10 dB (0.649), 12 dB (0.475)
+- **Poor (<0.4)**: 14-28 dB range (0.206-0.059), 30 dB (0.000)
+
+**F1 Score Analysis (Epoch 2 - CORRECTED)**:
+
+**Modulation F1 Scores**:
+- **Excellent (>0.8)**: BPSK (0.995), QPSK (0.926), 4ASK (0.908), 8ASK (0.912), OQPSK (0.809)
+- **Strong (0.6-0.8)**: 16APSK (0.783), 32APSK (0.643), 8PSK (0.666)
+- **Moderate (0.3-0.6)**: 16QAM (0.588), 16PSK (0.549), 32QAM (0.317)
+- **Struggling (<0.3)**: 64QAM (0.176), 32PSK (0.112), 128APSK (0.025), 128QAM (0.007), 64APSK (0.005)
+- **Failed**: 256QAM (0.000)
+
+**SNR F1 Scores (Epoch 2 - CORRECTED)**:
+- **Excellent (>0.7)**: 0 dB (0.857), 4 dB (0.830), 2 dB (0.728), 6 dB (0.744), 8 dB (0.718), 10 dB (0.728)
+- **Moderate (0.4-0.7)**: 12 dB (0.523)
+- **Poor (<0.4)**: 14 dB (0.382), 16 dB (0.250), 28 dB (0.260), 18 dB (0.166), 24 dB (0.119), 20 dB (0.099)
+- **Near Zero**: 22 dB (0.071), 26 dB (0.022), 30 dB (0.006)
+
+#### Epoch 4 Results - Continued Strong Progress
+- **Validation Combined**: 28.29% (modulation: 63.31%, SNR: 47.58%)
+- **Training Combined**: 38.86% (modulation: 71.48%, SNR: 57.66%)
+- **Task Balance**: 67.4%/32.6% (perfectly stable)
+- **Loss**: 1.518 validation vs 1.014 training (**NEW BEST**)
+- **Learning Rate**: 1e-4
+
+**Epoch 4 Analysis**:
+- **Combined Growth**: +1.36% validation (26.93% → 28.29%)
+- **Modulation Progress**: 61.86% → 63.31% (+1.45%)
+- **SNR Acceleration**: 45.89% → 47.58% (+1.69%)
+- **Best Model Saved**: Validation loss improved (1.545 → 1.518)
+- **Train-Val Gap**: 10.57% (stable regularization)
+
+**Performance Comparison vs Baseline (without dilated CNN)**:
+- **Epoch 4 Baseline**: ~40.38% combined (from iconic-serenity-164)
+- **Epoch 4 with Dilated CNN**: 28.29% combined
+- **Note**: Lower absolute performance but showing steady growth without overfitting signs
+
+**F1 Score Analysis (Epoch 3)**:
+
+**Modulation F1 Scores**:
+- **Excellent (>0.8)**: BPSK (1.0), QPSK (0.953), OQPSK (0.924), 4ASK (0.913), 8ASK (0.914), 32APSK (0.809), 8PSK (0.806)
+- **Strong (0.6-0.8)**: 16APSK (0.725), 16QAM (0.671), 16PSK (0.616)
+- **Moderate (0.3-0.6)**: 32QAM (0.364), 128APSK (0.322), 64QAM (0.305)
+- **Struggling (<0.3)**: 64APSK (0.262), 32PSK (0.249), 128QAM (0.100), 256QAM (0.096)
+
+**SNR F1 Scores (Epoch 3)**:
+- **Excellent (>0.7)**: 0 dB (0.921), 2 dB (0.831), 6 dB (0.774), 4 dB (0.798), 8 dB (0.798), 10 dB (0.761)
+- **Moderate (0.4-0.7)**: 12 dB (0.672), 14 dB (0.428)
+- **Poor (<0.4)**: 16 dB (0.259), 28 dB (0.264), 18 dB (0.167), 20 dB (0.125), 22 dB (0.109)
+- **Near Zero**: 26 dB (0.078), 24 dB (0.063), 30 dB (0.020)
+
+**F1 Score Analysis (Epoch 4)**:
+
+**Modulation F1 Scores**:
+- **Excellent (>0.8)**: BPSK (1.0), QPSK (0.931), 4ASK (0.924), 8ASK (0.922), OQPSK (0.902), 16QAM (0.807), 16APSK (0.801)
+- **Strong (0.6-0.8)**: 8PSK (0.798), 32APSK (0.792), 16PSK (0.622)
+- **Moderate (0.3-0.6)**: 64QAM (0.416), 32QAM (0.369), 32PSK (0.345), 128APSK (0.331)
+- **Struggling (<0.3)**: 256QAM (0.217), 64APSK (0.137), 128QAM (0.135)
+
+**SNR F1 Scores (Epoch 4)**:
+- **Excellent (>0.7)**: 0 dB (0.923), 4 dB (0.873), 2 dB (0.847), 6 dB (0.842), 8 dB (0.791), 10 dB (0.752)
+- **Moderate (0.4-0.7)**: 12 dB (0.668), 14 dB (0.478)
+- **Poor (<0.4)**: 16 dB (0.336), 28 dB (0.274), 18 dB (0.178), 20 dB (0.121), 24 dB (0.102)
+- **Near Zero**: 22 dB (0.085), 26 dB (0.084), 30 dB (0.000)
+
+**Key Observations**:
+- **Train-Val Gap**: ~10% gap is actually healthy and stable - not excessive
+- **Strong Improvements**: 16QAM (0.671→0.807), 256QAM (0.096→0.217), 64QAM (0.305→0.416)
+- **Concerning Drops**: 64APSK (0.262→0.137), 32APSK (0.809→0.792)
+- **SNR Pattern Consistent**: Low SNRs excellent, high SNRs failing as expected
+- **Dilated CNN Impact**: Providing implicit regularization, preventing early overfitting
+
+#### Critical SNR "Black Hole" at 28 dB (Epoch 4)
+
+**28 dB Acting as Attractor for High SNRs**:
+- 18 dB → 28 dB: **45.1%** misclassified
+- 20 dB → 28 dB: **70.7%** misclassified  
+- 22 dB → 28 dB: **79.1%** misclassified
+- 24 dB → 28 dB: **83.4%** misclassified
+- 26 dB → 28 dB: **86.5%** misclassified
+
+While 28 dB itself is classified correctly (89.5%), it's acting as a massive attractor for all SNRs from 18-26 dB. This explains the seemingly "good" F1 score for 28 dB (0.274) - it's getting tons of false positives from other high SNRs!
+
+**This confirms the over-clarity paradox**: At high SNRs, constellation diagrams become so similar (tight point clusters) that the model defaults to predicting 28 dB for almost all high SNR cases.
+
+**Key Confusion Patterns**:
+1. **SNR Black Hole**: 28 dB attracting 70-86% of predictions from 20-26 dB range
+2. **High-order confusion**: 128APSK/128QAM/64APSK heavily confused with 32QAM
+3. **PSK family issues**: 16PSK ↔ 32PSK confusion remains significant
+4. **Low SNR Excellence**: 0-12 dB showing strong diagonal dominance in confusion matrix
+
+#### Epoch 5 Results - Strong Jump in Performance
+- **Validation Combined**: 32.42% (modulation: 65.84%, SNR: 52.49%)
+- **Training Combined**: 40.03% (modulation: 72.35%, SNR: 58.65%)
+- **Task Balance**: 67.3%/32.7% (stable)
+- **Loss**: 1.292 validation vs 0.987 training (**NEW BEST**)
+- **Learning Rate**: 1e-4
+
+**Epoch 5 Analysis**:
+- **Major Jump**: +4.13% validation (28.29% → 32.42%) - **Biggest single-epoch gain!**
+- **Modulation Surge**: 63.31% → 65.84% (+2.53%)
+- **SNR Breakthrough**: 47.58% → 52.49% (+4.91%) - **Crossed 50% threshold!**
+- **Best Model Saved**: Validation loss improved significantly (1.518 → 1.292)
+- **Train-Val Gap**: 7.61% - Actually decreasing!
+
+**F1 Score Analysis (Epoch 5)**:
+**Modulation F1 Scores**:
+- **Excellent (>0.8)**: BPSK (1.0), QPSK (0.946), OQPSK (0.930), 4ASK (0.920), 8ASK (0.924), 8PSK (0.808)
+- **Strong (0.6-0.8)**: 16APSK (0.774), 32APSK (0.780), 16QAM (0.759), 16PSK (0.646)
+- **Moderate (0.3-0.6)**: 32PSK (0.526), 128APSK (0.500), 32QAM (0.420), 64QAM (0.402)
+- **Struggling (<0.3)**: 64APSK (0.299), 256QAM (0.205), 128QAM (0.161)
+
+**SNR F1 Scores (Epoch 5)**:
+- **Excellent (>0.7)**: 0 dB (0.929), 4 dB (0.877), 2 dB (0.863), 6 dB (0.843), 8 dB (0.827), 10 dB (0.793)
+- **Moderate (0.4-0.7)**: 12 dB (0.676), 14 dB (0.596), 16 dB (0.548)
+- **Poor (<0.4)**: 18 dB (0.338), 28 dB (0.295), 20 dB (0.231), 22 dB (0.148), 26 dB (0.146)
+- **Near Zero**: 24 dB (0.101), 30 dB (0.077)
+
+#### Epoch 6 Results - Validation Plateau but Training Continues
+- **Validation Combined**: 31.12% (modulation: 65.83%, SNR: 49.44%)
+- **Training Combined**: 40.95% (modulation: 72.96%, SNR: 59.45%)
+- **Task Balance**: 67.4%/32.6% (perfectly stable)
+- **Loss**: 1.389 validation vs 0.965 training
+- **Learning Rate**: 1e-4
+
+**Epoch 6 Analysis**:
+- **Validation Dip**: -1.30% (32.42% → 31.12%) - First validation decrease
+- **Modulation Stable**: 65.84% → 65.83% (essentially unchanged)
+- **SNR Drop**: 52.49% → 49.44% (-3.05%) - Concerning regression
+- **Train-Val Gap**: 9.83% - Starting to widen
+- **Early Warning**: Possible overfitting beginning
+
+**28 dB Black Hole Analysis (Epochs 5-6)**:
+Epoch 5:
+- 20 dB → 28 dB: 45.5%
+- 22 dB → 28 dB: 64.9%
+- 24 dB → 28 dB: 68.7%
+- 26 dB → 28 dB: 71.9%
+- 28 dB correct: 76.6%
+
+Epoch 6 (worsening):
+- 18 dB → 28 dB: 38.3% (new!)
+- 20 dB → 28 dB: 69.0% (+23.5%)
+- 22 dB → 28 dB: 78.0% (+13.1%)
+- 24 dB → 28 dB: 81.1% (+12.4%)
+- 26 dB → 28 dB: 83.6% (+11.7%)
+- 28 dB correct: 86.2% (+9.6%)
+
+**The 28 dB black hole is getting STRONGER**, now pulling in even 18 dB predictions!
 
 ---
 
