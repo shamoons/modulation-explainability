@@ -124,11 +124,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
     
-    # Use Distance-Penalized SNR Loss for better ordinal relationships
-    from losses.uncertainty_weighted_loss import DistancePenalizedSNRLoss
-    # Get actual SNR values from dataset to create appropriate loss function
-    actual_snr_values = sorted(list(dataset.inverse_snr_labels.values()))
-    criterion_snr = DistancePenalizedSNRLoss(snr_values=actual_snr_values, alpha=1.0, beta=0.5).to(device)
+    # Use regression loss for SNR
+    criterion_snr = nn.SmoothL1Loss().to(device)  # Robust regression loss
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss

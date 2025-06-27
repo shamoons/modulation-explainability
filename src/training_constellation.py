@@ -153,7 +153,9 @@ def train(
 
                 # Compute loss for both outputs
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                loss_snr = criterion_snr(snr_output, snr_labels)
+                # Convert SNR labels to continuous values for regression
+                snr_values = snr_labels.float() * 2.0  # Convert 0-15 to 0-30 dB
+                loss_snr = criterion_snr(snr_output.squeeze(), snr_values)
 
                 # Use analytical uncertainty weighting for multi-task learning
                 total_loss, task_weights = uncertainty_weighter([loss_modulation, loss_snr])
@@ -181,14 +183,19 @@ def train(
                 running_loss += total_loss.item()
 
                 _, predicted_modulation = modulation_output.max(1)
-                _, predicted_snr = snr_output.max(1)
+                
+                # For SNR regression, round to nearest 2 dB
+                snr_pred_db = snr_output.squeeze()
+                snr_pred_rounded = torch.round(snr_pred_db / 2.0) * 2.0
+                snr_pred_rounded = torch.clamp(snr_pred_rounded, 0, 30)
+                snr_pred_classes = (snr_pred_rounded / 2).long()
 
                 total += modulation_labels.size(0)
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                correct_snr += predicted_snr.eq(snr_labels).sum().item()
+                correct_snr += snr_pred_classes.eq(snr_labels).sum().item()
 
                 # Calculate combined accuracy
-                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
+                correct_both += ((predicted_modulation == modulation_labels) & (snr_pred_classes == snr_labels)).sum().item()
 
                 # Update progress bar
                 progress.set_postfix({

@@ -149,11 +149,23 @@ class ConstellationSwinTransformer(nn.Module):
             )
             # Output heads for modulation and SNR (reduced feature dimension)
             self.modulation_head = nn.Linear(in_features // 4, num_classes)
-            self.snr_head = nn.Linear(in_features // 4, snr_classes)
+            # SNR regression head - single output
+            self.snr_head = nn.Sequential(
+                nn.Linear(in_features // 4, 256),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(256, 1)  # Single output for regression
+            )
         else:
             # Direct heads without task-specific processing
             self.modulation_head = nn.Linear(in_features, num_classes)
-            self.snr_head = nn.Linear(in_features, snr_classes)
+            # SNR regression head - single output
+            self.snr_head = nn.Sequential(
+                nn.Linear(in_features, 256),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(256, 1)  # Single output for regression
+            )
 
     def forward(self, x):
         """
