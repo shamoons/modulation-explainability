@@ -33,7 +33,10 @@ def train(
     patience=1,
     uncertainty_weighter=None,
     model_type=None,
-    dropout=0.2
+    dropout=0.2,
+    max_lr=None,
+    step_size_up=5,
+    step_size_down=5
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -58,7 +61,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"SNR-PRESERVING + ENHANCED REGULARIZATION - {model_type} with dilated CNN preprocessing AND post-Swin dropout (p={dropout}) for overfitting prevention. Early stopping (patience=5) added. Architecture: Dilated CNN (multi-scale) → Swin → DROPOUT → Heads. Previous run showed immediate overfitting without post-Swin dropout. This run tests if additional regularization can maintain high performance while preventing train/val divergence. Bounded SNR 0-30dB, literature-standard constellation generation with preserved SNR information."
+        "description": f"CYCLIC LR EXPERIMENT - {model_type} with SNR regression and cyclic learning rate scheduling. Using triangular2 mode with base_lr=1e-6 and max_lr={max_lr if max_lr else '1e-4'}. First cycle: 1e-6 to 1e-4 (100x range), then halving each cycle. Step sizes: {step_size_up} epochs up, {step_size_down} epochs down. This wider range aims to: (1) Explore aggressively in early training to escape attractors, (2) Maintain stability with ultra-low base LR, (3) Gradually refine with decreasing amplitude. Previous static 1e-5 LR showed good results but slow; this approach combines exploration with stability. Bounded SNR 0-30dB, SNR-preserving constellation generation."
     }
     
     
@@ -122,6 +125,28 @@ def train(
         use_pin_memory = device.type == 'cuda'
         train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
         val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
+        
+        # Create CyclicLR scheduler on first epoch
+        if epoch == 0:
+            # Override base_lr for cyclic - we want a lower base
+            actual_base_lr = 1e-6  # Lower base for better stability
+            # Set max_lr if not provided
+            if max_lr is None:
+                max_lr = 1e-4  # 100x base_lr for first cycle exploration
+            
+            scheduler = torch.optim.lr_scheduler.CyclicLR(
+                optimizer,
+                base_lr=actual_base_lr,
+                max_lr=max_lr,
+                step_size_up=step_size_up * len(train_loader),  # Convert epochs to iterations
+                step_size_down=step_size_down * len(train_loader),
+                mode='triangular2',  # Halves amplitude each cycle
+                gamma=1.0,
+                cycle_momentum=False  # Don't cycle momentum for Adam
+            )
+            print(f"Using CyclicLR scheduler: base_lr={actual_base_lr}, max_lr={max_lr}, mode=triangular2")
+            print(f"Cycle length: {step_size_up + step_size_down} epochs ({(step_size_up + step_size_down) * len(train_loader)} iterations)")
+            print(f"Note: LR will vary continuously throughout training (per-batch updates)")
 
         model.train()
         running_loss = 0.0
@@ -203,6 +228,10 @@ def train(
                     'Mod Acc': f"{100.0 * correct_modulation / total:.2f}%",
                     'SNR Acc': f"{100.0 * correct_snr / total:.2f}%"
                 })
+                
+                # Step the scheduler (CyclicLR needs to be called every batch)
+                if scheduler is not None:
+                    scheduler.step()
 
         train_modulation_accuracy = 100.0 * correct_modulation / total
         train_snr_accuracy = 100.0 * correct_snr / total
@@ -247,7 +276,7 @@ def train(
             all_pred_snr_labels
         ) = val_results
 
-        scheduler.step(val_loss)
+        # CyclicLR is stepped every batch in the training loop, not after validation
 
         # Save model if it has the best validation loss
         if val_loss < best_val_loss:
@@ -355,9 +384,12 @@ def train(
                             num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
     
     # Run validation on test set
-    test_loss, test_modulation_accuracy, test_snr_accuracy, test_combined_accuracy, _, _, _, _ = validate(
+    test_results = validate(
         model, device, test_loader, criterion_modulation, criterion_snr, uncertainty_weighter
     )
+    
+    # Unpack the 5 values returned by validate
+    test_loss, test_modulation_accuracy, test_snr_accuracy, test_combined_accuracy, _, _, _, _ = test_results + (None,) * (8 - len(test_results))
     
     print(f"\nFINAL TEST RESULTS:")
     print(f"  Test Loss: {test_loss:.3f}")

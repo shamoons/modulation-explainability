@@ -98,13 +98,64 @@ Looking at the confusion matrix, the high SNR behavior is **much healthier**:
 - 30 dB → 30 dB: 23.0% (still struggling but not collapsed)
 
 **Key Insight**: No single SNR is dominating! The errors are distributed more naturally:
-- 24 dB spreads to: 26 dB (39.1%), 28 dB (8.8%)
-- 26 dB spreads to: 28 dB (15.3%), not just staying at 26
-- 28 dB spreads to: 26 dB (19.5%), 30 dB (7.0%)
+- 24 dB: Split between 26 dB (39.1%) and 28 dB (25.8%)
+- 26 dB: Split between 26 dB (41.8%) and 28 dB (20.7%)
+- 28 dB: Peak at 28 dB (42.7%) with spillover to 26 dB (19.5%)
+- 30 dB: Split between 26 dB (39.6%) and 28 dB (23.0%)
+
+### Cyclic LR Implementation - Completed
+
+**Implementation Details**:
+1. Added CyclicLR scheduler creation in training loop (after train_loader is initialized)
+2. Modified scheduler.step() logic:
+   - CyclicLR: Called every batch (inside training loop)
+   - ReduceLROnPlateau: Called after validation with val_loss
+3. Default configuration:
+   - base_lr: 1e-5 (current)
+   - max_lr: 50x base_lr = 5e-4
+   - mode: triangular2 (halves amplitude each cycle)
+   - step_size: 5 epochs up, 5 epochs down
+
+**Expected Benefits**:
+- Escape local optima at high SNRs
+- Periodic exploration with decreasing amplitude
+- Maintain stability while allowing exploration
 
 This is **exactly what we wanted** - natural confusion between adjacent SNRs rather than collapse to a single value.
 
 ### Summary: Low LR Success
+
+**Key Achievements**:
+1. **No Single Attractor**: Unlike regular LR, no collapse to 26 or 28 dB
+2. **Better High SNR**: 16-20 dB F1 scores improved significantly
+3. **Healthy Validation**: Validation > Training throughout (no overfitting)
+4. **Peak Performance**: 41.77% combined (74.06% mod, 58.65% SNR)
+
+**Comparison with Previous Regression Run (balmy-waterfall-174)**:
+- **Previous**: 40.08% combined but with 26 dB attractor forming
+- **Current**: 41.77% combined with healthier SNR distribution
+- **Trade-off**: Slower convergence but better final quality
+
+### Command to Run with Cyclic LR (Now Default)
+
+```bash
+uv run python src/train_constellation.py \
+    --model_type swin_tiny \
+    --batch_size 256 \
+    --snr_list "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30" \
+    --epochs 100
+```
+
+**New Default Settings**:
+- Base LR: 1e-6 (ultra-low for stability)
+- Max LR: 1e-4 (100x range for exploration)
+- Mode: triangular2 (halving amplitude each cycle)
+- Updates: Per-batch (smooth transitions)
+
+**Expected LR Pattern**:
+- Cycle 1: 1e-6 ↔ 1e-4 (aggressive exploration)
+- Cycle 2: 1e-6 ↔ 5e-5 (refined search)
+- Cycle 3: 1e-6 ↔ 2.5e-5 (fine-tuning)
 
 **Achievements**:
 1. **No SNR Attractor**: Successfully avoided both 28 dB and 26 dB black holes

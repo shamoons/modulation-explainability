@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, max_lr=None, step_size_up=5, step_size_down=5):
     # Load data
     print("Loading data...")
 
@@ -135,20 +135,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     model_params = list(model.parameters()) + list(uncertainty_weighter.parameters())
     optimizer = optim.Adam(model_params, lr=base_lr, weight_decay=weight_decay)
 
-    # Instead of CyclicLR, use ReduceLROnPlateau
-    # ReduceLROnPlateau reduces the learning rate when a metric has stopped improving.
-    # Here, we assume we'll call scheduler.step(val_loss) after each epoch in the train() function.
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer,
-        mode='min',      # since we'll monitor validation loss, which we want to minimize
-        factor=0.7,      # reduce LR by 30% (more conservative than 50%)
-        patience=patience,     # wait for patience epochs without improvement before reducing LR
-        threshold=0.0001,
-        threshold_mode='rel',
-        cooldown=0,
-        min_lr=0,
-        eps=1e-08
-    )
+    # Scheduler will be created in the train function after we know the train_loader size
+    scheduler = None  # Will be created in train function
 
     # Determine device (CUDA, MPS, or CPU)
     device = get_device()
@@ -174,7 +162,10 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         patience=patience,
         uncertainty_weighter=uncertainty_weighter,  # Pass the uncertainty weighter
         model_type=model_type,
-        dropout=dropout
+        dropout=dropout,
+        max_lr=max_lr,
+        step_size_up=step_size_up,
+        step_size_down=step_size_down
     )
 
 
@@ -193,6 +184,11 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
     parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=False)
     parser.add_argument('--use_dilated_preprocessing', type=str2bool, help='Use dilated CNN preprocessing for global context (Swin only)', default=False)
+    
+    # Cyclic learning rate scheduler options
+    parser.add_argument('--max_lr', type=float, help='Maximum learning rate for cyclic scheduler (default: 50x base_lr)', default=None)
+    parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
+    parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
 
     args = parser.parse_args()
 
@@ -209,5 +205,8 @@ if __name__ == "__main__":
         model_type=args.model_type,
         dropout=args.dropout,
         use_task_specific=args.use_task_specific,
-        use_dilated_preprocessing=args.use_dilated_preprocessing
+        use_dilated_preprocessing=args.use_dilated_preprocessing,
+        max_lr=args.max_lr,
+        step_size_up=args.step_size_up,
+        step_size_down=args.step_size_down
     )
