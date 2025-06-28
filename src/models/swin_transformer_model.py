@@ -39,7 +39,7 @@ class ConstellationSwinTransformer(nn.Module):
     A Swin Transformer model customized for constellation classification.
     The model outputs two things:
     1) Modulation classification
-    2) SNR prediction
+    2) SNR classification
     
     Supports Swin-Tiny, Swin-Small, and Swin-Base variants with hierarchical processing
     ideal for constellation diagrams' sparse spatial structure.
@@ -149,22 +149,22 @@ class ConstellationSwinTransformer(nn.Module):
             )
             # Output heads for modulation and SNR (reduced feature dimension)
             self.modulation_head = nn.Linear(in_features // 4, num_classes)
-            # SNR regression head - single output
+            # SNR classification head - outputs num_classes for each SNR class
             self.snr_head = nn.Sequential(
                 nn.Linear(in_features // 4, 256),
                 nn.ReLU(),
                 nn.Dropout(dropout_prob),
-                nn.Linear(256, 1)  # Single output for regression
+                nn.Linear(256, snr_classes)  # Output logits for each SNR class
             )
         else:
             # Direct heads without task-specific processing
             self.modulation_head = nn.Linear(in_features, num_classes)
-            # SNR regression head - single output
+            # SNR classification head - outputs num_classes for each SNR class
             self.snr_head = nn.Sequential(
                 nn.Linear(in_features, 256),
                 nn.ReLU(),
                 nn.Dropout(dropout_prob),
-                nn.Linear(256, 1)  # Single output for regression
+                nn.Linear(256, snr_classes)  # Output logits for each SNR class
             )
 
     def forward(self, x):
