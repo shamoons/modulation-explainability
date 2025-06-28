@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, max_lr=None, step_size_up=5, step_size_down=5):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.5):
     # Load data
     print("Loading data...")
 
@@ -124,8 +124,10 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
     
-    # Use regression loss for SNR
-    criterion_snr = nn.SmoothL1Loss().to(device)  # Robust regression loss
+    # Use classification loss with distance penalty for SNR
+    from losses.distance_weighted_ce import DistanceWeightedCrossEntropyLoss
+    criterion_snr = DistanceWeightedCrossEntropyLoss(num_classes=num_snr_classes, alpha=snr_alpha).to(device)
+    print(f"Using distance-weighted SNR loss with alpha={snr_alpha} (higher = stronger distance penalty)")
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
@@ -165,7 +167,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         dropout=dropout,
         max_lr=max_lr,
         step_size_up=step_size_up,
-        step_size_down=step_size_down
+        step_size_down=step_size_down,
+        snr_alpha=snr_alpha
     )
 
 
@@ -189,6 +192,9 @@ if __name__ == "__main__":
     parser.add_argument('--max_lr', type=float, help='Maximum learning rate for cyclic scheduler (default: 50x base_lr)', default=None)
     parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
     parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
+    
+    # SNR loss options
+    parser.add_argument('--snr_alpha', type=float, help='Weight for SNR distance penalty (0=pure CE, 1=strong penalty, 2=very strong)', default=0.5)
 
     args = parser.parse_args()
 
@@ -208,5 +214,6 @@ if __name__ == "__main__":
         use_dilated_preprocessing=args.use_dilated_preprocessing,
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
-        step_size_down=args.step_size_down
+        step_size_down=args.step_size_down,
+        snr_alpha=args.snr_alpha
     )

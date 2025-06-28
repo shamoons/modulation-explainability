@@ -40,9 +40,8 @@ def validate(model, device, val_loader, criterion_modulation, criterion_snr, unc
 
                 # Compute losses for both modulation and SNR classification
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                # Convert SNR labels to continuous values for regression
-                snr_values = snr_labels.float() * 2.0  # Convert 0-15 to 0-30 dB
-                loss_snr = criterion_snr(snr_output.squeeze(), snr_values)
+                # SNR classification with distance penalty
+                loss_snr = criterion_snr(snr_output, snr_labels)
                 
                 # Use uncertainty weighting
                 if uncertainty_weighter is not None:
@@ -57,23 +56,18 @@ def validate(model, device, val_loader, criterion_modulation, criterion_snr, unc
 
                 # Predict labels
                 _, predicted_modulation = modulation_output.max(1)
-                
-                # For SNR regression, round to nearest 2 dB
-                snr_pred_db = snr_output.squeeze()
-                snr_pred_rounded = torch.round(snr_pred_db / 2.0) * 2.0
-                snr_pred_rounded = torch.clamp(snr_pred_rounded, 0, 30)
-                snr_pred_classes = (snr_pred_rounded / 2).long()
+                _, predicted_snr = snr_output.max(1)
 
                 total += modulation_labels.size(0)
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                correct_snr += snr_pred_classes.eq(snr_labels).sum().item()
-                correct_both += ((predicted_modulation == modulation_labels) & (snr_pred_classes == snr_labels)).sum().item()
+                correct_snr += predicted_snr.eq(snr_labels).sum().item()
+                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
 
                 # Collect true and predicted labels for confusion matrix and F1 score computation
                 all_true_modulation_labels.extend(modulation_labels.cpu().numpy())
                 all_pred_modulation_labels.extend(predicted_modulation.cpu().numpy())
                 all_true_snr_labels.extend(snr_labels.cpu().numpy())
-                all_pred_snr_labels.extend(snr_pred_classes.cpu().numpy())
+                all_pred_snr_labels.extend(predicted_snr.cpu().numpy())
 
                 # Update progress bar with current metrics
                 progress.set_postfix(

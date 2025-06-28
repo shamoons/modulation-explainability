@@ -36,12 +36,14 @@ def train(
     dropout=0.2,
     max_lr=None,
     step_size_up=5,
-    step_size_down=5
+    step_size_down=5,
+    snr_alpha=0.5
 ):
     """
     Train the model and save the best one based on validation loss.
     Log metrics after validation and plot confusion matrices and F1 scores.
-    Uses discrete SNR prediction (26 classes from -20 to 30 dB in 2dB steps).
+    Uses discrete SNR classification with distance-weighted penalty to prevent
+    28 dB black hole while maintaining classification benefits.
     """
     save_dir = 'checkpoints'
 
@@ -61,7 +63,8 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"CYCLIC LR EXPERIMENT - {model_type} with SNR regression and cyclic learning rate scheduling. Using triangular2 mode with base_lr=1e-6 and max_lr={max_lr if max_lr else '1e-4'}. First cycle: 1e-6 to 1e-4 (100x range), then halving each cycle. Step sizes: {step_size_up} epochs up, {step_size_down} epochs down. This wider range aims to: (1) Explore aggressively in early training to escape attractors, (2) Maintain stability with ultra-low base LR, (3) Gradually refine with decreasing amplitude. Previous static 1e-5 LR showed good results but slow; this approach combines exploration with stability. Bounded SNR 0-30dB, SNR-preserving constellation generation."
+        "snr_alpha": snr_alpha,
+        "description": f"DISTANCE-WEIGHTED SNR CLASSIFICATION - {model_type} with cyclic LR and inverse-square distance penalty (alpha={snr_alpha}) for SNR. Using classification (16 classes) instead of regression, with penalty that heavily weights distant SNR predictions using 1/d² law. Alpha={snr_alpha}: {'pure CE loss' if snr_alpha == 0 else 'weak penalty' if snr_alpha < 0.5 else 'moderate penalty' if snr_alpha <= 1.0 else 'strong penalty'}. This prevents 28 dB black hole while maintaining classification benefits. CyclicLR: base=1e-6, max={max_lr if max_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
     }
     
     
@@ -178,9 +181,8 @@ def train(
 
                 # Compute loss for both outputs
                 loss_modulation = criterion_modulation(modulation_output, modulation_labels)
-                # Convert SNR labels to continuous values for regression
-                snr_values = snr_labels.float() * 2.0  # Convert 0-15 to 0-30 dB
-                loss_snr = criterion_snr(snr_output.squeeze(), snr_values)
+                # SNR classification with distance penalty
+                loss_snr = criterion_snr(snr_output, snr_labels)
 
                 # Use analytical uncertainty weighting for multi-task learning
                 total_loss, task_weights = uncertainty_weighter([loss_modulation, loss_snr])
@@ -208,19 +210,14 @@ def train(
                 running_loss += total_loss.item()
 
                 _, predicted_modulation = modulation_output.max(1)
-                
-                # For SNR regression, round to nearest 2 dB
-                snr_pred_db = snr_output.squeeze()
-                snr_pred_rounded = torch.round(snr_pred_db / 2.0) * 2.0
-                snr_pred_rounded = torch.clamp(snr_pred_rounded, 0, 30)
-                snr_pred_classes = (snr_pred_rounded / 2).long()
+                _, predicted_snr = snr_output.max(1)
 
                 total += modulation_labels.size(0)
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()
-                correct_snr += snr_pred_classes.eq(snr_labels).sum().item()
+                correct_snr += predicted_snr.eq(snr_labels).sum().item()
 
                 # Calculate combined accuracy
-                correct_both += ((predicted_modulation == modulation_labels) & (snr_pred_classes == snr_labels)).sum().item()
+                correct_both += ((predicted_modulation == modulation_labels) & (predicted_snr == snr_labels)).sum().item()
 
                 # Update progress bar
                 progress.set_postfix({
