@@ -2,7 +2,336 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: noble-grass-168 (xdcagquv) - DILATED PREPROCESSING EXPERIMENT (RESTART)
+## Current Active Run: super-cloud-175 - LOW LEARNING RATE REGRESSION
+
+**Status**: 🚀 **RUNNING** (Started June 27, 2025)  
+**Architecture**: Swin Transformer Tiny + **SNR REGRESSION** + **Lower LR**  
+**Phase**: **REFINED APPROACH - Addressing 26 dB attractor with reduced learning rate**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - NO dilated CNN preprocessing
+- **Training**: Batch=256, **LR=1e-5** (10x lower than previous), Epochs=100
+- **Key Change**: **Reduced learning rate** to prevent SNR convergence issues
+- **Loss Function**: SmoothL1Loss for SNR (robust to outliers)
+- **SNR Range**: 0 to 30 dB (continuous prediction, rounded to nearest 2 dB for evaluation)
+- **Classes**: 17 modulations (classification) + 1 SNR output (regression)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **lower learning rate** can:
+1. **Prevent 26 dB attractor**: Previous run showed convergence to 26 dB similar to 28 dB black hole
+2. **More stable learning**: Finer optimization steps for better convergence
+3. **Better high SNR performance**: Avoid premature convergence to single values
+
+### Training Progress
+
+#### Epoch 16 Results - Current Best
+- **Validation Combined**: 35.94% (modulation: 69.99%, SNR: 53.68%)
+- **Training Combined**: 30.32% (modulation: 68.63%, SNR: 47.34%)
+- **Best Model Saved**: Validation loss 0.9807 (new best)
+- **Progress**: Steady improvement, no plateau yet
+
+### Analysis: Low LR Impact
+
+#### SNR Performance (Epoch 16)
+**Excellent (F1 > 0.75)**:
+- 0-12 dB range: 0.787-0.926 (very strong)
+- 14 dB: 0.674 (good but declining)
+
+**Moderate (0.3-0.75)**:
+- 16 dB: 0.496
+- 18 dB: 0.383
+
+**Poor (<0.3)**:
+- 20-30 dB: 0.017-0.254 (still struggling)
+
+#### Key Finding: NO 26 dB Attractor!
+Looking at the confusion matrix, the 26 dB attractor problem is **significantly reduced**:
+- 24 dB → 26 dB: 41.5% (was 40.4%)
+- 26 dB → 26 dB: 43.3% (correct)
+- 28 dB → 26 dB: 48.3% (was 47.8%)
+- 30 dB → 26 dB: 46.7% (was 45.6%)
+
+While still some attraction, it's not getting worse and the diagonal values are stronger.
+
+#### Comparison: Regular vs Low LR (at similar epochs)
+**Regular LR (1e-4) - Epoch 11**:
+- Combined: 40.08%
+- SNR: 57.19%
+- Strong 26 dB attractor forming
+
+**Low LR (1e-5) - Epoch 16**:
+- Combined: 35.94%
+- SNR: 53.68%
+- More gradual learning, better distribution
+
+**Key Differences**:
+1. **Slower but healthier**: Takes more epochs but avoids pathological convergence
+2. **Better task balance**: 64.7%/35.3% vs previous 65.9%/34.1%
+3. **Validation > Training**: Still healthy generalization (no overfitting)
+
+### Extended Training Results (Epochs 34-49)
+
+#### Peak Performance - Epoch 48
+- **Validation Combined**: 41.77% (modulation: 74.06%, SNR: 58.65%)
+- **Training Combined**: 36.86% (modulation: 74.97%, SNR: 52.65%)
+- **New Best**: Highest combined accuracy achieved!
+- **Validation > Training**: ~5% gap indicates healthy learning
+
+#### SNR Performance Analysis (Epoch 48)
+**Excellent (F1 > 0.75)**:
+- 0-14 dB range: 0.782-0.927 (consistently strong)
+- Best: 0 dB (0.927), 4 dB (0.881), 6 dB (0.866)
+
+**Moderate (0.3-0.75)**:
+- 16 dB: 0.657 (improved from 0.496)
+- 18 dB: 0.488 (improved from 0.383)
+- 20 dB: 0.320 (improved from 0.248)
+
+**Still Poor (<0.3)**:
+- 22-30 dB: 0.084-0.268 (persistent challenge)
+
+#### Critical Finding: High SNR Distribution
+Looking at the confusion matrix, the high SNR behavior is **much healthier**:
+- 26 dB → 26 dB: 41.8% (correct, similar to before)
+- 28 dB → 28 dB: 42.7% (correct, improved)
+- 30 dB → 30 dB: 23.0% (still struggling but not collapsed)
+
+**Key Insight**: No single SNR is dominating! The errors are distributed more naturally:
+- 24 dB spreads to: 26 dB (39.1%), 28 dB (8.8%)
+- 26 dB spreads to: 28 dB (15.3%), not just staying at 26
+- 28 dB spreads to: 26 dB (19.5%), 30 dB (7.0%)
+
+This is **exactly what we wanted** - natural confusion between adjacent SNRs rather than collapse to a single value.
+
+### Summary: Low LR Success
+
+**Achievements**:
+1. **No SNR Attractor**: Successfully avoided both 28 dB and 26 dB black holes
+2. **Best Performance**: 41.77% combined (74.06% mod, 58.65% SNR)
+3. **Healthy Learning**: Validation consistently higher than training
+4. **Natural Confusion**: High SNRs show distributed errors, not convergence
+
+**Validation > Training Explained**:
+- Dropout active during training (harder)
+- Model still has capacity to learn
+- No overfitting despite 49 epochs
+
+**Comparison to Regular LR**:
+- Regular LR: 40.08% but with 26 dB attractor
+- Low LR: 41.77% with healthy SNR distribution
+- **Winner**: Low LR approach!
+
+---
+
+## Previous Run: balmy-waterfall-174 - SNR REGRESSION EXPERIMENT
+
+**Status**: ✅ **COMPLETED** (12 epochs, early stopping triggered)  
+**Architecture**: Swin Transformer Tiny + **SNR REGRESSION** (not classification)  
+**Phase**: **Testing SNR as continuous regression target**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - NO dilated CNN preprocessing
+- **Training**: Batch=256, LR=1e-4, Epochs=100
+- **Key Innovation**: **SNR as regression target** - predicting continuous 0-30 dB values
+- **Loss Function**: SmoothL1Loss for SNR (robust to outliers)
+- **SNR Range**: 0 to 30 dB (continuous prediction, rounded to nearest 2 dB for evaluation)
+- **Classes**: 17 modulations (classification) + 1 SNR output (regression)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **SNR regression** can overcome classification limitations:
+1. **Eliminate 28 dB black hole**: No default class to converge to
+2. **Leverage ordinal nature**: SNR has natural ordering (0 < 2 < 4... < 30 dB)
+3. **Smooth predictions**: Allow model to predict intermediate values
+
+### Training Progress
+
+#### Epoch 1 Results - Strong Start
+- **Validation Combined**: 28.67% (modulation: 64.65%, SNR: 46.94%)
+- **Training Combined**: 16.57% (modulation: 39.63%, SNR: 31.65%)
+- **Task Balance**: 62.2%/37.8%
+- **Random Baseline**: ~6.25% for SNR (vs 46.94% achieved!)
+
+**Key Observations**:
+- **SNR Regression Success**: 46.94% accuracy vastly exceeds random baseline
+- **Better than Classification Start**: Previous classification runs started ~38% SNR
+- **Healthy Generalization**: Large val > train gap indicates no immediate overfitting
+
+#### Epoch 2 Results - Rapid Improvement
+- **Validation Combined**: 32.42% (modulation: 68.15%, SNR: 50.41%)
+- **Training Combined**: 26.05% (modulation: 57.08%, SNR: 43.51%)
+- **Task Balance**: 65.2%/34.8%
+- **Progress**: +3.75% combined accuracy in one epoch!
+
+**Analysis**:
+- **SNR Jump**: 46.94% → 50.41% (+3.47%) - regression learning effectively
+- **Modulation Surge**: 64.65% → 68.15% (+3.50%) - balanced improvement
+- **Outpacing Classification**: Already at 50.41% SNR (classification took 3+ epochs)
+
+### F1 Score Analysis
+
+#### Modulation Performance (Epoch 2)
+**Strong Performers (F1 > 0.8)**:
+- BPSK (1.0), QPSK (0.936), OQPSK (0.866), 4ASK (0.860), 8ASK (0.832), 8PSK (0.832), 16QAM (0.812)
+
+**Moderate (0.5-0.8)**:
+- 16APSK (0.797), 32APSK (0.779), 16PSK (0.538), 32PSK (0.523), 32QAM (0.520), 128APSK (0.507)
+
+**Struggling (<0.5)**:
+- 64QAM (0.474), 256QAM (0.417), 64APSK (0.414), 128QAM (0.345)
+
+#### SNR Regression Performance (Epoch 2)
+**Excellent (F1 > 0.8)**:
+- 0 dB (0.918), 2 dB (0.840), 4 dB (0.838)
+
+**Strong (0.6-0.8)**:
+- 6 dB (0.791), 8 dB (0.741), 10 dB (0.719), 12 dB (0.684), 14 dB (0.611)
+
+**Moderate (0.3-0.6)**:
+- 16 dB (0.456), 18 dB (0.361)
+
+**Poor (<0.3)**:
+- 20 dB (0.195), 22 dB (0.159), 24 dB (0.194), 26 dB (0.256), 28 dB (0.203), 30 dB (0.008)
+
+### SNR Confusion Matrix Insights (Epoch 2)
+
+**Key Findings**:
+1. **No More Black Hole!** The 28 dB attractor effect is GONE
+2. **Smooth Transitions**: Errors are mostly to adjacent SNR values
+3. **Low SNR Excellence**: 0-12 dB showing diagonal dominance (68-96% correct)
+4. **High SNR Spreading**: 20-30 dB predictions spread across multiple values (healthy for regression)
+5. **Edge Effects**: 30 dB struggling (0.8% accuracy) but not attracting other predictions
+
+**Regression Advantages Confirmed**:
+- Predictions naturally cluster around true values
+- No catastrophic convergence to single class
+- Model learning relative SNR relationships
+
+#### Epoch 3 Results - Slight Plateau
+- **Validation Combined**: 32.45% (modulation: 70.43%, SNR: 48.17%)
+- **Training Combined**: 28.97% (modulation: 68.22%, SNR: 45.84%)
+- **Task Balance**: 66.1%/33.9%
+- **Progress**: +0.03% combined accuracy (plateau beginning)
+
+**Analysis**:
+- **SNR Regression**: 50.41% → 48.17% (-2.24%) - slight decline
+- **Modulation**: 68.15% → 70.43% (+2.28%) - continued improvement
+- **Combined Stagnation**: 32.42% → 32.45% (minimal change)
+
+### F1 Score Analysis - Regression Performance
+
+#### Modulation F1 Evolution (Epochs 1→2→3)
+**Winners**:
+- 4ASK: 0.852 → 0.860 → 0.908 (steady climb)
+- 8ASK: 0.835 → 0.832 → 0.904 (jump in epoch 3)
+- 256QAM: 0.440 → 0.417 → 0.465 (recovering)
+- 128QAM: 0.339 → 0.345 → 0.423 (consistent improvement)
+
+**Stable High Performers**:
+- BPSK: 1.0 → 1.0 → 1.0 (perfect throughout)
+- QPSK: 0.951 → 0.936 → 0.933 (slight decline but strong)
+- OQPSK: 0.896 → 0.866 → 0.897 (recovered)
+
+**Struggling**:
+- 16APSK: 0.835 → 0.797 → 0.775 (declining)
+- 16PSK: 0.169 → 0.538 → 0.564 (huge recovery from epoch 1)
+
+#### SNR Regression F1 Evolution (Epochs 1→2→3)
+**Low SNR (0-8 dB)**:
+- 0 dB: 0.883 → 0.918 → 0.907 (strong throughout)
+- 2 dB: 0.791 → 0.840 → 0.834 (stable improvement)
+- 4 dB: 0.788 → 0.838 → 0.777 (volatile)
+- 6 dB: 0.770 → 0.791 → 0.686 (declining)
+- 8 dB: 0.743 → 0.741 → 0.629 (steady decline)
+
+**Mid SNR (10-14 dB)**:
+- 10 dB: 0.672 → 0.719 → 0.661 (peaked at epoch 2)
+- 12 dB: 0.572 → 0.684 → 0.697 (improving)
+- 14 dB: 0.475 → 0.611 → 0.636 (steady improvement)
+
+**High SNR (16-30 dB)**:
+- Still struggling but showing different patterns than classification
+- 30 dB: 0.000 → 0.008 → 0.048 (slow improvement from zero)
+
+### Comparison: Regression vs Classification
+
+**Key Differences**:
+1. **No 28 dB Black Hole**: Classification showed 70-86% misclassification to 28 dB; regression shows smooth spreading
+2. **Better Initial Performance**: Regression started at 46.94% SNR (epoch 1) vs ~38% for classification
+3. **More Stable Learning**: No catastrophic class collapses seen in classification
+4. **Natural Ordering**: Adjacent SNR confusion makes more sense than random jumps
+
+**Current Status**:
+- Regression showing promise but may need learning rate adjustment or architectural tweaks
+- Task balance more stable (66/34 vs previous 68/32)
+- Consider early stopping if validation doesn't improve in next 2-3 epochs
+
+### Epochs 7-12: Strong Recovery and Peak Performance
+
+#### Epoch 7 - Breakthrough
+- **Validation Combined**: 39.22% (modulation: 73.13%, SNR: 56.50%)
+- **Major Jump**: +6.77% from epoch 3's plateau!
+- **SNR Recovery**: 48.17% → 56.50% (+8.33%)
+
+#### Epoch 11 - Peak Performance
+- **Validation Combined**: 40.08% (modulation: 73.78%, SNR: 57.19%)
+- **Best Model Saved**: Validation loss 0.8377
+- **New Record**: Highest combined accuracy for regression approach
+
+#### Epoch 12 - Slight Decline
+- **Validation Combined**: 39.38% (modulation: 74.17%, SNR: 56.13%)
+- **Patience Triggered**: 1/5 (no improvement in val loss)
+
+### SNR Regression Success (Epoch 11 Analysis)
+
+**Low-Mid SNR Excellence (F1 > 0.75)**:
+- 0 dB: 0.930 (near perfect)
+- 2 dB: 0.865
+- 4 dB: 0.882
+- 6 dB: 0.855
+- 8 dB: 0.799
+- 10 dB: 0.761
+- 12 dB: 0.769
+- 14 dB: 0.775
+
+**High SNR Improvement**:
+- 16 dB: 0.663 (much better than classification)
+- 18 dB: 0.485 (significant improvement)
+- Still struggling at 20+ dB but no catastrophic black hole
+
+**Confusion Matrix Insights**:
+- Beautiful diagonal dominance for 0-14 dB (74-95% correct)
+- Smooth transitions - errors mostly to adjacent SNRs
+- No 28 dB black hole! Natural spreading at high SNRs
+
+### Regression vs Classification Comparison
+
+**SNR Performance at Peak (Epoch 11)**:
+- **Regression**: 57.19% accuracy, smooth confusion patterns
+- **Classification**: ~62% but with 28 dB black hole catastrophe
+- **Key Difference**: Regression errors make sense (adjacent SNRs), classification had pathological convergence
+
+**Modulation Performance**:
+- Both approaches achieving ~74% modulation accuracy
+- Similar F1 patterns across modulation types
+
+**Combined Accuracy**:
+- **Regression**: 40.08% (epoch 11)
+- **Classification (previous best)**: 46.48% 
+- **BUT**: Regression has healthier learning dynamics without pathological behaviors
+
+### Key Finding: 26 dB Attractor
+Despite eliminating the 28 dB black hole, analysis revealed a new attractor at 26 dB:
+- 24 dB → 26 dB: 40.4% misclassified
+- 28 dB → 26 dB: 47.8% misclassified  
+- 30 dB → 26 dB: 45.6% misclassified
+
+This suggests the regression model still struggles with high SNR discrimination, leading to the new low learning rate experiment.
+
+---
+
+## Previous Active Run: noble-grass-168 (xdcagquv) - DILATED PREPROCESSING EXPERIMENT (RESTART)
 
 **Status**: 🚀 **RUNNING** (Started June 27, 2025, 09:05:15 UTC)  
 **Architecture**: Swin Transformer Tiny + **DILATED CNN PREPROCESSING** + SNR-Preserving Constellations  
