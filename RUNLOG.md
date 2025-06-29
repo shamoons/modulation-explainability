@@ -2,9 +2,132 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: super-cloud-175 - LOW LEARNING RATE REGRESSION
+## Current Active Run: super-plasma-180 (e3lt2hyp) - DISTANCE-WEIGHTED SNR CLASSIFICATION
 
-**Status**: 🚀 **RUNNING** (Started June 27, 2025)  
+**Status**: 🚀 **RUNNING** (Started June 28, 2025, 15:29:48 UTC)  
+**Architecture**: Swin Transformer Tiny + **Distance-Weighted Classification** (NO dilated CNN)  
+**Phase**: **NEW APPROACH - Classification with inverse-square distance penalty to prevent attractors**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - Standard architecture
+- **Training**: Batch=256, LR=1e-6 to 1e-4 (CyclicLR), Epochs=100
+- **Key Innovation**: **Distance-weighted cross-entropy loss** with α=0.5
+- **Loss Function**: Classification + inverse-square distance penalty (1/d²)
+- **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
+- **Classes**: 272 total (17 modulations × 16 SNRs)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+- **Hardware**: CUDA GPU (faster than MPS)
+
+### Experiment Hypothesis
+Testing whether **distance-weighted classification** can:
+1. **Prevent black holes**: Heavy penalty for distant predictions (e.g., predicting 28 dB when true is 0 dB)
+2. **Maintain ordinal relationships**: Closer SNRs get lighter penalties
+3. **Combine benefits**: Classification's discrete outputs + regression's distance awareness
+4. **Baseline comparison**: Testing without dilated CNN to isolate distance-weighting effect
+
+### Why This Approach?
+- **Regression Problem**: Created 26-28 dB attractors where model converged to single values
+- **Pure Classification**: Would lose SNR ordering (10 dB is closer to 12 dB than to 30 dB)
+- **Distance Weighting**: Best of both worlds - discrete outputs with continuous penalty
+
+### Training Progress
+
+#### Epoch 1 Results - Strong Start!
+- **Validation Combined**: 19.84% (modulation: 51.71%, SNR: 37.97%)
+- **Training Combined**: 7.29% (modulation: 29.32%, SNR: 20.77%)
+- **Task Balance**: 50.1%/49.9% - **PERFECT BALANCE!**
+- **Loss**: 2.443 validation vs 3.485 training
+- **Learning Rate**: 1e-6 (base of cycle)
+
+**Key Observations**:
+1. **Excellent SNR Start**: 37.97% validation SNR accuracy is very strong for epoch 1
+2. **Perfect Task Balance**: 50.1%/49.9% split shows distance-weighted loss is working well
+3. **Healthy Generalization**: Validation >> Training indicates good regularization
+4. **No Attractor Signs**: With proper classification, no convergence to single values
+
+**Comparison to Previous Runs (Epoch 1)**:
+- **Regression (super-cloud-175)**: ~30% SNR accuracy → attractor problems later
+- **Classification (current)**: 37.97% SNR accuracy → healthier distribution expected
+- **Task Balance**: Previous runs started ~65/35, current is 50/50!
+
+#### Epoch 2 Results - Rapid Improvement!
+- **Validation Combined**: 27.02% (modulation: 61.46%, SNR: 45.35%)
+- **Training Combined**: 20.11% (modulation: 52.86%, SNR: 38.24%)
+- **Task Balance**: 51.5%/48.5% - Still excellent balance
+- **Loss**: 1.945 validation vs 2.358 training (improving)
+- **Learning Rate**: 2.08e-5 (20x increase from epoch 1)
+
+**Breakthrough Indicators**:
+1. **SNR Jump**: 37.97% → 45.35% (+7.38% in one epoch!)
+2. **Modulation Surge**: 51.71% → 61.46% (+9.75%)
+3. **Combined Leap**: 19.84% → 27.02% (+7.18%)
+4. **Validation Loss Drop**: 2.443 → 1.945 (-20.4%)
+
+**Critical Observation**: With distance-weighted classification, we're seeing:
+- Faster convergence than regression
+- No signs of attractor formation
+- Maintained task balance
+- Healthy validation > training gap
+
+#### Training Summary - EXCELLENT RESULTS!
+
+**Best Performance (Epoch 10)**:
+- **Validation Combined**: 46.31% (modulation: 74.72%, SNR: 63.60%)
+- **Training Combined**: 45.91% (modulation: 75.28%, SNR: 63.13%)
+- **Best Model Saved**: Epoch 10 with validation loss 1.143
+
+**Peak Performance Timeline**:
+- Epoch 1: 19.84% → Epoch 5: 36.92% → Epoch 10: 46.31%
+- **SNR**: 37.97% → 55.47% → 63.60% (No attractors!)
+- **Modulation**: 51.71% → 69.55% → 74.72%
+
+**Key Achievements**:
+1. **NO BLACK HOLES**: Classification prevented 26-28 dB attractors completely
+2. **63.60% SNR Accuracy**: Best SNR performance across all runs!
+3. **Balanced Training**: Train ≈ Val (45.91% vs 46.31%) shows healthy learning
+4. **Early Stopping**: Triggered at epoch 15, best model from epoch 10
+
+**Task Weight Evolution**:
+- Started: 50.1%/49.9% (perfect balance)
+- Ended: 77.8%/22.2% (modulation dominated but SNR still strong)
+- SNR uncertainty increased: 1.017 → 2.153 (harder task as expected)
+
+**Comparison to Previous Best**:
+- **Regression (super-cloud-175)**: 41.77% combined, 58.65% SNR → attractors
+- **Classification (current)**: 46.31% combined, 63.60% SNR → no attractors!
+- **Improvement**: +4.54% combined, +4.95% SNR, and healthier distribution
+
+#### F1 Score Analysis (Epoch 10)
+
+**SNR Classification F1 Scores**:
+- **Excellent (>0.8)**: 0-14 dB range (0.831-0.933)
+  - Best: 0 dB (0.933), 2 dB (0.915), 4 dB (0.909)
+  - Strong: 6-14 dB (0.831-0.893)
+- **Moderate (0.5-0.8)**: 16 dB (0.693), 18 dB (0.540)
+- **Poor (<0.5)**: 20-30 dB (0.292-0.383)
+  - Worst: 26 dB (0.292) - but NO black hole!
+
+**Modulation Classification F1 Scores**:
+- **Perfect/Near-Perfect (>0.9)**: BPSK (1.0), QPSK (0.941), 4ASK/8ASK (0.937), OQPSK (0.910)
+- **Strong (0.8-0.9)**: 8PSK (0.861), 16QAM (0.858), 16APSK (0.853), 32APSK (0.833)
+- **Moderate (0.5-0.8)**: 32PSK (0.676), 32QAM (0.635), 16PSK (0.622), 128APSK (0.586)
+- **Struggling (<0.5)**: 64QAM (0.495), 128QAM (0.485)
+
+#### Confusion Matrix Insights
+
+**SNR Confusion Patterns**:
+1. **NO BLACK HOLE**: Unlike regression, no single SNR attracts all predictions
+2. **Balanced Spread**: High SNR confusion distributed among neighbors
+3. **Example (24 dB)**: 30.7% correct, errors spread to 22/26/28 dB
+4. **Low SNR Excellence**: 0-12 dB show 85-95% diagonal accuracy
+
+**Key Victory**: Distance-weighted loss successfully prevented the 26-28 dB attractor problem while maintaining ordinal relationships!
+
+---
+
+## Previous Active Run: super-cloud-175 - LOW LEARNING RATE REGRESSION
+
+**Status**: ✅ **COMPLETED** (June 27-28, 2025)  
 **Architecture**: Swin Transformer Tiny + **SNR REGRESSION** + **Lower LR**  
 **Phase**: **REFINED APPROACH - Addressing 26 dB attractor with reduced learning rate**
 

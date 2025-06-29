@@ -385,8 +385,19 @@ def train(
         model, device, test_loader, criterion_modulation, criterion_snr, uncertainty_weighter
     )
     
-    # Unpack the 5 values returned by validate
-    test_loss, test_modulation_accuracy, test_snr_accuracy, test_combined_accuracy, _, _, _, _ = test_results + (None,) * (8 - len(test_results))
+    # Unpack all 10 values returned by validate
+    (
+        test_loss,
+        test_modulation_loss,
+        test_snr_loss,
+        test_modulation_accuracy,
+        test_snr_accuracy,
+        test_combined_accuracy,
+        _,  # true modulation labels
+        _,  # pred modulation labels
+        _,  # true snr labels
+        _   # pred snr labels
+    ) = test_results
     
     print(f"\nFINAL TEST RESULTS:")
     print(f"  Test Loss: {test_loss:.3f}")
