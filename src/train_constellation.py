@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.5):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.5):
     # Load data
     print("Loading data...")
 
@@ -104,11 +104,13 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             dropout_prob=dropout,
             model_variant=model_type,
             use_task_specific=use_task_specific,
-            use_dilated_preprocessing=use_dilated_preprocessing
+            use_dilated_preprocessing=use_dilated_preprocessing,
+            use_pretrained=use_pretrained
         )
         task_specific_status = "with task-specific extraction" if use_task_specific else "without task-specific extraction"
         dilated_status = "with dilated preprocessing" if use_dilated_preprocessing else "without dilated preprocessing"
-        print(f"Using model: {model_type} (Swin Transformer, {task_specific_status}, {dilated_status})")
+        pretrained_status = "with ImageNet pretrained weights" if use_pretrained else "with random initialization"
+        print(f"Using model: {model_type} (Swin Transformer, {task_specific_status}, {dilated_status}, {pretrained_status})")
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit_b_16, vit_b_32, vit_h_14, swin_tiny, swin_small, swin_base")
 
@@ -187,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
     parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=False)
     parser.add_argument('--use_dilated_preprocessing', type=str2bool, help='Use dilated CNN preprocessing for global context (Swin only)', default=False)
+    parser.add_argument('--use_pretrained', type=str2bool, help='Use ImageNet pretrained weights for Swin models (default: True)', default=True)
     
     # Cyclic learning rate scheduler options
     parser.add_argument('--max_lr', type=float, help='Maximum learning rate for cyclic scheduler (default: 50x base_lr)', default=None)
@@ -212,6 +215,7 @@ if __name__ == "__main__":
         dropout=args.dropout,
         use_task_specific=args.use_task_specific,
         use_dilated_preprocessing=args.use_dilated_preprocessing,
+        use_pretrained=args.use_pretrained,
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
         step_size_down=args.step_size_down,

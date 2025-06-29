@@ -2,11 +2,210 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: super-plasma-180 (e3lt2hyp) - DISTANCE-WEIGHTED SNR CLASSIFICATION
+## Current Active Run: polished-shadow-183 (z29ts3ph) - DILATED CNN + ULTRA-LOW LR + α=1.0
 
-**Status**: 🚀 **RUNNING** (Started June 28, 2025, 15:29:48 UTC)  
-**Architecture**: Swin Transformer Tiny + **Distance-Weighted Classification** (NO dilated CNN)  
-**Phase**: **NEW APPROACH - Classification with inverse-square distance penalty to prevent attractors**
+**Status**: 🚀 **RUNNING** (Started June 29, 2025, 07:49:43 UTC)  
+**Architecture**: Swin Transformer Tiny + **Dilated CNN Preprocessing** + Distance-Weighted Classification  
+**Phase**: **ADVANCED APPROACH - Combining all refinements: dilated CNN + ultra-low LR + strong penalty**
+
+### Configuration
+- **Model**: swin_tiny + dilated CNN (28.18M total parameters)
+- **Training**: Batch=128, LR=1e-6 to 1e-5 (CyclicLR), Epochs=100
+- **Key Features**: 
+  - **Dilated CNN preprocessing**: Multi-scale feature extraction
+  - **α=1.0**: Strong distance penalty
+  - **Max LR=1e-5**: Ultra-conservative learning rate (10x lower than original)
+  - **Patience=10**: Extended early stopping
+- **Loss Function**: Classification + inverse-square distance penalty (1/d²)
+- **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
+- **Classes**: 272 total (17 modulations × 16 SNRs)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **combining all successful elements** can:
+1. **Dilated CNN**: Better multi-scale constellation feature extraction
+2. **Ultra-low max LR**: More stable optimization (1e-5 worked better than 5e-5)
+3. **Strong penalty (α=1.0)**: Maintain ordinal relationships without over-penalizing
+4. **Smaller batch (128)**: Finer gradient updates
+
+### Why This Configuration?
+- **Previous α=1.0 + 5e-5**: Task imbalance (83.5%/16.5%)
+- **Previous dilated CNN**: Showed promise but with regression
+- **Ultra-low LR**: Should prevent task weight divergence
+- **Combined approach**: Best of all tested methods
+
+### Training Progress
+
+#### Epoch 1 Results - Dilated CNN Impact
+- **Validation Combined**: 6.59% (modulation: 39.25%, SNR: 20.70%)
+- **Training Combined**: 6.99% (modulation: 31.40%, SNR: 24.52%)
+- **Task Balance**: 50.0%/50.0% - **Perfect balance maintained!**
+- **Loss**: 5.139 validation vs 4.665 training
+- **Learning Rate**: 1e-6 (base of cycle)
+
+**F1 Score Analysis (Epoch 1)**:
+
+**SNR F1 Scores - Unusual Pattern!**:
+- **Strong**: 0 dB (0.816), 2 dB (0.585), 4 dB (0.472)
+- **Weak**: 8 dB (0.066), 10 dB (0.017), 12 dB (0.069)
+- **Zero**: 20 dB (0.000), 30 dB (0.000)
+
+**Modulation F1 Scores**:
+- **Excellent**: BPSK (0.988), QPSK (0.836), 8ASK (0.718), 4ASK (0.700)
+- **Moderate**: OQPSK (0.505), 8PSK (0.409), 16APSK (0.392), 16QAM (0.382)
+- **Very Weak**: Most others < 0.05
+
+**Critical Observation - Strange SNR Pattern**:
+The dilated CNN is causing an unexpected initialization where:
+1. Low SNRs (0-4 dB) are performing well
+2. Mid SNRs (8-14 dB) are nearly failing
+3. High SNRs showing typical confusion pattern (all predicting 24-28 dB)
+
+**Confusion Matrix Insights - MAJOR BLACK HOLE AT 28 dB**:
+- **Low SNR Success**: 0 dB showing 98.9% accuracy!
+- **Mid-SNR Collapse**: 8-14 dB heavily confused with 22-28 dB range
+- **Massive 28 dB Black Hole**: 
+  - 8 dB → 28 dB: 24.8%
+  - 10 dB → 28 dB: 13.3%
+  - 12 dB → 28 dB: 17.8%
+  - 14 dB → 28 dB: 27.6%
+  - 16 dB → 28 dB: 35.4%
+  - 18 dB → 28 dB: 39.6%
+  - 20 dB → 28 dB: 45.0%
+  - 22 dB → 28 dB: 47.8%
+  - 24 dB → 28 dB: 47.9%
+  - 26 dB → 28 dB: 48.2%
+  - 28 dB → 28 dB: 49.8%
+  - 30 dB → 28 dB: 49.2%
+
+**This is the WORST black hole we've seen** - even SNRs as low as 8 dB are being pulled into it!
+
+This suggests the dilated CNN's multi-scale features are initially biased toward low SNR patterns.
+
+#### Epoch 2 Progress Update
+- **Learning Rate**: 2.8e-6 (gradually increasing)
+- **In-progress metrics**: ~44.48% modulation, ~35.13% SNR accuracy
+- **Expected improvement**: Should see recovery in mid-range SNRs
+
+**Comparison to Previous First Epochs**:
+- **α=0.5, no dilated**: 19.84% combined (epoch 1)
+- **α=1.0, no dilated**: 15.17% combined (epoch 1)
+- **α=1.0, with dilated**: 6.59% combined (epoch 1) ← Current
+
+**Why the Rough Start?**:
+1. **Dilated CNN initialization**: The multi-scale features need more time to adapt
+2. **Ultra-low LR (1e-6)**: 100x lower than typical start, very gradual learning
+3. **Combined complexity**: Both strong penalty AND new architecture
+4. **Different feature space**: Dilated CNN learns different patterns initially
+
+**Not Necessarily Bad**:
+- The unusual SNR pattern shows the model is learning different features
+- Perfect task balance maintained (unlike previous α=1.0 runs)
+- Epoch 2 in-progress shows significant improvement already
+- Slower start might lead to better final convergence
+
+---
+
+## Previous Run: honest-silence-181 (4c4abvzv) - STRONGER DISTANCE PENALTY + REFINED LR
+
+**Status**: ✅ **COMPLETED** (June 28-29, 2025, 25 epochs)  
+**Architecture**: Swin Transformer Tiny + **Distance-Weighted Classification** (α=1.0)  
+**Phase**: **REFINED APPROACH - Testing stronger penalty impact**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - Standard architecture
+- **Training**: Batch=256, LR=1e-6 to 5e-5 (CyclicLR), Epochs=100
+- **Key Changes**: 
+  - **α=1.0**: Doubled distance penalty (was 0.5)
+  - **Max LR=5e-5**: Halved from previous 1e-4
+  - **Patience=10**: Doubled from previous 5
+- **Loss Function**: Classification + inverse-square distance penalty (1/d²)
+- **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
+- **Classes**: 272 total (17 modulations × 16 SNRs)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **stronger distance penalty + refined LR** can:
+1. **Improve high SNR**: Stronger penalty should better separate 20-30 dB classes
+2. **Stable learning**: Lower max LR prevents overshooting optimal weights
+3. **Better convergence**: More patience allows exploration of loss landscape
+4. **Maintain low SNR**: Keep excellent 0-14 dB performance
+
+### Why These Changes?
+- **Previous α=0.5**: Worked well but high SNRs still confused (F1 < 0.4)
+- **Previous max LR=1e-4**: May have overshot optimal weights
+- **Previous patience=5**: May have stopped too early
+
+### Training Progress
+
+#### Epoch 1 Results - Higher Penalty Impact
+- **Validation Combined**: 15.17% (modulation: 44.63%, SNR: 33.48%)
+- **Training Combined**: 5.32% (modulation: 23.81%, SNR: 18.17%)
+- **Task Balance**: 50.0%/50.0% - Perfect balance maintained
+- **Loss**: 3.735 validation vs 5.115 training
+- **Learning Rate**: 1e-6 (base of cycle)
+
+#### Epoch 2 Results - Steady Progress
+- **Validation Combined**: 23.23% (modulation: 54.00%, SNR: 42.09%)
+- **Training Combined**: 15.46% (modulation: 44.59%, SNR: 33.89%)
+- **Task Balance**: 50.4%/49.6% - Still excellent balance
+- **Loss**: 3.097 validation vs 3.700 training
+- **Learning Rate**: 1.08e-5 (10x increase)
+
+**Key Observations (α=1.0 vs α=0.5)**:
+1. **Slower Initial Convergence**: 23.23% vs 27.02% at epoch 2
+2. **Perfect Task Balance**: 50/50 maintained (better than α=0.5)
+3. **Higher Loss Values**: ~2x higher due to stronger penalty term
+4. **No Early Attractors**: High SNR confusion spread naturally
+
+#### F1 Score Analysis (Epoch 2)
+
+**SNR F1 Scores (α=1.0)**:
+- **Good (>0.7)**: 0 dB (0.875), 2 dB (0.761), 4 dB (0.739), 6 dB (0.720)
+- **Moderate (0.4-0.7)**: 8 dB (0.573), 10 dB (0.482), 14 dB (0.421), 12 dB (0.414)
+- **Poor (<0.4)**: 16-30 dB range (0.000-0.346)
+
+**Comparison to α=0.5 (at similar epoch)**:
+- Lower initial F1 scores but more balanced distribution
+- No signs of attractor formation
+- High SNR still challenging but errors spread naturally
+
+**Modulation F1 Scores**:
+- Still strong: BPSK (0.999), QPSK (0.859), 4ASK (0.832), 8ASK (0.821)
+- Struggling: 128QAM (0.153), 32QAM (0.228), 64APSK (0.253)
+
+#### Training Summary - COMPLETED (25 Epochs)
+
+**Best Performance (Epoch 20)**:
+- **Validation Combined**: 45.88% (modulation: 73.92%, SNR: 63.42%)
+- **Validation Loss**: 1.3796
+- **Task Weights**: Moving toward 83.5%/16.5% imbalance
+
+**Final Test Results**:
+- **Test Combined**: 45.88% (modulation: 74.10%, SNR: 63.23%)
+- **Test Loss**: 1.3798
+- **Conclusion**: Slightly underperformed α=0.5
+
+**Key Findings - α=1.0 vs α=0.5**:
+1. **Performance Gap**: -0.60% combined accuracy (45.88% vs 46.48%)
+2. **Task Weight Issue**: Severe imbalance (83.5%/16.5% vs 77.8%/22.2%)
+3. **SNR Difficulty**: Stronger penalty made SNR task too challenging
+4. **No Black Holes**: Successfully prevented attractors (like α=0.5)
+5. **Recommendation**: α=0.5 provides better balance
+
+**Why α=1.0 Underperformed**:
+- The 2x stronger distance penalty made distant SNR predictions too costly
+- Model compensated by focusing heavily on modulation (83.5% weight)
+- SNR task became too difficult, leading to slight performance drop
+- The sweet spot appears to be α=0.5 for this problem
+
+---
+
+## Previous Run: super-plasma-180 (e3lt2hyp) - DISTANCE-WEIGHTED SNR CLASSIFICATION
+
+**Status**: ✅ **COMPLETED** (June 28, 2025)  
+**Architecture**: Swin Transformer Tiny + **Distance-Weighted Classification** (α=0.5)  
+**Phase**: **BASELINE - First distance-weighted classification attempt**
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - Standard architecture

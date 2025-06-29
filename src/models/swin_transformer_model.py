@@ -49,7 +49,7 @@ class ConstellationSwinTransformer(nn.Module):
     type and SNR level.
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=False, use_dilated_preprocessing=False):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True):
         """
         Initialize the ConstellationSwinTransformer model with two output heads.
 
@@ -61,6 +61,7 @@ class ConstellationSwinTransformer(nn.Module):
             model_variant (str): Swin variant ('swin_tiny', 'swin_small', 'swin_base'). Defaults to 'swin_tiny'.
             use_task_specific (bool): Whether to use task-specific feature extraction (defaults to False).
             use_dilated_preprocessing (bool): Whether to use dilated CNN preprocessing for global context (defaults to False).
+            use_pretrained (bool): Whether to use ImageNet pretrained weights (defaults to True).
         """
         super(ConstellationSwinTransformer, self).__init__()
 
@@ -69,14 +70,15 @@ class ConstellationSwinTransformer(nn.Module):
             raise ImportError("Swin Transformer models require torchvision>=0.13.0. Please upgrade torchvision.")
 
         # Select the appropriate Swin model based on variant
+        weights = 'DEFAULT' if use_pretrained else None
         if model_variant == "swin_tiny":
-            self.model = swin_t(weights='DEFAULT')
+            self.model = swin_t(weights=weights)
             self.model_name = "swin_tiny"
         elif model_variant == "swin_small":
-            self.model = swin_s(weights='DEFAULT')
+            self.model = swin_s(weights=weights)
             self.model_name = "swin_small"
         elif model_variant == "swin_base":
-            self.model = swin_b(weights='DEFAULT')
+            self.model = swin_b(weights=weights)
             self.model_name = "swin_base"
         else:
             raise ValueError(f"Unsupported model_variant: {model_variant}. Choose from: swin_tiny, swin_small, swin_base")
