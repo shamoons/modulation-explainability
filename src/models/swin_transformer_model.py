@@ -151,22 +151,22 @@ class ConstellationSwinTransformer(nn.Module):
             )
             # Output heads for modulation and SNR (reduced feature dimension)
             self.modulation_head = nn.Linear(in_features // 4, num_classes)
-            # SNR classification head - outputs num_classes for each SNR class
+            # Enhanced SNR classification head with 64-dim bottleneck for better feature learning
             self.snr_head = nn.Sequential(
-                nn.Linear(in_features // 4, 256),
+                nn.Linear(in_features // 4, 64),  # Bottleneck layer for SNR-specific features
                 nn.ReLU(),
                 nn.Dropout(dropout_prob),
-                nn.Linear(256, snr_classes)  # Output logits for each SNR class
+                nn.Linear(64, snr_classes)  # Output logits for each SNR class
             )
         else:
             # Direct heads without task-specific processing
             self.modulation_head = nn.Linear(in_features, num_classes)
-            # SNR classification head - outputs num_classes for each SNR class
+            # Enhanced SNR classification head with 64-dim bottleneck for better feature learning
             self.snr_head = nn.Sequential(
-                nn.Linear(in_features, 256),
+                nn.Linear(in_features, 64),  # Bottleneck layer for SNR-specific features
                 nn.ReLU(),
                 nn.Dropout(dropout_prob),
-                nn.Linear(256, snr_classes)  # Output logits for each SNR class
+                nn.Linear(64, snr_classes)  # Output logits for each SNR class
             )
 
     def forward(self, x):

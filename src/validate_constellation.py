@@ -57,13 +57,8 @@ def validate(model, device, val_loader, criterion_modulation, criterion_snr, unc
                 # Predict labels
                 _, predicted_modulation = modulation_output.max(1)
                 
-                # Handle SNR prediction based on loss type
-                if hasattr(criterion_snr, 'predict_class'):
-                    # Ordinal regression loss - use its prediction method
-                    predicted_snr = criterion_snr.predict_class(snr_output)
-                else:
-                    # Standard classification - use argmax
-                    _, predicted_snr = snr_output.max(1)
+                # Standard classification for SNR - use argmax
+                _, predicted_snr = snr_output.max(1)
 
                 total += modulation_labels.size(0)
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()

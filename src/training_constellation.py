@@ -62,7 +62,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"ORDINAL REGRESSION SNR LOSS - {model_type} with cyclic LR and ordinal regression (MSE) loss for SNR prediction. SNR treated as continuous value in range [0, {len(dataset.snr_labels)-1}], then rounded to nearest class. This combines benefits of regression (ordinal awareness) with classification (discrete outputs). No alpha parameter needed. Prevents black holes by treating SNR as ordered continuous space. CyclicLR: base={base_lr if base_lr else '1e-5'}, max={max_lr if max_lr else 10*base_lr if base_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
+        "description": f"ENHANCED SNR BOTTLENECK + PURE CE - {model_type} with enhanced SNR head (64-dim bottleneck) and standard cross-entropy for both tasks. SNR head: features → Linear(512,64) → ReLU → Dropout → Linear(64,16). No distance weighting, no ordinal regression - pure classification approach. CyclicLR: base={base_lr if base_lr else '1e-6'}, max={max_lr if max_lr else '1e-3'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation. Testing architectural enhancement vs loss function tricks."
     }
     
     
@@ -212,13 +212,8 @@ def train(
 
                 _, predicted_modulation = modulation_output.max(1)
                 
-                # Handle SNR prediction based on loss type
-                if hasattr(criterion_snr, 'predict_class'):
-                    # Ordinal regression loss - use its prediction method
-                    predicted_snr = criterion_snr.predict_class(snr_output)
-                else:
-                    # Standard classification - use argmax
-                    _, predicted_snr = snr_output.max(1)
+                # Standard classification for SNR - use argmax
+                _, predicted_snr = snr_output.max(1)
 
                 total += modulation_labels.size(0)
                 correct_modulation += predicted_modulation.eq(modulation_labels).sum().item()

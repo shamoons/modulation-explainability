@@ -123,13 +123,10 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Get device first
     device = get_device()
     
-    # Initialize loss functions
+    # Initialize loss functions - Standard cross-entropy for both tasks
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
-    
-    # Use ordinal regression loss for SNR prediction (treats as continuous with MSE)
-    from losses.ordinal_regression_loss import OrdinalRegressionLoss
-    criterion_snr = OrdinalRegressionLoss(num_classes=num_snr_classes).to(device)
-    print(f"Using ordinal regression loss for SNR prediction (MSE in continuous space [0, {num_snr_classes-1}])")
+    criterion_snr = nn.CrossEntropyLoss().to(device)  # SNR classification loss
+    print(f"Using standard cross-entropy loss for both modulation and SNR prediction (no distance weighting)")
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
