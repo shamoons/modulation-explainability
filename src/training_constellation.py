@@ -37,7 +37,9 @@ def train(
     max_lr=None,
     step_size_up=5,
     step_size_down=5,
-    snr_alpha=0.5
+    snr_alpha=0.5,
+    warmup_epochs=0,
+    warmup_start_factor=0.001
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -64,7 +66,9 @@ def train(
         "dropout": dropout,
         "batch_size": batch_size,
         "snr_alpha": snr_alpha,
-        "description": f"DISTANCE-WEIGHTED SNR CLASSIFICATION - {model_type} with cyclic LR and inverse-square distance penalty (alpha={snr_alpha}) for SNR. Using classification (16 classes) instead of regression, with penalty that heavily weights distant SNR predictions using 1/d² law. Alpha={snr_alpha}: {'pure CE loss' if snr_alpha == 0 else 'weak penalty' if snr_alpha < 0.5 else 'moderate penalty' if snr_alpha <= 1.0 else 'strong penalty'}. This prevents 28 dB black hole while maintaining classification benefits. CyclicLR: base={base_lr if base_lr else '1e-5'}, max={max_lr if max_lr else 10*base_lr if base_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
+        "warmup_epochs": warmup_epochs,
+        "warmup_start_factor": warmup_start_factor,
+        "description": f"DISTANCE-WEIGHTED SNR CLASSIFICATION - {model_type} with {'linear warmup + ' if warmup_epochs > 0 else ''}cyclic LR and inverse-square distance penalty (alpha={snr_alpha}) for SNR. Using classification (16 classes) instead of regression, with penalty that heavily weights distant SNR predictions using 1/d² law. Alpha={snr_alpha}: {'pure CE loss' if snr_alpha == 0 else 'weak penalty' if snr_alpha < 0.5 else 'moderate penalty' if snr_alpha <= 1.0 else 'strong penalty'}. This prevents 28 dB black hole while maintaining classification benefits. {'Warmup: ' + str(warmup_epochs) + ' epochs from ' + str((base_lr if base_lr else 1e-5) * warmup_start_factor) + ' to ' + str(base_lr if base_lr else 1e-5) + ', then ' if warmup_epochs > 0 else ''}CyclicLR: base={base_lr if base_lr else '1e-5'}, max={max_lr if max_lr else 10*base_lr if base_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
     }
     
     
@@ -129,7 +133,7 @@ def train(
         train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
         val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
         
-        # Create CyclicLR scheduler on first epoch
+        # Create scheduler on first epoch
         if epoch == 0:
             # Use the provided base_lr directly
             actual_base_lr = base_lr if base_lr else 1e-5  # Use actual base_lr for cyclic lower bound
@@ -137,7 +141,8 @@ def train(
             if max_lr is None:
                 max_lr = 10 * base_lr if base_lr else 1e-4  # Default to 10x base_lr if not specified
             
-            scheduler = torch.optim.lr_scheduler.CyclicLR(
+            # Create the main CyclicLR scheduler
+            main_scheduler = torch.optim.lr_scheduler.CyclicLR(
                 optimizer,
                 base_lr=actual_base_lr,
                 max_lr=max_lr,
@@ -147,7 +152,30 @@ def train(
                 gamma=1.0,
                 cycle_momentum=False  # Don't cycle momentum for Adam
             )
-            print(f"Using CyclicLR scheduler: base_lr={actual_base_lr}, max_lr={max_lr}, mode=triangular2")
+            
+            # Create warmup scheduler if requested
+            if warmup_epochs > 0:
+                warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+                    optimizer,
+                    start_factor=warmup_start_factor,
+                    end_factor=1.0,
+                    total_iters=warmup_epochs * len(train_loader)
+                )
+                
+                # Combine warmup and main scheduler
+                scheduler = torch.optim.lr_scheduler.SequentialLR(
+                    optimizer,
+                    schedulers=[warmup_scheduler, main_scheduler],
+                    milestones=[warmup_epochs * len(train_loader)]
+                )
+                
+                print(f"Using Linear Warmup + CyclicLR scheduler:")
+                print(f"  Warmup: {warmup_epochs} epochs, start_factor={warmup_start_factor} (initial LR={actual_base_lr * warmup_start_factor})")
+                print(f"  CyclicLR: base_lr={actual_base_lr}, max_lr={max_lr}, mode=triangular2")
+            else:
+                scheduler = main_scheduler
+                print(f"Using CyclicLR scheduler: base_lr={actual_base_lr}, max_lr={max_lr}, mode=triangular2")
+            
             print(f"Cycle length: {step_size_up + step_size_down} epochs ({(step_size_up + step_size_down) * len(train_loader)} iterations)")
             print(f"Note: LR will vary continuously throughout training (per-batch updates)")
 

@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.5):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.5, warmup_epochs=0, warmup_start_factor=0.001):
     # Load data
     print("Loading data...")
 
@@ -170,31 +170,37 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         max_lr=max_lr,
         step_size_up=step_size_up,
         step_size_down=step_size_down,
-        snr_alpha=snr_alpha
+        snr_alpha=snr_alpha,
+        warmup_epochs=warmup_epochs,
+        warmup_start_factor=warmup_start_factor
     )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train constellation model with optional checkpoint loading')
     parser.add_argument('--checkpoint', type=str, help='Path to an existing model checkpoint to resume training', default=None)
-    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=32)
-    parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load (default: all SNRs)', default=None)
+    parser.add_argument('--batch_size', type=int, help='Batch size for training and validation', default=128)
+    parser.add_argument('--snr_list', type=str, help='Comma-separated list of SNR values to load (default: all SNRs)', default="0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30")
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load (default: all modulations)', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
-    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-4)
+    parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-5)
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-3)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
-    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='resnet18', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
+    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='swin_tiny', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
     parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=False)
     parser.add_argument('--use_dilated_preprocessing', type=str2bool, help='Use dilated CNN preprocessing for global context (Swin only)', default=False)
-    parser.add_argument('--use_pretrained', type=str2bool, help='Use ImageNet pretrained weights for Swin models (default: True)', default=True)
+    parser.add_argument('--use_pretrained', type=str2bool, help='Use ImageNet pretrained weights for Swin models (default: False)', default=False)
     
     # Cyclic learning rate scheduler options
-    parser.add_argument('--max_lr', type=float, help='Maximum learning rate for cyclic scheduler (default: 50x base_lr)', default=None)
+    parser.add_argument('--max_lr', type=float, help='Maximum learning rate for cyclic scheduler (default: 1e-3)', default=1e-3)
     parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
     parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
+    
+    # Warmup options
+    parser.add_argument('--warmup_epochs', type=int, help='Number of epochs for linear warmup (0 to disable)', default=0)
+    parser.add_argument('--warmup_start_factor', type=float, help='Starting learning rate factor for warmup (e.g., 0.001 = 0.1% of base_lr)', default=0.001)
     
     # SNR loss options
     parser.add_argument('--snr_alpha', type=float, help='Weight for SNR distance penalty (0=pure CE, 1=strong penalty, 2=very strong)', default=0.5)
@@ -219,5 +225,7 @@ if __name__ == "__main__":
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
         step_size_down=args.step_size_down,
-        snr_alpha=args.snr_alpha
+        snr_alpha=args.snr_alpha,
+        warmup_epochs=args.warmup_epochs,
+        warmup_start_factor=args.warmup_start_factor
     )
