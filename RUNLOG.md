@@ -2,11 +2,19 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: wobbly-bush-190 (pjob97rc) - ORDINAL REGRESSION EXPERIMENT
+## Current Active Run: [NEW RUN NAME] ([NEW RUN ID]) - ENHANCED SNR BOTTLENECK EXPERIMENT
 
-**Status**: 🚀 **RUNNING** (Started June 30, 2025, 11:59:10 UTC)  
-**Architecture**: Swin Transformer Tiny + **Ordinal Regression (MSE Loss)**  
-**Phase**: **ORDINAL REGRESSION - Testing MSE loss for ordinal SNR prediction**
+**Status**: 🚀 **RUNNING** (Started [DATE])  
+**Architecture**: Swin Transformer Tiny + **Enhanced SNR Bottleneck (64-dim) + Pure Cross-Entropy**  
+**Phase**: **ARCHITECTURAL ENHANCEMENT - Testing bottleneck vs loss function tricks**
+
+---
+
+## Previous Run: wobbly-bush-190 (pjob97rc) - ORDINAL REGRESSION EXPERIMENT
+
+**Status**: ❌ **STOPPED** (June 30, 2025)  
+**Result**: **Still created attractors** - moved from 26 dB to 24 dB, didn't eliminate the problem
+**Key Finding**: Ordinal regression just shifts attractors, doesn't solve fundamental issue
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - **NO pretrained weights**
