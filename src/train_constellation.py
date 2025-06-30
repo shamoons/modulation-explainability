@@ -126,10 +126,10 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
     
-    # Use pure L1 distance loss for ordinal SNR prediction (no alpha parameter needed)
-    from losses.distance_snr_loss import PureDistanceSNRLoss
-    criterion_snr = PureDistanceSNRLoss().to(device)
-    print("Using pure L1 distance loss for SNR prediction (ordinal regression approach)")
+    # Use ordinal regression loss for SNR prediction (treats as continuous with MSE)
+    from losses.ordinal_regression_loss import OrdinalRegressionLoss
+    criterion_snr = OrdinalRegressionLoss(num_classes=num_snr_classes).to(device)
+    print(f"Using ordinal regression loss for SNR prediction (MSE in continuous space [0, {num_snr_classes-1}])")
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss

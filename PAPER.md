@@ -67,11 +67,12 @@ bounded_weights = clip(momentum_weights, min=0.2*natural, max=5.0*natural)
 ### 2. Multi-Task Uncertainty Weighting
 Kendall et al. (2018): `L = (1/2σ²_mod)L_mod + (1/2σ²_snr)L_snr + log(σ_mod·σ_snr)`
 
-### 3. Pure L1 Distance Loss for SNR (BREAKTHROUGH)
-- **Problem**: Cross-entropy treats SNR as unordered categories (wrong!)
-- **Solution**: Pure L1 distance loss = mean(|predicted_class - true_class|)
-- **Benefits**: Eliminates black holes, no alpha parameter, direct optimization
-- **Insight**: SNR is ordinal sequence, not categorical classes
+### 3. Ordinal Regression for SNR (BREAKTHROUGH)
+- **Problem**: Both CE and pure L1 create attractors (CE→single class, L1→median values)
+- **Solution**: Ordinal regression with MSE loss in continuous space [0, num_classes-1]
+- **Implementation**: Model outputs class probabilities → weighted average → MSE loss
+- **Benefits**: Maintains ordinal relationships, smooth transitions, no black holes
+- **Insight**: Combines regression (continuous) with classification (discrete outputs)
 - **Note**: Warmup LR removed for simplicity - may re-add if high LR causes instability
 
 ## Future Work
