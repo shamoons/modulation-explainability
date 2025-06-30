@@ -2,48 +2,61 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: peach-violet-189 (rb2txlt3) - PURE L1 DISTANCE LOSS BREAKTHROUGH
+## Current Active Run: peach-violet-189 (rb2txlt3) - ORDINAL REGRESSION BREAKTHROUGH
 
-**Status**: 🚀 **RUNNING** (Started June 30, 2025, 11:08:48 UTC)  
-**Architecture**: Swin Transformer Tiny + **Pure L1 Distance Loss**  
-**Phase**: **ORDINAL REGRESSION APPROACH - Eliminating black holes through proper loss design**
+**Status**: 🔄 **PIVOTED TO ORDINAL REGRESSION** (Updated June 30, 2025)  
+**Architecture**: Swin Transformer Tiny + **Ordinal Regression (MSE Loss)**  
+**Phase**: **ORDINAL REGRESSION - Combining benefits of regression and classification**
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - **NO pretrained weights**
 - **Training**: Batch=256, CyclicLR (1e-5 to 1e-3), Epochs=100
 - **Revolutionary Changes**: 
-  - **Pure L1 Distance Loss**: No cross-entropy, no alpha parameter
-  - **Ordinal Regression**: Treats SNR as ordered sequence, not discrete classes
+  - **Ordinal Regression MSE**: Treats SNR as continuous in [0, 15], rounds to class
+  - **Softmax-weighted average**: Converts class probs to continuous value
   - **NO warmup**: Removed for simplicity (may re-add if needed)
   - **NO alpha tuning**: Eliminates hyperparameter complexity
 - **Loss Function**: 
   - **Modulation**: Cross-entropy (unordered categories)
-  - **SNR**: Pure L1 distance = mean(|pred_class - true_class|)
+  - **SNR**: MSE loss on continuous predictions (ordinal regression)
 - **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
 - **Classes**: 272 total (17 modulations × 16 SNRs)
 - **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
 
 ### Experiment Hypothesis
-Testing whether **pure L1 distance loss** can:
-1. **Eliminate black holes**: No incentive to collapse to single SNR class
-2. **Natural ordinal learning**: Model learns SNR is ordered (0 < 2 < 4 ... < 30 dB)
-3. **Simpler optimization**: One objective instead of competing CE + distance penalty
-4. **Direct SNR accuracy**: Optimizes exactly what we want to measure
+Testing whether **ordinal regression MSE loss** can:
+1. **Eliminate attractors**: No single class or median bias
+2. **Smooth transitions**: Continuous space allows interpolation
+3. **Maintain ordering**: MSE naturally respects distance relationships
+4. **Best of both worlds**: Regression awareness with classification outputs
 
-### Why This Revolutionary Change?
-- **Root cause discovered**: Distance-weighted CE loss was backwards (1/d² penalty)
-- **Black hole mechanism**: CE loss encourages discrete boundaries, model collapses to one class
-- **Literature precedent**: Ordinal regression uses distance losses (age estimation, rating prediction)
-- **Simplicity**: No alpha hyperparameter, no competing objectives
-- **Logic**: SNR is ordered sequence, not unordered categories like modulation types
+### Why Ordinal Regression?
+- **Pure L1 problem**: Created median attractors (26 dB, 12 dB)
+- **CE problem**: Creates single-class black holes
+- **MSE solution**: Treats SNR as continuous, preventing both issues
+- **Literature precedent**: Standard for ordinal problems (age, ratings, etc.)
+- **Implementation**: Softmax probabilities → weighted average → MSE loss
 
 ### Training Progress
 
-#### Epoch 1 (In Progress)
-- **Initial metrics**: ~5-6% accuracy for both tasks (true random start)
-- **Learning Rate**: 1e-5 (base of CyclicLR)
-- **Loss**: ~3.997 (early training)
-- **Key Watch**: Will L1 distance loss prevent black hole formation?
+#### Epoch 1 Results - Pure L1 Distance (FAILED)
+- **Validation Combined**: 3.60% (modulation: 57.24%, SNR: 5.27%)
+- **Training Combined**: 2.58% (modulation: 39.50%, SNR: 5.93%)
+- **Task Balance**: 56.3%/43.7%
+- **Critical Issue**: **Multiple attractors formed** - 26 dB (primary), 12 dB (secondary)
+- **Failure Mode**: Model predicts "safe" median values to minimize L1 distance
+
+#### Epoch 2 Results - Switched to Ordinal Regression
+- **Validation Combined**: 3.73% (modulation: 56.21%, SNR: 6.05%)
+- **Training Combined**: 3.62% (modulation: 54.95%, SNR: 5.89%)
+- **Task Balance**: 69.5%/30.5% - SNR task getting harder
+- **Learning Rate**: 2.08e-4 (ramping up)
+- **Key Change**: Implemented ordinal regression with MSE loss
+
+#### Epoch 3 (In Progress)
+- **Current metrics**: ~53-54% mod accuracy, ~6% SNR accuracy
+- **Learning Rate**: 4.06e-4
+- **Watch**: Will ordinal regression prevent attractors?
 
 ---
 

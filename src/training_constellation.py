@@ -62,7 +62,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"ORDINAL REGRESSION SNR LOSS - {model_type} with cyclic LR and ordinal regression (MSE) loss for SNR prediction. SNR treated as continuous value in range [0, {dataset.num_snr_classes-1}], then rounded to nearest class. This combines benefits of regression (ordinal awareness) with classification (discrete outputs). No alpha parameter needed. Prevents black holes by treating SNR as ordered continuous space. CyclicLR: base={base_lr if base_lr else '1e-5'}, max={max_lr if max_lr else 10*base_lr if base_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
+        "description": f"ORDINAL REGRESSION SNR LOSS - {model_type} with cyclic LR and ordinal regression (MSE) loss for SNR prediction. SNR treated as continuous value in range [0, {len(dataset.snr_labels)-1}], then rounded to nearest class. This combines benefits of regression (ordinal awareness) with classification (discrete outputs). No alpha parameter needed. Prevents black holes by treating SNR as ordered continuous space. CyclicLR: base={base_lr if base_lr else '1e-5'}, max={max_lr if max_lr else 10*base_lr if base_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
     }
     
     
