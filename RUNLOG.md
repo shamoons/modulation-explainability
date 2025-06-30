@@ -2,11 +2,133 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: polished-shadow-183 (z29ts3ph) - DILATED CNN + ULTRA-LOW LR + α=1.0
+## Current Active Run: deep-frog-184 (qzz97hvb) - NO PRETRAINED WEIGHTS + α=1.0
 
-**Status**: 🚀 **RUNNING** (Started June 29, 2025, 07:49:43 UTC)  
-**Architecture**: Swin Transformer Tiny + **Dilated CNN Preprocessing** + Distance-Weighted Classification  
-**Phase**: **ADVANCED APPROACH - Combining all refinements: dilated CNN + ultra-low LR + strong penalty**
+**Status**: 🚀 **RUNNING** (Started June 29, 2025, 15:46:48 UTC)  
+**Architecture**: Swin Transformer Tiny + **Random Initialization** + Distance-Weighted Classification  
+**Phase**: **CLEAN SLATE APPROACH - No ImageNet bias, pure constellation learning**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - **NO pretrained weights**
+- **Training**: Batch=128, LR=1e-6 to 1e-5 (CyclicLR), Epochs=100
+- **Key Changes**: 
+  - **use_pretrained=false**: Random initialization (no ImageNet bias)
+  - **NO dilated CNN**: Standard preprocessing only
+  - **α=1.0**: Strong distance penalty
+  - **Max LR=1e-5**: Ultra-conservative learning rate
+  - **Patience=10**: Extended early stopping
+- **Loss Function**: Classification + inverse-square distance penalty (1/d²)
+- **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
+- **Classes**: 272 total (17 modulations × 16 SNRs)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **removing pretrained weights** can:
+1. **Eliminate black holes**: No ImageNet bias creating strange attractors
+2. **Better constellation learning**: Features specific to point patterns
+3. **Cleaner α=1.0 behavior**: Distance penalty without conflicting priors
+4. **Slower but healthier**: Trade initial speed for better final performance
+
+### Why This Configuration?
+- **Previous issue**: Massive 28 dB black hole with dilated CNN + pretrained weights
+- **Root cause**: ImageNet features incompatible with constellation patterns
+- **Solution**: Start from scratch, let model learn constellation-specific features
+- **Keep α=1.0**: Test if strong penalty works better without pretrained bias
+
+### Training Progress
+
+#### Epoch 1 Results - Healthy Random Start!
+- **Validation Combined**: 3.93% (modulation: 25.22%, SNR: 17.77%)
+- **Training Combined**: 1.39% (modulation: 12.86%, SNR: 10.65%)
+- **Task Balance**: 50.0%/50.0% - **PERFECT balance!**
+- **Loss**: 5.048 validation vs 5.832 training
+- **Learning Rate**: 1e-6 (base of cycle)
+
+**Key Observations**:
+1. **True Random Start**: 3.93% combined is exactly what we expect from random initialization
+2. **No Black Holes**: SNR accuracy of 17.77% suggests uniform distribution (no attractors)
+3. **Perfect Balance**: 50/50 task weights maintained
+4. **Healthy Gap**: Validation > Training is normal for epoch 1
+
+**Comparison to Previous Runs (Epoch 1)**:
+- **With pretrained + dilated**: 6.59% combined, massive 28 dB black hole
+- **With pretrained, no dilated**: 15-19% combined, early attractors
+- **No pretrained (current)**: 3.93% combined, clean start!
+
+#### Epoch 2 Results - Strong Progress
+- **Validation Combined**: 10.88% (modulation: 41.65%, SNR: 27.07%)
+- **Training Combined**: 6.15% (modulation: 31.87%, SNR: 20.38%)
+- **Task Balance**: 50.1%/49.9% - Still perfect!
+- **Loss**: 4.148 validation vs 4.715 training
+- **Learning Rate**: 2.8e-6
+
+#### Epoch 3 Results - Accelerating Learning
+- **Validation Combined**: 15.67% (modulation: 49.97%, SNR: 31.73%)
+- **Training Combined**: 11.20% (modulation: 43.25%, SNR: 27.08%)
+- **Task Balance**: 50.1%/49.9% - Maintained perfectly!
+- **Loss**: 3.663 validation vs 4.052 training
+- **Learning Rate**: 4.6e-6
+
+#### Epoch 4 Results - 20% Milestone Achieved! 🎯
+- **Validation Combined**: 20.19% (modulation: 55.56%, SNR: 37.30%)
+- **Training Combined**: 14.94% (modulation: 49.44%, SNR: 31.43%)
+- **Task Balance**: 50.2%/49.8% - Still perfect!
+- **Loss**: 3.227 validation vs 3.629 training
+- **Learning Rate**: 6.4e-6
+
+#### Epoch 5 Progress - Continuing Strong
+- **In-progress**: ~53% modulation, ~34% SNR accuracy
+- **Learning Rate**: 8.2e-6 (approaching max)
+- **Trajectory**: On track for 25% combined
+
+**Major Achievement**: Crossed 20% combined accuracy with:
+- ✅ No SNR black holes
+- ✅ Perfect task balance maintained (50/50)
+- ✅ Steady growth pattern
+- ✅ Healthy train/val gap
+
+#### Black Hole Analysis (Epoch 4) - CONFIRMED HEALTHY! ✅
+
+**SNR F1 Scores**:
+- **Excellent (>0.7)**: 0 dB (0.858), 2 dB (0.722), 4 dB (0.702)
+- **Good (0.4-0.7)**: 6 dB (0.614), 8 dB (0.457), 10 dB (0.418)
+- **Moderate (0.2-0.4)**: 12 dB (0.360), 14 dB (0.270), 16 dB (0.246), 24 dB (0.206), 26 dB (0.235), 28 dB (0.202)
+- **Weak (<0.2)**: 18 dB (0.200), 20 dB (0.116), 22 dB (0.067)
+- **Zero**: 30 dB (0.000)
+
+**Confusion Matrix Analysis - NO BLACK HOLES**:
+- **Low SNRs (0-4 dB)**: Strong diagonal dominance (82%, 74%, 73%)
+- **Mid SNRs (6-12 dB)**: Good diagonal values (68%, 47%, 45%, 49%)
+- **High SNRs (20-30 dB)**: Natural confusion spread, NO single attractor:
+  - 24 dB: 34% correct, errors spread to 22 dB (28%), 26 dB (30%)
+  - 26 dB: 36% correct, errors to 24 dB (29%), 28 dB (13%)
+  - 28 dB: 32% correct, errors to 24 dB (34%), 26 dB (32%)
+  - 30 dB: 14% correct, errors spread across 24-28 dB range
+
+**Key Difference from Previous Runs**:
+- **No 28 dB black hole**: Previous run had 45-49% of ALL predictions going to 28 dB
+- **Current run**: Errors naturally distributed among neighbors
+- **Healthy pattern**: High SNR confusion is symmetric, not converging to one value
+
+**Trajectory Analysis**:
+- **Epoch 1**: 3.93% → **Epoch 2**: 10.88% → **Epoch 3**: 15.67%
+- **Growth Rate**: ~5-6% per epoch (healthy and sustainable)
+- **SNR Progress**: 17.77% → 27.07% → 31.73% (no plateaus or attractors!)
+- **Task Balance**: Perfect 50/50 maintained across all epochs
+
+**Key Success Indicators**:
+1. **No Black Holes**: SNR improving steadily without convergence to single values
+2. **Balanced Learning**: Both tasks progressing together
+3. **Stable Optimization**: Smooth loss decrease, good train/val gap
+4. **No Pretrained Artifacts**: Clean learning curve from true random start
+
+---
+
+## Previous Run: polished-shadow-183 (z29ts3ph) - DILATED CNN + ULTRA-LOW LR + α=1.0
+
+**Status**: ⚠️ **PROBLEMATIC** (Started June 29, 2025, massive 28 dB black hole)  
+**Architecture**: Swin Transformer Tiny + **Dilated CNN Preprocessing** + Pretrained Weights  
+**Phase**: **Failed experiment - severe black hole from epoch 1**
 
 ### Configuration
 - **Model**: swin_tiny + dilated CNN (28.18M total parameters)

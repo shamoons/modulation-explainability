@@ -182,7 +182,7 @@ if __name__ == "__main__":
     parser.add_argument('--mods_to_process', type=str, help='Comma-separated list of modulation types to load (default: all modulations)', default=None)
     parser.add_argument('--epochs', type=int, help='Total number of epochs for training', default=100)
     parser.add_argument('--base_lr', type=float, help='Base learning rate for the optimizer', default=1e-4)
-    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-5)
+    parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-3)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
     parser.add_argument('--model_type', type=str, help='Model architecture to use', default='resnet18', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
