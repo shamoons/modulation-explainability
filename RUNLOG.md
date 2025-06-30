@@ -2,11 +2,11 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: peach-violet-189 (rb2txlt3) - ORDINAL REGRESSION BREAKTHROUGH
+## Current Active Run: wobbly-bush-190 (pjob97rc) - ORDINAL REGRESSION EXPERIMENT
 
-**Status**: 🔄 **PIVOTED TO ORDINAL REGRESSION** (Updated June 30, 2025)  
+**Status**: 🚀 **RUNNING** (Started June 30, 2025, 11:59:10 UTC)  
 **Architecture**: Swin Transformer Tiny + **Ordinal Regression (MSE Loss)**  
-**Phase**: **ORDINAL REGRESSION - Combining benefits of regression and classification**
+**Phase**: **ORDINAL REGRESSION - Testing MSE loss for ordinal SNR prediction**
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - **NO pretrained weights**
@@ -39,24 +39,19 @@ Testing whether **ordinal regression MSE loss** can:
 
 ### Training Progress
 
-#### Epoch 1 Results - Pure L1 Distance (FAILED)
-- **Validation Combined**: 3.60% (modulation: 57.24%, SNR: 5.27%)
-- **Training Combined**: 2.58% (modulation: 39.50%, SNR: 5.93%)
-- **Task Balance**: 56.3%/43.7%
-- **Critical Issue**: **Multiple attractors formed** - 26 dB (primary), 12 dB (secondary)
-- **Failure Mode**: Model predicts "safe" median values to minimize L1 distance
+#### Epoch 1 (In Progress)
+- **Initial Loss**: ~13.35 (MSE loss naturally higher than CE)
+- **Initial Accuracy**: ~6% for both tasks (true random start)
+- **Learning Rate**: 1e-5 (base of CyclicLR)
+- **Key Watch**: Will ordinal regression prevent attractors?
 
-#### Epoch 2 Results - Switched to Ordinal Regression
-- **Validation Combined**: 3.73% (modulation: 56.21%, SNR: 6.05%)
-- **Training Combined**: 3.62% (modulation: 54.95%, SNR: 5.89%)
-- **Task Balance**: 69.5%/30.5% - SNR task getting harder
-- **Learning Rate**: 2.08e-4 (ramping up)
-- **Key Change**: Implemented ordinal regression with MSE loss
+---
 
-#### Epoch 3 (In Progress)
-- **Current metrics**: ~53-54% mod accuracy, ~6% SNR accuracy
-- **Learning Rate**: 4.06e-4
-- **Watch**: Will ordinal regression prevent attractors?
+## Previous Run: peach-violet-189 - PURE L1 DISTANCE (MEDIAN ATTRACTORS)
+
+**Status**: ❌ **STOPPED** (June 30, 2025)  
+**Result**: Multiple attractors formed at 26 dB (primary) and 12 dB (secondary)
+**Key Finding**: Pure L1 distance creates median value attractors to minimize average error
 
 ---
 

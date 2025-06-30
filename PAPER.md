@@ -5,10 +5,12 @@ Academic Notes: "Constellation Diagram Augmentation and Perturbation-Based Expla
 ## Key Discoveries
 
 ### 1. Black Hole Root Cause: Wrong Loss Function Design
-- **Problem**: Distance-weighted cross-entropy with 1/d² penalty (backwards!)
-- **Mechanism**: Cross-entropy encourages discrete boundaries → collapse to single class
-- **Solution**: Pure L1 distance loss treats SNR as ordinal sequence
-- **Result**: Eliminates 22-28 dB black holes completely
+- **Problem**: Cross-entropy treats SNR as unordered categories → single-class attractors
+- **Failed attempts**: 
+  - Distance-weighted CE with 1/d² penalty (backwards implementation)
+  - Pure L1 distance (created median attractors at 26 dB, 12 dB)
+- **Solution**: Ordinal regression with MSE loss
+- **Result**: Treats SNR as continuous space, preventing attractors
 
 ### 2. SNR-Performance Paradox
 - Low SNR (-20 to -2 dB): F1=0.000 (noise dominance)
@@ -29,13 +31,19 @@ power = np.mean(I**2 + Q**2)
 scale_factor = np.sqrt(power)
 ```
 
-### 5. Ordinal vs Categorical Loss Design
+### 5. Ordinal Regression Implementation
 ```python
-# WRONG: Treats SNR as unordered categories
+# WRONG: Cross-entropy (creates black holes)
 snr_loss = CrossEntropyLoss()(snr_pred, snr_true)
 
-# CORRECT: Treats SNR as ordered sequence  
-snr_loss = torch.mean(torch.abs(pred_class - true_class))
+# WRONG: Pure L1 distance (creates median attractors)
+snr_loss = torch.mean(torch.abs(argmax(snr_pred) - snr_true))
+
+# CORRECT: Ordinal regression with MSE
+class_probs = F.softmax(snr_pred, dim=1)
+class_indices = torch.arange(num_classes).float()
+pred_continuous = torch.sum(class_probs * class_indices, dim=1)
+snr_loss = F.mse_loss(pred_continuous, snr_true.float())
 ```
 
 ## Literature Analysis
@@ -67,13 +75,23 @@ bounded_weights = clip(momentum_weights, min=0.2*natural, max=5.0*natural)
 ### 2. Multi-Task Uncertainty Weighting
 Kendall et al. (2018): `L = (1/2σ²_mod)L_mod + (1/2σ²_snr)L_snr + log(σ_mod·σ_snr)`
 
-### 3. Ordinal Regression for SNR (BREAKTHROUGH)
-- **Problem**: Both CE and pure L1 create attractors (CE→single class, L1→median values)
-- **Solution**: Ordinal regression with MSE loss in continuous space [0, num_classes-1]
-- **Implementation**: Model outputs class probabilities → weighted average → MSE loss
-- **Benefits**: Maintains ordinal relationships, smooth transitions, no black holes
-- **Insight**: Combines regression (continuous) with classification (discrete outputs)
-- **Note**: Warmup LR removed for simplicity - may re-add if high LR causes instability
+### 3. Ordinal Regression for SNR (CURRENT APPROACH)
+- **Problem Evolution**:
+  - Cross-entropy: Creates single-class black holes (22, 26, 28 dB)
+  - Pure L1 distance: Creates median attractors (26 dB primary, 12 dB secondary)
+- **Solution**: Ordinal regression with MSE loss
+  - Treats SNR as continuous value in [0, num_classes-1]
+  - Softmax probabilities → weighted average → MSE loss
+  - Rounds to nearest class for discrete prediction
+- **Benefits**: 
+  - No single-class collapse (unlike CE)
+  - No median bias (unlike L1)
+  - Smooth transitions between adjacent SNRs
+  - Natural ordering preserved
+- **Implementation Details**:
+  - Model still outputs 16 class logits
+  - Loss computed on continuous predictions
+  - Standard for ordinal problems in literature
 
 ## Future Work
 
