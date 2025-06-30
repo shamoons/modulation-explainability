@@ -2,11 +2,57 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: cosmic-frog-191 (25l43gdi) - ENHANCED SNR BOTTLENECK EXPERIMENT
+## Current Active Run: zesty-firefly-192 (8yh1zp2k) - ENHANCED BOTTLENECK + DISTANCE PENALTY
 
-**Status**: 🚀 **RUNNING** (Started June 30, 2025, 13:25:55 UTC)  
-**Architecture**: Swin Transformer Tiny + **Enhanced SNR Bottleneck (64-dim) + Pure Cross-Entropy**  
-**Phase**: **ARCHITECTURAL ENHANCEMENT - Testing bottleneck vs loss function tricks**
+**Status**: 🚀 **RUNNING** (Started June 30, 2025, 14:44:24 UTC)  
+**Architecture**: Swin Transformer Tiny + **Enhanced SNR Bottleneck (64-dim) + Distance-Weighted Loss (α=0.5)**  
+**Phase**: **OPTIMAL COMBINATION - Architecture + Loss Function Synergy**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - **Random initialization** (no pretrained weights)
+- **Training**: Batch=256, CyclicLR (1e-6 to **1e-4**), Epochs=100
+- **Key Innovations**: 
+  - **Enhanced SNR head**: features(512) → Linear(512,64) → ReLU → Dropout → Linear(64,16)
+  - **Proper distance penalty**: α=0.5, penalty = 0.5 × (pred_class - true_class)²
+  - **Conservative LR**: Max 1e-4 (proven from super-plasma-180, not aggressive 1e-3)
+- **Loss Function**: 
+  - **Modulation**: Standard cross-entropy
+  - **SNR**: Distance-weighted cross-entropy (CORRECT implementation, not backwards!)
+- **Distance Examples**:
+  - 22→24 dB: penalty = 0.5 × 1² = 0.5 (light penalty for adjacent)
+  - 22→30 dB: penalty = 0.5 × 4² = 8.0 (heavy penalty for distant)
+- **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
+- **Classes**: 272 total (17 modulations × 16 SNRs)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **architectural enhancement + proper distance penalty + conservative LR** can finally eliminate attractors:
+1. **64-dim bottleneck**: Forces SNR-specific feature compression
+2. **Correct distance penalty**: Encourages ordinal predictions without backwards implementation
+3. **Conservative LR range**: Avoids destroying delicate SNR features (learned from cosmic-frog-191)
+4. **Synergistic approach**: Architecture handles feature learning, loss handles ordinal relationships
+
+### Why This Configuration?
+- **cosmic-frog-191 lesson**: Architecture works at low LR, fails at high LR
+- **super-plasma-180 insight**: 1e-6 to 1e-4 range was optimal (even with backwards penalty!)
+- **Proper implementation**: Distance penalty now correctly penalizes distant predictions
+- **Best of both**: Combine architectural breakthrough + proven loss approach
+
+### Training Progress
+
+#### Early Epoch 1 Observations
+- **Learning Rate**: 1e-6 (base, proven safe for SNR features)
+- **Initial Performance**: ~7% SNR (normal random start)
+- **Distance penalty active**: Should see ordinal behavior vs attractors
+- **Key Watch**: Will architecture + correct penalty eliminate all attractors?
+
+---
+
+## Previous Run: cosmic-frog-191 (25l43gdi) - ENHANCED SNR BOTTLENECK EXPERIMENT
+
+**Status**: 🔄 **PAUSED** (Started June 30, 2025, learning rate too aggressive)  
+**Result**: **Architecture works at low LR, chaos at high LR** - attractor bouncing between 28/30 dB
+**Key Lesson**: Enhanced bottleneck needs conservative learning rates to be effective
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - **Random initialization** (no pretrained weights)

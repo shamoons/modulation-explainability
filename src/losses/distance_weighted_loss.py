@@ -50,10 +50,30 @@ class DistanceWeightedSNRLoss(nn.Module):
         # Distance = |predicted_class - true_class|
         distances = torch.abs(predicted_classes.float() - targets.float())
         
-        # Distance penalty = alpha * distance^2
-        # Quadratic penalty: adjacent errors (distance=1) get penalty=alpha,
-        # distant errors (distance=4) get penalty=16*alpha
-        distance_penalty = self.alpha * (distances ** 2)
+        # Normalize distances to [0, 1] range first
+        max_distance = self.num_classes - 1
+        normalized_distances = distances / max_distance
+        
+        # Apply non-linear curve for better adjacent penalty
+        # Option 1: Square root curve - less aggressive than linear, more than quadratic
+        # normalized_penalty = torch.sqrt(normalized_distances)
+        
+        # Option 2: Logarithmic curve - strong penalty for adjacent, plateaus for distant
+        # epsilon = 1e-8  # Avoid log(0)
+        # normalized_penalty = -torch.log(1 - normalized_distances + epsilon) / -torch.log(epsilon)
+        
+        # Option 3: Sigmoid-based curve - smooth transition with configurable steepness
+        steepness = 5.0  # Higher = steeper curve around midpoint
+        normalized_penalty = 2 / (1 + torch.exp(-steepness * normalized_distances)) - 1
+        
+        # Apply alpha scaling
+        distance_penalty = self.alpha * normalized_penalty
+        
+        # Additional scaling to keep total loss reasonable
+        # Target: distance penalty should add at most 0.1-0.3 to CE loss
+        # Since sigmoid maxes at ~1.0, and alpha=0.5, max penalty is ~0.5
+        # Scale down by factor of 2 to get max ~0.25
+        distance_penalty = distance_penalty / 2.0
         
         # Average the distance penalty across the batch
         distance_penalty = torch.mean(distance_penalty)
