@@ -2,11 +2,46 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: [NEW RUN NAME] ([NEW RUN ID]) - ENHANCED SNR BOTTLENECK EXPERIMENT
+## Current Active Run: cosmic-frog-191 (25l43gdi) - ENHANCED SNR BOTTLENECK EXPERIMENT
 
-**Status**: 🚀 **RUNNING** (Started [DATE])  
+**Status**: 🚀 **RUNNING** (Started June 30, 2025, 13:25:55 UTC)  
 **Architecture**: Swin Transformer Tiny + **Enhanced SNR Bottleneck (64-dim) + Pure Cross-Entropy**  
 **Phase**: **ARCHITECTURAL ENHANCEMENT - Testing bottleneck vs loss function tricks**
+
+### Configuration
+- **Model**: swin_tiny (~28M parameters) - **Random initialization** (no pretrained weights)
+- **Training**: Batch=256, CyclicLR (1e-6 to 1e-3), Epochs=100
+- **Key Innovation**: **Enhanced SNR head architecture**
+  - **Bottleneck design**: features(512) → Linear(512,64) → ReLU → Dropout → Linear(64,16)
+  - **Parameter increase**: +25K parameters (0.09% increase - negligible)
+  - **Regularization**: Compression-based rather than loss-based
+- **Loss Function**: 
+  - **Modulation**: Standard cross-entropy (unordered categories)
+  - **SNR**: Standard cross-entropy (no distance weighting, no ordinal tricks)
+- **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
+- **Classes**: 272 total (17 modulations × 16 SNRs)
+- **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
+
+### Experiment Hypothesis
+Testing whether **architectural enhancement** can eliminate attractors where loss function approaches failed:
+1. **64-dim bottleneck**: Forces SNR-specific feature compression and learning
+2. **Feature separation**: Prevents shortcuts to median/single-class attractors
+3. **Clean approach**: Pure cross-entropy without loss engineering tricks
+4. **Regularization through compression**: Architecture handles feature learning, loss handles optimization
+
+### Why This Configuration?
+- **Failed approaches**: Distance-weighted CE (backwards), pure L1 (median attractors), ordinal regression (moved attractors)
+- **Architectural hypothesis**: Compression bottleneck breaks shortcuts better than loss tricks
+- **Aggressive LR range**: 1e-6 to 1e-3 (100x wider than super-plasma-180) for exploration + refinement
+- **Clean baseline**: Standard CE allows fair comparison to previous approaches
+
+### Training Progress
+
+#### Early Epoch 1 Observations
+- **Learning Rate**: 1e-6 (base of CyclicLR cycle)
+- **Initial Performance**: ~6% both tasks (true random initialization)
+- **Training Speed**: 3.26 it/s (good GPU utilization)
+- **Key Watch**: Will architectural bottleneck prevent attractor formation?
 
 ---
 

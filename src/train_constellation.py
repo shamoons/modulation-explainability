@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.0):
     # Load data
     print("Loading data...")
 
@@ -123,10 +123,17 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Get device first
     device = get_device()
     
-    # Initialize loss functions - Standard cross-entropy for both tasks
+    # Initialize loss functions - Standard cross-entropy for modulation, distance-weighted for SNR if alpha > 0
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
-    criterion_snr = nn.CrossEntropyLoss().to(device)  # SNR classification loss
-    print(f"Using standard cross-entropy loss for both modulation and SNR prediction (no distance weighting)")
+    
+    # SNR loss: distance-weighted if alpha > 0, pure cross-entropy if alpha = 0
+    if snr_alpha > 0.0:
+        from losses.distance_weighted_loss import DistanceWeightedSNRLoss
+        criterion_snr = DistanceWeightedSNRLoss(num_classes=num_snr_classes, alpha=snr_alpha).to(device)
+        print(f"Using distance-weighted cross-entropy loss for SNR prediction (alpha={snr_alpha})")
+    else:
+        criterion_snr = nn.CrossEntropyLoss().to(device)
+        print(f"Using standard cross-entropy loss for both modulation and SNR prediction (no distance weighting)")
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
@@ -192,9 +199,8 @@ if __name__ == "__main__":
     parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
     parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
     
-    # Warmup removed - may want to re-add if high LR causes instability with pure L1 loss
-    
-    # SNR loss uses pure L1 distance (no alpha parameter needed)
+    # Distance-weighted SNR loss options
+    parser.add_argument('--snr_alpha', type=float, help='Alpha parameter for SNR distance penalty (0=pure CE, 0.5=balanced, 1.0=strong penalty)', default=0.0)
 
     args = parser.parse_args()
 
@@ -215,5 +221,6 @@ if __name__ == "__main__":
         use_pretrained=args.use_pretrained,
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
-        step_size_down=args.step_size_down
+        step_size_down=args.step_size_down,
+        snr_alpha=args.snr_alpha
     )

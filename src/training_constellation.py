@@ -62,7 +62,7 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
-        "description": f"ENHANCED SNR BOTTLENECK + PURE CE - {model_type} with enhanced SNR head (64-dim bottleneck) and standard cross-entropy for both tasks. SNR head: features → Linear(512,64) → ReLU → Dropout → Linear(64,16). No distance weighting, no ordinal regression - pure classification approach. CyclicLR: base={base_lr if base_lr else '1e-6'}, max={max_lr if max_lr else '1e-3'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation. Testing architectural enhancement vs loss function tricks."
+        "description": f"ENHANCED SNR BOTTLENECK + DISTANCE PENALTY - {model_type} with enhanced SNR head (64-dim bottleneck) and distance-weighted SNR loss. SNR head: features → Linear(512,64) → ReLU → Dropout → Linear(64,16). Distance penalty: alpha * (pred_class - true_class)^2 penalizes distant predictions. CyclicLR: base={base_lr if base_lr else '1e-6'}, max={max_lr if max_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation. Testing architectural + loss function synergy."
     }
     
     
