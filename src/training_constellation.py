@@ -64,7 +64,7 @@ def train(
         "dropout": dropout,
         "batch_size": batch_size,
         "snr_alpha": snr_alpha,
-        "description": f"DISTANCE-WEIGHTED SNR CLASSIFICATION - {model_type} with cyclic LR and inverse-square distance penalty (alpha={snr_alpha}) for SNR. Using classification (16 classes) instead of regression, with penalty that heavily weights distant SNR predictions using 1/d² law. Alpha={snr_alpha}: {'pure CE loss' if snr_alpha == 0 else 'weak penalty' if snr_alpha < 0.5 else 'moderate penalty' if snr_alpha <= 1.0 else 'strong penalty'}. This prevents 28 dB black hole while maintaining classification benefits. CyclicLR: base=1e-6, max={max_lr if max_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
+        "description": f"DISTANCE-WEIGHTED SNR CLASSIFICATION - {model_type} with cyclic LR and inverse-square distance penalty (alpha={snr_alpha}) for SNR. Using classification (16 classes) instead of regression, with penalty that heavily weights distant SNR predictions using 1/d² law. Alpha={snr_alpha}: {'pure CE loss' if snr_alpha == 0 else 'weak penalty' if snr_alpha < 0.5 else 'moderate penalty' if snr_alpha <= 1.0 else 'strong penalty'}. This prevents 28 dB black hole while maintaining classification benefits. CyclicLR: base={base_lr if base_lr else '1e-5'}, max={max_lr if max_lr else 10*base_lr if base_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation."
     }
     
     
@@ -131,11 +131,11 @@ def train(
         
         # Create CyclicLR scheduler on first epoch
         if epoch == 0:
-            # Override base_lr for cyclic - we want a lower base
-            actual_base_lr = 1e-6  # Lower base for better stability
+            # Use the provided base_lr directly
+            actual_base_lr = base_lr if base_lr else 1e-5  # Use actual base_lr for cyclic lower bound
             # Set max_lr if not provided
             if max_lr is None:
-                max_lr = 1e-4  # 100x base_lr for first cycle exploration
+                max_lr = 10 * base_lr if base_lr else 1e-4  # Default to 10x base_lr if not specified
             
             scheduler = torch.optim.lr_scheduler.CyclicLR(
                 optimizer,
