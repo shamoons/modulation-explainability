@@ -3,52 +3,58 @@ import torch
 import torch.nn as nn
 
 
-class DistancePenaltyCategoricalSNRLoss(nn.Module):
+class PureDistanceSNRLoss(nn.Module):
+    """
+    Pure L1 distance loss for ordinal SNR classification.
+    
+    Directly minimizes the absolute difference between predicted and true SNR classes.
+    This treats SNR prediction as an ordinal regression problem rather than 
+    categorical classification, eliminating black hole attractors.
+    
+    No cross-entropy loss, no alpha parameter - just pure distance optimization.
+    """
+    
     def __init__(self):
-        super(DistancePenaltyCategoricalSNRLoss, self).__init__()
+        super(PureDistanceSNRLoss, self).__init__()
 
     def forward(self, snr_pred, snr_true):
         """
-        Calculate a penalty-based categorical loss for SNR where predictions further from the
-        true SNR class are penalized more.
+        Calculate pure L1 distance loss between predicted and true SNR classes.
 
         Args:
-            snr_pred (Tensor): Predicted logits for SNR classes (before softmax).
-            snr_true (Tensor): True SNR labels (as class indices).
+            snr_pred (Tensor): Predicted logits for SNR classes [batch_size, num_classes]
+            snr_true (Tensor): True SNR labels as class indices [batch_size]
 
         Returns:
-            Tensor: Loss value with distance-based penalties.
+            Tensor: Pure L1 distance loss (mean absolute error in class space)
         """
-        # Get predicted class by finding the index of the max logits (no softmax here)
+        # Get predicted class by finding the index of the max logits
         snr_pred_class = torch.argmax(snr_pred, dim=1)
 
-        # Compute the distance between predicted and true classes
-        distance_penalty = (snr_pred_class.float() - snr_true.float()).abs()
+        # Compute L1 distance between predicted and true classes
+        distance_loss = torch.abs(snr_pred_class.float() - snr_true.float())
 
-        # Apply a scaling factor to penalize further distances
-        scaled_penalty = distance_penalty
-
-        # Standard cross-entropy loss (logits passed directly)
-        ce_loss = nn.CrossEntropyLoss()(snr_pred, snr_true)
-
-        # Final loss is cross-entropy loss with an additional penalty term
-        loss = ce_loss + torch.mean(scaled_penalty)
-
-        return loss
+        # Return mean L1 distance
+        return torch.mean(distance_loss)
 
 
 if __name__ == "__main__":
-    # Simulate random predicted logits for 5 samples and 10 SNR classes (before softmax)
-    snr_pred = torch.randn(5, 10)  # 5 samples, 10 classes (logits)
+    # Test pure distance loss
+    snr_pred = torch.randn(5, 16)  # 5 samples, 16 SNR classes (0-30 dB in 2dB steps)
+    snr_true = torch.tensor([0, 2, 8, 12, 15])  # True SNR class indices
 
-    # Simulate true SNR class labels for these samples
-    snr_true = torch.tensor([0, 2, 5, 7, 9])  # True SNR class indices
-
-    # Instantiate the custom loss function
-    loss_fn = DistancePenaltyCategoricalSNRLoss()
+    # Instantiate the pure distance loss
+    loss_fn = PureDistanceSNRLoss()
 
     # Calculate the loss
     loss = loss_fn(snr_pred, snr_true)
 
     # Print the computed loss value
-    print(f"Computed loss: {loss.item()}")
+    print(f"Pure L1 Distance Loss: {loss.item()}")
+    
+    # Show predicted vs true for demonstration
+    pred_classes = torch.argmax(snr_pred, dim=1)
+    distances = torch.abs(pred_classes.float() - snr_true.float())
+    print(f"Predicted classes: {pred_classes.tolist()}")
+    print(f"True classes: {snr_true.tolist()}")
+    print(f"L1 distances: {distances.tolist()}")

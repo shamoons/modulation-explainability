@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.5, warmup_epochs=0, warmup_start_factor=0.001):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5):
     # Load data
     print("Loading data...")
 
@@ -126,10 +126,10 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
     
-    # Use classification loss with distance penalty for SNR
-    from losses.distance_weighted_ce import DistanceWeightedCrossEntropyLoss
-    criterion_snr = DistanceWeightedCrossEntropyLoss(num_classes=num_snr_classes, alpha=snr_alpha).to(device)
-    print(f"Using distance-weighted SNR loss with alpha={snr_alpha} (higher = stronger distance penalty)")
+    # Use pure L1 distance loss for ordinal SNR prediction (no alpha parameter needed)
+    from losses.distance_snr_loss import PureDistanceSNRLoss
+    criterion_snr = PureDistanceSNRLoss().to(device)
+    print("Using pure L1 distance loss for SNR prediction (ordinal regression approach)")
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
@@ -169,10 +169,7 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         dropout=dropout,
         max_lr=max_lr,
         step_size_up=step_size_up,
-        step_size_down=step_size_down,
-        snr_alpha=snr_alpha,
-        warmup_epochs=warmup_epochs,
-        warmup_start_factor=warmup_start_factor
+        step_size_down=step_size_down
     )
 
 
@@ -198,12 +195,9 @@ if __name__ == "__main__":
     parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
     parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
     
-    # Warmup options
-    parser.add_argument('--warmup_epochs', type=int, help='Number of epochs for linear warmup (0 to disable)', default=0)
-    parser.add_argument('--warmup_start_factor', type=float, help='Starting learning rate factor for warmup (e.g., 0.001 = 0.1% of base_lr)', default=0.001)
+    # Warmup removed - may want to re-add if high LR causes instability with pure L1 loss
     
-    # SNR loss options
-    parser.add_argument('--snr_alpha', type=float, help='Weight for SNR distance penalty (0=pure CE, 1=strong penalty, 2=very strong)', default=0.5)
+    # SNR loss uses pure L1 distance (no alpha parameter needed)
 
     args = parser.parse_args()
 
@@ -224,8 +218,5 @@ if __name__ == "__main__":
         use_pretrained=args.use_pretrained,
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
-        step_size_down=args.step_size_down,
-        snr_alpha=args.snr_alpha,
-        warmup_epochs=args.warmup_epochs,
-        warmup_start_factor=args.warmup_start_factor
+        step_size_down=args.step_size_down
     )

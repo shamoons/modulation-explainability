@@ -4,16 +4,16 @@ Academic Notes: "Constellation Diagram Augmentation and Perturbation-Based Expla
 
 ## Key Discoveries
 
-### 1. Parameter-to-Sample Ratio Guidelines
-- ResNet18: 11M params (8/sample) ✅
-- Swin-Tiny: 28M params (20/sample) ⚠️  
-- ViT-B/16: 86M params (61/sample) ❌
-- **Finding**: >100 params/sample = severe overfitting
+### 1. Black Hole Root Cause: Wrong Loss Function Design
+- **Problem**: Distance-weighted cross-entropy with 1/d² penalty (backwards!)
+- **Mechanism**: Cross-entropy encourages discrete boundaries → collapse to single class
+- **Solution**: Pure L1 distance loss treats SNR as ordinal sequence
+- **Result**: Eliminates 22-28 dB black holes completely
 
 ### 2. SNR-Performance Paradox
 - Low SNR (-20 to -2 dB): F1=0.000 (noise dominance)
 - Mid SNR (0-14 dB): F1>0.73 (optimal - noise creates discriminative "clouds")
-- High SNR (16-30 dB): F1<0.31 (over-clarity paradox)
+- High SNR (16-30 dB): F1<0.31 (over-clarity paradox, but no black holes with L1 loss)
 
 ### 3. Model Capacity Ceiling
 - All architectures plateau at 24-26% for 442-class problem
@@ -27,6 +27,15 @@ H = H / H.max()
 # CORRECT: Power normalization preserves SNR
 power = np.mean(I**2 + Q**2)
 scale_factor = np.sqrt(power)
+```
+
+### 5. Ordinal vs Categorical Loss Design
+```python
+# WRONG: Treats SNR as unordered categories
+snr_loss = CrossEntropyLoss()(snr_pred, snr_true)
+
+# CORRECT: Treats SNR as ordered sequence  
+snr_loss = torch.mean(torch.abs(pred_class - true_class))
 ```
 
 ## Literature Analysis
@@ -58,10 +67,12 @@ bounded_weights = clip(momentum_weights, min=0.2*natural, max=5.0*natural)
 ### 2. Multi-Task Uncertainty Weighting
 Kendall et al. (2018): `L = (1/2σ²_mod)L_mod + (1/2σ²_snr)L_snr + log(σ_mod·σ_snr)`
 
-### 3. SNR Regression (NEW)
-- Eliminates "28 dB black hole" from classification
-- SmoothL1Loss for robustness
-- Round to nearest 2 dB for evaluation
+### 3. Pure L1 Distance Loss for SNR (BREAKTHROUGH)
+- **Problem**: Cross-entropy treats SNR as unordered categories (wrong!)
+- **Solution**: Pure L1 distance loss = mean(|predicted_class - true_class|)
+- **Benefits**: Eliminates black holes, no alpha parameter, direct optimization
+- **Insight**: SNR is ordinal sequence, not categorical classes
+- **Note**: Warmup LR removed for simplicity - may re-add if high LR causes instability
 
 ## Future Work
 

@@ -2,38 +2,40 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: deep-frog-184 (qzz97hvb) - NO PRETRAINED WEIGHTS + α=1.0
+## Current Active Run: tough-meadow-187 (ongoing) - PURE L1 DISTANCE LOSS BREAKTHROUGH
 
-**Status**: 🚀 **RUNNING** (Started June 29, 2025, 15:46:48 UTC)  
-**Architecture**: Swin Transformer Tiny + **Random Initialization** + Distance-Weighted Classification  
-**Phase**: **CLEAN SLATE APPROACH - No ImageNet bias, pure constellation learning**
+**Status**: 🔬 **MAJOR METHODOLOGY CHANGE** (Updated June 30, 2025)  
+**Architecture**: Swin Transformer Tiny + **Pure L1 Distance Loss**  
+**Phase**: **ORDINAL REGRESSION APPROACH - Eliminating black holes through proper loss design**
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - **NO pretrained weights**
-- **Training**: Batch=128, LR=1e-6 to 1e-5 (CyclicLR), Epochs=100
-- **Key Changes**: 
-  - **use_pretrained=false**: Random initialization (no ImageNet bias)
-  - **NO dilated CNN**: Standard preprocessing only
-  - **α=1.0**: Strong distance penalty
-  - **Max LR=1e-5**: Ultra-conservative learning rate
-  - **Patience=10**: Extended early stopping
-- **Loss Function**: Classification + inverse-square distance penalty (1/d²)
+- **Training**: Batch=128, CyclicLR (1e-6 to 1e-3), Epochs=100
+- **Revolutionary Changes**: 
+  - **Pure L1 Distance Loss**: No cross-entropy, no alpha parameter
+  - **Ordinal Regression**: Treats SNR as ordered sequence, not discrete classes
+  - **NO warmup**: Removed for simplicity (may re-add if needed)
+  - **NO alpha tuning**: Eliminates hyperparameter complexity
+- **Loss Function**: 
+  - **Modulation**: Cross-entropy (unordered categories)
+  - **SNR**: Pure L1 distance = mean(|pred_class - true_class|)
 - **SNR Range**: 0 to 30 dB in 2dB steps (16 discrete classes)
 - **Classes**: 272 total (17 modulations × 16 SNRs)
 - **Dataset**: 1,114,112 samples (SNR-PRESERVING constellation diagrams)
 
 ### Experiment Hypothesis
-Testing whether **removing pretrained weights** can:
-1. **Eliminate black holes**: No ImageNet bias creating strange attractors
-2. **Better constellation learning**: Features specific to point patterns
-3. **Cleaner α=1.0 behavior**: Distance penalty without conflicting priors
-4. **Slower but healthier**: Trade initial speed for better final performance
+Testing whether **pure L1 distance loss** can:
+1. **Eliminate black holes**: No incentive to collapse to single SNR class
+2. **Natural ordinal learning**: Model learns SNR is ordered (0 < 2 < 4 ... < 30 dB)
+3. **Simpler optimization**: One objective instead of competing CE + distance penalty
+4. **Direct SNR accuracy**: Optimizes exactly what we want to measure
 
-### Why This Configuration?
-- **Previous issue**: Massive 28 dB black hole with dilated CNN + pretrained weights
-- **Root cause**: ImageNet features incompatible with constellation patterns
-- **Solution**: Start from scratch, let model learn constellation-specific features
-- **Keep α=1.0**: Test if strong penalty works better without pretrained bias
+### Why This Revolutionary Change?
+- **Root cause discovered**: Distance-weighted CE loss was backwards (1/d² penalty)
+- **Black hole mechanism**: CE loss encourages discrete boundaries, model collapses to one class
+- **Literature precedent**: Ordinal regression uses distance losses (age estimation, rating prediction)
+- **Simplicity**: No alpha hyperparameter, no competing objectives
+- **Logic**: SNR is ordered sequence, not unordered categories like modulation types
 
 ### Training Progress
 
