@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_alpha=0.0):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_layer_config="standard"):
     # Load data
     print("Loading data...")
 
@@ -77,7 +77,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             snr_classes=num_snr_classes,
             input_channels=input_channels,
             dropout_prob=dropout,
-            model_name=model_type
+            model_name=model_type,
+            snr_layer_config=snr_layer_config
         )
         print(f"Using model: {model_type}")
     elif model_type in ["vit_b_16", "vit_b_32", "vit_h_14"]:
@@ -93,7 +94,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             snr_classes=num_snr_classes,
             input_channels=input_channels,
             dropout_prob=dropout,
-            patch_size=patch_size
+            patch_size=patch_size,
+            snr_layer_config=snr_layer_config
         )
         print(f"Using model: {model_type} (patch_size={patch_size})")
     elif model_type in ["swin_tiny", "swin_small", "swin_base"]:
@@ -105,7 +107,8 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             model_variant=model_type,
             use_task_specific=use_task_specific,
             use_dilated_preprocessing=use_dilated_preprocessing,
-            use_pretrained=use_pretrained
+            use_pretrained=use_pretrained,
+            snr_layer_config=snr_layer_config
         )
         task_specific_status = "with task-specific extraction" if use_task_specific else "without task-specific extraction"
         dilated_status = "with dilated preprocessing" if use_dilated_preprocessing else "without dilated preprocessing"
@@ -126,14 +129,9 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize loss functions - Standard cross-entropy for modulation, distance-weighted for SNR if alpha > 0
     criterion_modulation = nn.CrossEntropyLoss().to(device)  # Modulation classification loss
     
-    # SNR loss: distance-weighted if alpha > 0, pure cross-entropy if alpha = 0
-    if snr_alpha > 0.0:
-        from losses.distance_weighted_loss import DistanceWeightedSNRLoss
-        criterion_snr = DistanceWeightedSNRLoss(num_classes=num_snr_classes, alpha=snr_alpha).to(device)
-        print(f"Using distance-weighted cross-entropy loss for SNR prediction (alpha={snr_alpha})")
-    else:
-        criterion_snr = nn.CrossEntropyLoss().to(device)
-        print(f"Using standard cross-entropy loss for both modulation and SNR prediction (no distance weighting)")
+    # SNR loss: standard cross-entropy
+    criterion_snr = nn.CrossEntropyLoss().to(device)
+    print(f"Using standard cross-entropy loss for both modulation and SNR prediction")
     
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
@@ -199,8 +197,8 @@ if __name__ == "__main__":
     parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
     parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
     
-    # Distance-weighted SNR loss options
-    parser.add_argument('--snr_alpha', type=float, help='Alpha parameter for SNR distance penalty (0=pure CE, 0.5=balanced, 1.0=strong penalty)', default=0.0)
+    # SNR layer configuration options
+    parser.add_argument('--snr_layer_config', type=str, help='SNR layer configuration', default='standard', choices=['standard', 'bottleneck_64', 'bottleneck_128', 'dual_layer'])
 
     args = parser.parse_args()
 
@@ -222,5 +220,5 @@ if __name__ == "__main__":
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
         step_size_down=args.step_size_down,
-        snr_alpha=args.snr_alpha
+        snr_layer_config=args.snr_layer_config
     )

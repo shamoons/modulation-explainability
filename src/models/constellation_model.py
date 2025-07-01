@@ -7,7 +7,7 @@ from .task_specific_extractor import TaskSpecificFeatureExtractor
 
 
 class ConstellationResNet(nn.Module):
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="resnet18"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="resnet18", snr_layer_config="standard"):
         super(ConstellationResNet, self).__init__()
 
         # Load a ResNet model from torchvision
@@ -41,8 +41,41 @@ class ConstellationResNet(nn.Module):
 
         # Separate transformation and output heads for modulation and SNR tasks
         self.modulation_head = nn.Linear(in_features // 4, num_classes)
-        # SNR head: 26 classes for discrete SNR values (-20 to 30 dB in 2dB steps)
-        self.snr_head = nn.Linear(in_features // 4, snr_classes)
+        
+        # Configure SNR head based on snr_layer_config
+        snr_input_dim = in_features // 4
+        if snr_layer_config == "standard":
+            # Direct linear layer (no bottleneck)
+            self.snr_head = nn.Linear(snr_input_dim, snr_classes)
+        elif snr_layer_config == "bottleneck_64":
+            # 64-dimensional bottleneck
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 64),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(64, snr_classes)
+            )
+        elif snr_layer_config == "bottleneck_128":
+            # 128-dimensional bottleneck
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 128),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(128, snr_classes)
+            )
+        elif snr_layer_config == "dual_layer":
+            # Two-layer architecture with 256->64 compression
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 256),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(256, 64),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(64, snr_classes)
+            )
+        else:
+            raise ValueError(f"Unknown snr_layer_config: {snr_layer_config}")
 
     def forward(self, x):
         # Extract features using ResNet backbone

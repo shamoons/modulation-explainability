@@ -16,7 +16,7 @@ class ConstellationVisionTransformer(nn.Module):
     Supports ViT-B/16 (patch_size=16), ViT-B/32 (patch_size=32), and ViT-H/14 (patch_size=14) variants.
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, patch_size=16):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, patch_size=16, snr_layer_config="standard"):
         """
         Initialize the ConstellationVisionTransformer model with two output heads.
 
@@ -26,6 +26,7 @@ class ConstellationVisionTransformer(nn.Module):
             input_channels (int): Number of input channels (1 for grayscale, 3 for RGB).
             dropout_prob (float): Probability of dropout (defaults to 0.3).
             patch_size (int): Patch size for ViT (14, 16, or 32). Defaults to 16.
+            snr_layer_config (str): SNR layer configuration ('standard', 'bottleneck_64', 'bottleneck_128', 'dual_layer').
         """
         super(ConstellationVisionTransformer, self).__init__()
 
@@ -71,7 +72,41 @@ class ConstellationVisionTransformer(nn.Module):
 
         # Output heads for modulation and SNR
         self.modulation_head = nn.Linear(in_features // 4, num_classes)
-        self.snr_head = nn.Linear(in_features // 4, snr_classes)
+        
+        # Configure SNR head based on snr_layer_config
+        snr_input_dim = in_features // 4
+        if snr_layer_config == "standard":
+            # Direct linear layer (no bottleneck)
+            self.snr_head = nn.Linear(snr_input_dim, snr_classes)
+        elif snr_layer_config == "bottleneck_64":
+            # 64-dimensional bottleneck
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 64),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(64, snr_classes)
+            )
+        elif snr_layer_config == "bottleneck_128":
+            # 128-dimensional bottleneck
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 128),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(128, snr_classes)
+            )
+        elif snr_layer_config == "dual_layer":
+            # Two-layer architecture with 256->64 compression
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 256),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(256, 64),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(64, snr_classes)
+            )
+        else:
+            raise ValueError(f"Unknown snr_layer_config: {snr_layer_config}")
 
     def forward(self, x):
         """

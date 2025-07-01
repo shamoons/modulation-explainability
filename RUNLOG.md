@@ -2,11 +2,32 @@
 
 Training Run Documentation for Modulation Classification Research
 
-## Current Active Run: zesty-firefly-192 (8yh1zp2k) - ENHANCED BOTTLENECK + DISTANCE PENALTY
+## Executive Summary - Key Findings
 
-**Status**: 🚀 **RUNNING** (Started June 30, 2025, 14:44:24 UTC)  
+### Best Performing Run
+**super-plasma-180**: 46.31% combined (74.72% mod, 63.60% SNR)
+- Standard architecture + **backwards** distance penalty (1/d²)
+- Conservative LR range: 1e-6 to 1e-4
+- No black holes, healthy SNR distribution
+
+### Failed Approaches (All Create Attractors)
+1. **Cross-Entropy**: Creates single-class black holes (22, 26, 28 dB)
+2. **Ordinal Regression**: Shifts attractors (26→24 dB) but doesn't eliminate
+3. **Pure L1 Distance**: Creates median attractors (12, 26 dB)
+4. **Proper Distance Penalty**: Encourages safe predictions → worse black holes
+5. **Enhanced Architecture + Distance**: Catastrophic failure (10% accuracy)
+
+### Key Insights
+- **Backwards implementation paradox**: Penalty = 1/d² worked better than d²
+- **Architecture sensitivity**: 64-dim bottleneck needs ultra-conservative LR
+- **Loss conflicts**: Complex losses create worse attractors than simple CE
+- **Best approach**: Simple architecture + backwards distance penalty
+
+## Previous Run: zesty-firefly-192 (8yh1zp2k) - ENHANCED BOTTLENECK + DISTANCE PENALTY
+
+**Status**: ❌ **CATASTROPHIC FAILURE** (June 30, 2025, early stopped at epoch 4)  
 **Architecture**: Swin Transformer Tiny + **Enhanced SNR Bottleneck (64-dim) + Distance-Weighted Loss (α=0.5)**  
-**Phase**: **OPTIMAL COMBINATION - Architecture + Loss Function Synergy**
+**Result**: **WORST PERFORMANCE** - Only 10.06% combined accuracy, massive 28 dB black hole
 
 ### Configuration
 - **Model**: swin_tiny (~28M parameters) - **Random initialization** (no pretrained weights)
@@ -40,11 +61,38 @@ Testing whether **architectural enhancement + proper distance penalty + conserva
 
 ### Training Progress
 
-#### Early Epoch 1 Observations
-- **Learning Rate**: 1e-6 (base, proven safe for SNR features)
-- **Initial Performance**: ~7% SNR (normal random start)
-- **Distance penalty active**: Should see ordinal behavior vs attractors
-- **Key Watch**: Will architecture + correct penalty eliminate all attractors?
+#### Epoch 4 Results - BEST (Early Stopped)
+- **Validation Combined**: 10.09% (modulation: 43.34%, SNR: 27.57%)
+- **Training Combined**: 10.09% (same as validation)
+- **Loss**: 1.623 validation vs 1.700 training
+- **Early Stop**: Triggered after 5 epochs of no improvement
+
+#### Performance Collapse Timeline
+- **Epoch 4**: 10.09% combined (peak)
+- **Epoch 5**: 6.10% combined (-40% drop!)
+- **Epoch 6**: 3.96% combined (continuing collapse)
+- **Epoch 9**: 4.64% combined (no recovery)
+
+#### Critical Failure Analysis - Massive 28 dB Black Hole
+
+**SNR F1 Scores (Epoch 4)**:
+- **Complete Failures**: 22 dB (0.000), 24 dB (0.000), 30 dB (0.000)
+- **Near Zero**: 26 dB (0.0003)
+- **Moderate**: 0-8 dB (0.223-0.784), but declining rapidly
+
+**28 dB Black Hole Strength**:
+- 20 dB → 28 dB: **44.0%** misclassified
+- 22 dB → 28 dB: **54.3%** misclassified
+- 24 dB → 28 dB: **55.6%** misclassified
+- 26 dB → 28 dB: **60.0%** misclassified
+- 28 dB → 28 dB: **63.0%** correct (massive attractor)
+- 30 dB → 28 dB: **60.5%** misclassified
+
+**Key Failure Insights**:
+1. **Worst Combination**: Enhanced bottleneck + proper distance penalty = catastrophic
+2. **Paradox**: Backwards distance penalty (1/d²) worked better than correct (d²)
+3. **Architecture Compression**: 64-dim bottleneck too aggressive with distance penalty
+4. **Loss Conflict**: Distance penalty encouraged safe predictions → all predict 28 dB
 
 ---
 
@@ -83,11 +131,19 @@ Testing whether **architectural enhancement** can eliminate attractors where los
 
 ### Training Progress
 
-#### Early Epoch 1 Observations
-- **Learning Rate**: 1e-6 (base of CyclicLR cycle)
-- **Initial Performance**: ~6% both tasks (true random initialization)
-- **Training Speed**: 3.26 it/s (good GPU utilization)
-- **Key Watch**: Will architectural bottleneck prevent attractor formation?
+#### Epoch 1-3 Results - Initial Promise
+- **Epoch 1**: ~6% both tasks (true random initialization)
+- **Epoch 2**: ~15-20% combined (estimated)
+- **Epoch 3**: ~25-30% combined (estimated)
+- **Learning Rate**: Started 1e-6, ramping up through cycle
+
+#### High LR Chaos (Epochs 4-7)
+- **Learning Rate**: Approaching 1e-3 (too aggressive)
+- **Attractor Bouncing**: Model alternated between 28 dB and 30 dB attractors
+- **Performance**: Degraded as LR increased
+- **Key Finding**: Architecture worked well at low LR but failed at high LR
+
+**Lesson Learned**: Enhanced bottleneck architecture requires conservative learning rates (max 1e-4, not 1e-3)
 
 ---
 

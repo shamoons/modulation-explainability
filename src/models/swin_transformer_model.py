@@ -49,7 +49,7 @@ class ConstellationSwinTransformer(nn.Module):
     type and SNR level.
     """
 
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_variant="swin_tiny", use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, snr_layer_config="standard"):
         """
         Initialize the ConstellationSwinTransformer model with two output heads.
 
@@ -62,6 +62,7 @@ class ConstellationSwinTransformer(nn.Module):
             use_task_specific (bool): Whether to use task-specific feature extraction (defaults to False).
             use_dilated_preprocessing (bool): Whether to use dilated CNN preprocessing for global context (defaults to False).
             use_pretrained (bool): Whether to use ImageNet pretrained weights (defaults to True).
+            snr_layer_config (str): SNR layer configuration ('standard', 'bottleneck_64', 'bottleneck_128', 'dual_layer').
         """
         super(ConstellationSwinTransformer, self).__init__()
 
@@ -151,23 +152,47 @@ class ConstellationSwinTransformer(nn.Module):
             )
             # Output heads for modulation and SNR (reduced feature dimension)
             self.modulation_head = nn.Linear(in_features // 4, num_classes)
-            # Enhanced SNR classification head with 64-dim bottleneck for better feature learning
-            self.snr_head = nn.Sequential(
-                nn.Linear(in_features // 4, 64),  # Bottleneck layer for SNR-specific features
-                nn.ReLU(),
-                nn.Dropout(dropout_prob),
-                nn.Linear(64, snr_classes)  # Output logits for each SNR class
-            )
+            # SNR head configuration
+            snr_input_dim = in_features // 4
         else:
             # Direct heads without task-specific processing
             self.modulation_head = nn.Linear(in_features, num_classes)
-            # Enhanced SNR classification head with 64-dim bottleneck for better feature learning
+            # SNR head configuration
+            snr_input_dim = in_features
+        
+        # Configure SNR head based on snr_layer_config
+        if snr_layer_config == "standard":
+            # Direct linear layer (no bottleneck)
+            self.snr_head = nn.Linear(snr_input_dim, snr_classes)
+        elif snr_layer_config == "bottleneck_64":
+            # 64-dimensional bottleneck
             self.snr_head = nn.Sequential(
-                nn.Linear(in_features, 64),  # Bottleneck layer for SNR-specific features
+                nn.Linear(snr_input_dim, 64),
                 nn.ReLU(),
                 nn.Dropout(dropout_prob),
-                nn.Linear(64, snr_classes)  # Output logits for each SNR class
+                nn.Linear(64, snr_classes)
             )
+        elif snr_layer_config == "bottleneck_128":
+            # 128-dimensional bottleneck
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 128),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(128, snr_classes)
+            )
+        elif snr_layer_config == "dual_layer":
+            # Two-layer architecture with 256->64 compression
+            self.snr_head = nn.Sequential(
+                nn.Linear(snr_input_dim, 256),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(256, 64),
+                nn.ReLU(),
+                nn.Dropout(dropout_prob),
+                nn.Linear(64, snr_classes)
+            )
+        else:
+            raise ValueError(f"Unknown snr_layer_config: {snr_layer_config}")
 
     def forward(self, x):
         """

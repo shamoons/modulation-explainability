@@ -79,24 +79,25 @@ bounded_weights = clip(momentum_weights, min=0.2*natural, max=5.0*natural)
 ### 2. Multi-Task Uncertainty Weighting
 Kendall et al. (2018): `L = (1/2σ²_mod)L_mod + (1/2σ²_snr)L_snr + log(σ_mod·σ_snr)`
 
-### 3. Enhanced SNR Architecture (CURRENT APPROACH)
+### 3. Configurable SNR Architecture (CURRENT APPROACH)
 - **Problem Evolution**:
   - Cross-entropy: Creates single-class black holes (22, 26, 28 dB)
-  - Pure L1 distance: Creates median attractors (26 dB primary, 12 dB secondary)
-  - Ordinal regression MSE: Still created attractors (moved from 26→24 dB)
-- **Current Solution**: Enhanced SNR head architecture
-  - **Bottleneck layer**: 512 → 64 → 16 (vs previous 512 → 256 → 16)
-  - **Feature compression**: Forces SNR-specific representation learning
-  - **Dropout placement**: After bottleneck, before final classification
-  - **Pure cross-entropy**: No loss function tricks
-- **Hypothesis**: 
-  - Architectural constraint breaks shortcuts to attractors
-  - 64-dim bottleneck forces model to learn robust SNR features
-  - Regularization through compression rather than loss engineering
+  - Distance-weighted (proper): Catastrophic failure (10% accuracy)
+  - Distance-weighted (backwards 1/d²): Best results but conceptually wrong
+  - Ordinal regression: Shifted attractors (26→24 dB) but didn't eliminate
+- **Current Solution**: Configurable SNR head architectures
+  - **Standard**: Direct linear projection (baseline)
+  - **Bottleneck-64**: 64-dim compression layer
+  - **Bottleneck-128**: 128-dim compression layer  
+  - **Dual-layer**: 256→64 two-stage compression
+- **Key Finding**: Simple cross-entropy with architectural variations
+  - No distance penalties or ordinal tricks
+  - Let architecture handle feature learning
+  - Clean, interpretable approach
 - **Benefits**:
-  - Separates concerns: architecture handles feature learning, loss handles optimization
-  - Minimal parameter increase: +25K (0.09% of total)
-  - Clean approach: standard CE loss with enhanced architecture
+  - Systematic comparison of architectures
+  - No complex loss engineering
+  - Easy to understand and reproduce
 
 ## Future Work
 
