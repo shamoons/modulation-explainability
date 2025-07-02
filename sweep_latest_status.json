@@ -1,0 +1,108 @@
+{
+  "project": {
+    "sweep": {
+      "id": "U3dlZXA6NDIwNTI3NjU6amNnOHRubnE=",
+      "name": "jcg8tnnq",
+      "state": "RUNNING",
+      "runCount": 18,
+      "runs": {
+        "edges": [
+          {
+            "node": {
+              "id": "UnVuOnYxOm04NW54dGxqOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "m85nxtlj",
+              "displayName": "twilight-sweep-18",
+              "state": "running",
+              "createdAt": "2025-07-02T11:42:41Z",
+              "summaryMetrics": "{}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOm9sOWNkZmkzOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "ol9cdfi3",
+              "displayName": "fearless-sweep-17",
+              "state": "running",
+              "createdAt": "2025-07-02T09:39:07Z",
+              "summaryMetrics": "{\"_runtime\":6140.061651468277,\"_step\":3,\"_timestamp\":1751455292.3706465,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_3_062a4d58ba547eb154d9.png\",\"sha256\":\"062a4d58ba547eb154d998f3160fe6d274f36c4973a87703dfa9aa9502d3ef9b\",\"size\":82302,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_3_6df61dea6abbc7046185.png\",\"sha256\":\"6df61dea6abbc7046185ce98a539214157cf1e35f4d6d5e6cdc767cb5d2629de\",\"size\":55399,\"width\":1000},\"epoch\":4,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_3_f106afe76c5da19b57fe.png\",\"sha256\":\"f106afe76c5da19b57fed841de7663d3801fa53dbb92ba97bef8d943295f142f\",\"size\":32535,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_3_1ba6fe7ccaa0e17ef921.png\",\"sha256\":\"1ba6fe7ccaa0e17ef921962b4c335372749ff15984c89da5773604638d49dcd2\",\"size\":18684,\"width\":1000},\"learning_rate\":0.0003400000000000001,\"task_weight_modulation\":0.49453005194664,\"task_weight_snr\":0.5054699182510376,\"train_combined_accuracy\":0.3801236187140198,\"train_modulation_accuracy\":5.884959872723662,\"train_snr_accuracy\":6.228170660694792,\"uncertainty_modulation\":2.8341054916381836,\"uncertainty_snr\":2.772437810897827,\"val_combined_accuracy\":0.3680067497823375,\"val_loss\":2.030654035307497,\"val_modulation_accuracy\":5.883620109324932,\"val_snr_accuracy\":6.248934126791789}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOjJ4MzBzcHR6Om1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "2x30sptz",
+              "displayName": "scarlet-sweep-16",
+              "state": "crashed",
+              "createdAt": "2025-07-02T07:47:08Z",
+              "summaryMetrics": "{\"_runtime\":6677.364044427872,\"_step\":5,\"_timestamp\":1751449110.1390574,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_5_672e338dc07b06b590fa.png\",\"sha256\":\"672e338dc07b06b590fac2aa627a0d25d6e7013dc97c7d2e1e09ca1b3ee1dd84\",\"size\":129913,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_5_5c5a23787ce611e50f39.png\",\"sha256\":\"5c5a23787ce611e50f39b3c1efb52bb98f5443c28cdb440890d450427bb0112d\",\"size\":104603,\"width\":1000},\"epoch\":6,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_5_91495d0864f1b26ce66d.png\",\"sha256\":\"91495d0864f1b26ce66d7d508903e762dc5240f48df771956e7e874dff417cb1\",\"size\":33126,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_5_29aa5f14f8a572f9c6ef.png\",\"sha256\":\"29aa5f14f8a572f9c6efadb16525fb24c3db4eeff92270a8dc9d800b77c89514\",\"size\":18874,\"width\":1000},\"learning_rate\":0.0005,\"task_weight_modulation\":0.6258061528205872,\"task_weight_snr\":0.37419393658638,\"train_combined_accuracy\":28.91520034466935,\"train_loss\":1.049683860719786,\"train_modulation_accuracy\":66.95089920328871,\"train_snr_accuracy\":45.38886937906784,\"uncertainty_modulation\":0.7947191596031189,\"uncertainty_snr\":1.329024314880371,\"val_combined_accuracy\":32.7714498568364,\"val_loss\":0.9802733982374908,\"val_modulation_accuracy\":68.70596260692392,\"val_snr_accuracy\":49.51844970424823}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOmV0a3Bid2gzOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "etkpbwh3",
+              "displayName": "kind-sweep-13",
+              "state": "finished",
+              "createdAt": "2025-07-02T05:12:10Z",
+              "summaryMetrics": "{\"_runtime\":5216.205673933029,\"_step\":13,\"_timestamp\":1751438351.438442,\"_wandb\":{\"runtime\":5216},\"best_epoch\":8,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_12_6044fa2873fc7e03ac84.png\",\"sha256\":\"6044fa2873fc7e03ac84ec0cc47de9cc9102c84a96d6050efc9e7285b2157f81\",\"size\":126353,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_12_d2a4681664e02d953352.png\",\"sha256\":\"d2a4681664e02d95335209df6f3a23f75ed94d39583cb1f31e8d5eb4beb825bd\",\"size\":87812,\"width\":1000},\"epoch\":13,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_12_7d7bbeb28212050d308e.png\",\"sha256\":\"7d7bbeb28212050d308efcaeb33adac4050a51f6fb127485e2e02d1a377f21e4\",\"size\":33161,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_12_2cc4f1a932eacb93ebf8.png\",\"sha256\":\"2cc4f1a932eacb93ebf85b5c45f2e938210903851d0283a22c36d9900f652e33\",\"size\":18978,\"width\":1000},\"final_test_combined_accuracy\":46.948264100814995,\"final_test_loss\":0.8467451425593927,\"final_test_modulation_accuracy\":74.76214411373999,\"final_test_snr_accuracy\":64.72372814418554,\"learning_rate\":0.00010080000000000008,\"task_weight_modulation\":0.6640827655792236,\"task_weight_snr\":0.3359171748161316,\"train_combined_accuracy\":60.1035130019556,\"train_loss\":0.2406164073416859,\"train_modulation_accuracy\":86.39980971379653,\"train_snr_accuracy\":72.17176471380215,\"uncertainty_modulation\":0.3436235189437866,\"uncertainty_snr\":0.6792992949485779,\"val_combined_accuracy\":45.210975576917896,\"val_loss\":1.2984299989195045,\"val_modulation_accuracy\":73.52685102907253,\"val_snr_accuracy\":62.94172029691862}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOjllcmN2c2N4Om1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "9ercvscx",
+              "displayName": "exalted-sweep-11",
+              "state": "finished",
+              "createdAt": "2025-07-02T01:53:30Z",
+              "summaryMetrics": "{\"_runtime\":5419.47723865509,\"_step\":13,\"_timestamp\":1751426634.3075056,\"_wandb\":{\"runtime\":5419},\"best_epoch\":8,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_12_f7441ebea4fbc7c2f123.png\",\"sha256\":\"f7441ebea4fbc7c2f1237e9164a3bb05acb3dcc6bd2694ce24e4d638fc0d3172\",\"size\":124122,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_12_ffd0cc49842e4ba1b1de.png\",\"sha256\":\"ffd0cc49842e4ba1b1de8edf2cb8e22b7b01c3778b47707bf12162f120387fd0\",\"size\":88056,\"width\":1000},\"epoch\":13,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_12_eb8ad3f7403cfd1bf2ed.png\",\"sha256\":\"eb8ad3f7403cfd1bf2ed83b66ddc711675003a1131e25178a6a1324901940111\",\"size\":33160,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_12_f3210f068ea8666307bb.png\",\"sha256\":\"f3210f068ea8666307bb7966275d688c188d771591aa59d7a7490015ddd83616\",\"size\":18980,\"width\":1000},\"final_test_combined_accuracy\":43.19642408358166,\"final_test_loss\":0.7538201022189215,\"final_test_modulation_accuracy\":74.08358166086238,\"final_test_snr_accuracy\":60.98445409830179,\"learning_rate\":0.0001,\"task_weight_modulation\":0.5982410907745361,\"task_weight_snr\":0.40175890922546387,\"train_combined_accuracy\":45.03971214723844,\"train_loss\":0.7048127815044987,\"train_modulation_accuracy\":75.99802084396867,\"train_snr_accuracy\":62.18151463778864,\"uncertainty_modulation\":0.6111372709274292,\"uncertainty_snr\":0.9100080132484436,\"val_combined_accuracy\":42.83598567466408,\"val_loss\":0.7667403281727856,\"val_modulation_accuracy\":74.08873450556946,\"val_snr_accuracy\":60.26604195276948}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOnJoODh5ZWhtOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "rh88yehm",
+              "displayName": "zesty-sweep-10",
+              "state": "finished",
+              "createdAt": "2025-07-02T00:46:07Z",
+              "summaryMetrics": "{\"_runtime\":4029.437813520431,\"_step\":10,\"_timestamp\":1751421201.0159235,\"_wandb\":{\"runtime\":4029},\"best_epoch\":5,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_9_e59d7ce69954cb40157b.png\",\"sha256\":\"e59d7ce69954cb40157b609d627ca513a026f655435b360a0a329a2fdefcc6f3\",\"size\":126219,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_9_e7ef328e23e7a3f5527f.png\",\"sha256\":\"e7ef328e23e7a3f5527f3cb6e24018b43197afade89952b77b02ec6f301a901b\",\"size\":87458,\"width\":1000},\"epoch\":10,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_9_7844b17cce0e7daa9d47.png\",\"sha256\":\"7844b17cce0e7daa9d47e6eea424c10d6cf3c19b574d2e65467cd2b1e2d2adbd\",\"size\":33189,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_9_1125f403eb1968990a23.png\",\"sha256\":\"1125f403eb1968990a233e935f5270e7fdc0dad8db3587e1af0815cc6515b132\",\"size\":18961,\"width\":1000},\"final_test_combined_accuracy\":41.36987039098122,\"final_test_loss\":0.8139957464342817,\"final_test_modulation_accuracy\":72.37999497361146,\"final_test_snr_accuracy\":59.700032312497754,\"learning_rate\":0.0001,\"task_weight_modulation\":0.6253317594528198,\"task_weight_snr\":0.3746682107448578,\"train_combined_accuracy\":47.02414144009406,\"train_loss\":0.6302117825256278,\"train_modulation_accuracy\":78.76120988815076,\"train_snr_accuracy\":62.8939659302426,\"uncertainty_modulation\":0.5406414866447449,\"uncertainty_snr\":0.902350664138794,\"val_combined_accuracy\":43.42300131943883,\"val_loss\":0.7977110241804648,\"val_modulation_accuracy\":73.32848641516547,\"val_snr_accuracy\":61.40776045453322}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOjNkNmxlOHZrOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "3d6le8vk",
+              "displayName": "balmy-sweep-7",
+              "state": "finished",
+              "createdAt": "2025-07-01T21:54:07Z",
+              "summaryMetrics": "{\"_runtime\":4744.569535255432,\"_step\":12,\"_timestamp\":1751411596.2648642,\"_wandb\":{\"runtime\":4744},\"best_epoch\":7,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_11_e7aa738bd89e1e5601ff.png\",\"sha256\":\"e7aa738bd89e1e5601ff5f4aa3b2d0e0b83990dcd94472a486d519319b4b1f14\",\"size\":124415,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_11_c86741d75d083c0124a0.png\",\"sha256\":\"c86741d75d083c0124a02b9fa514835258d26d45b3eebf62d77f59951dd3fe53\",\"size\":88050,\"width\":1000},\"epoch\":12,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_11_cc0ae8738a58d2d51aea.png\",\"sha256\":\"cc0ae8738a58d2d51aeac18e384429ee6df230b93e9c4a637945f41ca46800f7\",\"size\":33144,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_11_191f21200d4b175dab36.png\",\"sha256\":\"191f21200d4b175dab3622a8c8e451feb4ecc536402406c2b6f286cb84888175\",\"size\":18943,\"width\":1000},\"final_test_combined_accuracy\":39.93196424083582,\"final_test_loss\":0.8526630207486109,\"final_test_modulation_accuracy\":72.27767206405055,\"final_test_snr_accuracy\":58.70732057588051,\"learning_rate\":0.0001,\"task_weight_modulation\":0.5945249795913696,\"task_weight_snr\":0.4054750502109528,\"train_combined_accuracy\":40.94698801398873,\"train_loss\":0.8538150119069388,\"train_modulation_accuracy\":73.83194452080077,\"train_snr_accuracy\":58.6734493525669,\"uncertainty_modulation\":0.715171754360199,\"uncertainty_snr\":1.048619508743286,\"val_combined_accuracy\":38.6039080521672,\"val_loss\":0.8763596106559859,\"val_modulation_accuracy\":72.9649675525756,\"val_snr_accuracy\":55.89035194011363}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOnJxeWMxZDZrOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "rqyc1d6k",
+              "displayName": "apricot-sweep-5",
+              "state": "finished",
+              "createdAt": "2025-07-01T18:22:28Z",
+              "summaryMetrics": "{\"_runtime\":5972.689920425415,\"_step\":15,\"_timestamp\":1751400125.2114525,\"_wandb\":{\"runtime\":5972},\"best_epoch\":10,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_14_2c30ebe0a17c689e5e58.png\",\"sha256\":\"2c30ebe0a17c689e5e5861057e3a7ed384a02c15f80d8920747df2fbde70a5eb\",\"size\":125575,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_14_0dc59a2b0de653f14a14.png\",\"sha256\":\"0dc59a2b0de653f14a1409e1167de06ab2f2d21546c276974a8c3b80e43d0688\",\"size\":81860,\"width\":1000},\"epoch\":15,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_14_ba69ff78573908567060.png\",\"sha256\":\"ba69ff78573908567060e912414aac9fd5d662bdcf8a238a53892322f0a822f0\",\"size\":33140,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_14_9ef3d2c20498a49724d8.png\",\"sha256\":\"9ef3d2c20498a49724d8089a57267b5fe571958db89f9c7eb175cbceba83100a\",\"size\":18826,\"width\":1000},\"final_test_combined_accuracy\":44.40096219437763,\"final_test_loss\":0.7822054008004862,\"final_test_modulation_accuracy\":74.85459376009766,\"final_test_snr_accuracy\":62.0830790220084,\"learning_rate\":0.00004599999999999999,\"task_weight_modulation\":0.5978235006332397,\"task_weight_snr\":0.40217649936676025,\"train_combined_accuracy\":42.423501243704344,\"train_loss\":0.8528934768189786,\"train_modulation_accuracy\":75.1271473113659,\"train_snr_accuracy\":59.72776506834484,\"uncertainty_modulation\":0.7131551504135132,\"uncertainty_snr\":1.0600367784500122,\"val_combined_accuracy\":35.588945436267515,\"val_loss\":0.9517089514010544,\"val_modulation_accuracy\":72.52784734002925,\"val_snr_accuracy\":52.08193086858569}"
+            }
+          },
+          {
+            "node": {
+              "id": "UnVuOnYxOm5sNXB5enVkOm1vZHVsYXRpb24tY2xhc3NpZmljYXRpb246c2hhbW9vbnM=",
+              "name": "nl5pyzud",
+              "displayName": "lucky-sweep-1",
+              "state": "finished",
+              "createdAt": "2025-07-01T12:52:19Z",
+              "summaryMetrics": "{\"_runtime\":1808.4917421340945,\"_step\":7,\"_timestamp\":1751376152.163619,\"_wandb\":{\"runtime\":1808},\"best_epoch\":2,\"confusion_matrix_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_modulation_6_6a01ceae9d340108d5f6.png\",\"sha256\":\"6a01ceae9d340108d5f6262851de278b18c192fe7dbfe881809c2892a05ba54f\",\"size\":137130,\"width\":1000},\"confusion_matrix_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":800,\"path\":\"media/images/confusion_matrix_snr_6_03f49cd02211f156edba.png\",\"sha256\":\"03f49cd02211f156edba916c51527323e8ab8cbceff8e7d45c8b0205b0b5bfa2\",\"size\":66502,\"width\":1000},\"epoch\":7,\"f1_scores_modulation\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_modulation_6_c99e1a9acda97c303f87.png\",\"sha256\":\"c99e1a9acda97c303f874c526219d75a5d06a5de203f9861d69fb6539631e74d\",\"size\":32775,\"width\":1000},\"f1_scores_snr\":{\"_type\":\"image-file\",\"format\":\"png\",\"height\":600,\"path\":\"media/images/f1_scores_snr_6_cea032876d7bd7d81c89.png\",\"sha256\":\"cea032876d7bd7d81c89095d193846e3d7d2c9c9ffba30ecce02f1c913eb849d\",\"size\":18802,\"width\":1000},\"final_test_combined_accuracy\":34.104046242774565,\"final_test_loss\":0.9858825299824694,\"final_test_modulation_accuracy\":67.51247621441138,\"final_test_snr_accuracy\":53.81646501274548,\"learning_rate\":0.0004199999999999999,\"task_weight_modulation\":0.5897356867790222,\"task_weight_snr\":0.4102643132209778,\"train_combined_accuracy\":34.05012291187258,\"train_loss\":0.9839099078839842,\"train_modulation_accuracy\":68.7726427679462,\"train_snr_accuracy\":52.60796442007026,\"uncertainty_modulation\":0.8146917819976807,\"uncertainty_snr\":1.1710811853408811,\"val_combined_accuracy\":8.752277602750178,\"val_loss\":2.520074174270017,\"val_modulation_accuracy\":55.46310507939072,\"val_snr_accuracy\":18.46137275493443}"
+            }
+          }
+        ],
+        "pageInfo": {
+          "endCursor": "YXJyYXljb25uZWN0aW9uOjE3",
+          "hasNextPage": false
+        }
+      }
+    }
+  }
+}

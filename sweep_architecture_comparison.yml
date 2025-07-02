@@ -1,44 +1,44 @@
-# W&B Sweep Configuration for Architecture Comparison
-# Testing different architectures and SNR layer configurations
-# Using standard cross-entropy loss for both tasks
+# W&B Sweep Configuration - Optimized ResNet34 Parameters
+# Based on Bayesian sweep analysis showing ResNet34 + bottleneck_128 dominance
+# Focus on best performing hyperparameters with increased batch sizes
 
 program: src/train_constellation.py
-method: bayes  # Bayesian optimization for intelligent hyperparameter search
-project: modulation-classification  # Updated project name
+method: bayes  # Continue using Bayesian optimization for fine-tuning
+project: modulation-classification
 
-# Sweep parameters - Bayesian will intelligently sample these ranges
+# Optimized parameters based on sweep analysis
 parameters:
-  # Model architectures to compare
+  # Model architectures - ResNet34 dominated but keeping ResNet18 for comparison
   model_type:
-    values: [resnet18, resnet34, swin_tiny, swin_small]
+    values: [resnet34, resnet18]  # ResNet34: 46.9% best, ResNet18: 34.1%
   
-  # SNR layer configurations
+  # SNR layer configurations - bottleneck_128 in 4/5 top runs  
   snr_layer_config:
-    values: [standard, bottleneck_64, bottleneck_128, dual_layer]
+    values: [bottleneck_128, bottleneck_64]  # Top 2 configurations
   
-  # Batch sizes - discrete values for stability
+  # Batch sizes - increased for better GPU utilization with ResNet
   batch_size:
-    values: [64, 128, 256]
+    values: [256, 512, 1024]  # 256 was best, testing 2x and 4x larger
   
-  # Dropout regularization - discrete values
+  # Dropout - 0.5 used in ALL top 5 runs
   dropout:
-    values: [0.1, 0.25, 0.5]
+    value: 0.5  # Fixed to optimal value
   
-  # Learning rate - discrete values based on successful runs
+  # Base learning rate - narrowed range based on best runs
   base_lr:
-    values: [1e-6, 1e-5, 1e-4]
+    values: [1e-6, 1e-5]  # Best run used 1e-6, second best used 1e-5
   
-  # Max learning rate for CyclicLR - discrete values
+  # Max learning rate - top 2 values from analysis
   max_lr:
-    values: [1e-4, 5e-4, 1e-3]
+    values: [1e-4, 5e-4]  # 5e-4 gave 46.9%, 1e-4 most stable (42.2% avg)
 
-  # Weight decay - discrete values
+  # Weight decay - top 3 values
   weight_decay:
-    values: [1e-5, 1e-4, 1e-3]
+    values: [1e-5, 1e-4, 1e-3]  # 1e-5 best (46.9%), others common
   
-  # Whether to use pretrained weights (Swin models only)
+  # Pretrained weights - both competitive
   use_pretrained:
-    values: [true, false]
+    values: [true, false]  # true: 46.9%, false: 44.4%
 
   # Fixed parameters
   epochs:
@@ -52,18 +52,18 @@ parameters:
     value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
 
 # Sweep metadata
-name: "bayes_memory_efficient_comparison"
-description: "Memory-efficient Bayesian optimization with moderate batch sizes (128-512) for stable training across all architectures"
+name: "optimized_resnet_large_batch"
+description: "Optimized ResNet34/18 sweep with best hyperparameters from analysis. Testing larger batch sizes (256-1024) for improved GPU utilization. Focus on bottleneck_128/64 SNR layers with proven learning rates. Extended min_iter=8 for better optimization."
 
-# Aggressive early termination - stop poor performers quickly
+# More patient early termination - let W&B optimizer run longer
 early_terminate:
   type: hyperband
-  min_iter: 3      # Stop bad runs after just 3 epochs
+  min_iter: 8      # Give runs even more time before stopping
   max_iter: 50     # Max epochs if run is promising
-  s: 3             # More aggressive elimination
-  eta: 2           # Faster halving
+  s: 2             # Less aggressive elimination
+  eta: 3           # Slower halving for better configs
 
-# Metric to optimize with Bayesian acquisition
+# Use validation accuracy since we may not reach final test
 metric:
   name: val_combined_accuracy
   goal: maximize
