@@ -1,69 +1,68 @@
-# W&B Sweep Configuration - Optimized ResNet34 Parameters
-# Based on Bayesian sweep analysis showing ResNet34 + bottleneck_128 dominance
-# Focus on best performing hyperparameters with increased batch sizes
+# W&B Sweep Configuration - Final Optimized ResNet34
+# Based on sweep analysis: ResNet34 + batch_size=512 + max_lr=5e-4 achieved 47.25%
+# Tighter parameter search around best configurations with longer training
 
 program: src/train_constellation.py
-method: bayes  # Continue using Bayesian optimization for fine-tuning
+method: bayes  # Continue Bayesian optimization for final tuning
 project: modulation-classification
 
-# Optimized parameters based on sweep analysis
+# Tighter parameters focused on top performing configurations
 parameters:
-  # Model architectures - ResNet34 dominated but keeping ResNet18 for comparison
+  # Model - ResNet34 clearly dominates (47.25% vs 46.15% for ResNet18)
   model_type:
-    values: [resnet34, resnet18]  # ResNet34: 46.9% best, ResNet18: 34.1%
+    value: resnet34  # Fixed to best architecture
   
-  # SNR layer configurations - bottleneck_128 in 4/5 top runs  
+  # SNR layer - bottleneck_64 slightly better in best run (47.25%)
   snr_layer_config:
-    values: [bottleneck_128, bottleneck_64]  # Top 2 configurations
+    values: [bottleneck_64, bottleneck_128]  # bottleneck_64 first
   
-  # Batch sizes - increased for better GPU utilization with ResNet
+  # Batch size - 512 optimal (used in 2/3 top runs)
   batch_size:
-    values: [256, 512, 1024]  # 256 was best, testing 2x and 4x larger
+    values: [512, 768]  # Focus on 512, test 768 as intermediate
   
-  # Dropout - 0.5 used in ALL top 5 runs
+  # Dropout - fixed to universal best
   dropout:
-    value: 0.5  # Fixed to optimal value
+    value: 0.5
   
-  # Base learning rate - narrowed range based on best runs
+  # Learning rates - tighter range around best performers
   base_lr:
-    values: [1e-6, 1e-5]  # Best run used 1e-6, second best used 1e-5
+    values: [1e-5, 5e-5]  # Best runs used 1e-5
   
-  # Max learning rate - top 2 values from analysis
   max_lr:
-    values: [1e-4, 5e-4]  # 5e-4 gave 46.9%, 1e-4 most stable (42.2% avg)
-
-  # Weight decay - top 3 values
-  weight_decay:
-    values: [1e-5, 1e-4, 1e-3]  # 1e-5 best (46.9%), others common
+    values: [5e-4, 1e-3]  # 5e-4 dominated top runs, test slightly higher
   
-  # Pretrained weights - both competitive
+  # Weight decay - focus on top values
+  weight_decay:
+    values: [1e-5, 1e-4]  # Remove 1e-3 (caused crashes)
+  
+  # Pretrained - true dominated top runs
   use_pretrained:
-    values: [true, false]  # true: 46.9%, false: 44.4%
-
-  # Fixed parameters
+    value: true  # Fixed to best
+  
+  # Extended training for better convergence
   epochs:
-    value: 50
+    value: 100  # Double from 50 to allow full convergence
   
   patience:
-    value: 5
+    value: 10  # Double patience for longer runs
   
-  # SNR range for experiments
+  # Fixed SNR range
   snr_list:
     value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
 
 # Sweep metadata
-name: "optimized_resnet_large_batch"
-description: "Optimized ResNet34/18 sweep with best hyperparameters from analysis. Testing larger batch sizes (256-1024) for improved GPU utilization. Focus on bottleneck_128/64 SNR layers with proven learning rates. Extended min_iter=8 for better optimization."
+name: "final_resnet34_optimization"
+description: "Final optimization sweep focused on ResNet34 with proven best hyperparameters. Batch size 512, max_lr around 5e-4, extended to 100 epochs for full convergence. Target: >47.25% accuracy."
 
-# More patient early termination - let W&B optimizer run longer
+# Patient early termination for longer runs
 early_terminate:
   type: hyperband
-  min_iter: 8      # Give runs even more time before stopping
-  max_iter: 50     # Max epochs if run is promising
-  s: 2             # Less aggressive elimination
-  eta: 3           # Slower halving for better configs
+  min_iter: 15     # Much longer minimum (was 8)
+  max_iter: 100    # Full training allowed
+  s: 3             # Even less aggressive
+  eta: 2           # Gentler halving
 
-# Use validation accuracy since we may not reach final test
+# Track best validation accuracy
 metric:
   name: val_combined_accuracy
   goal: maximize
