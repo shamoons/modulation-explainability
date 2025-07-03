@@ -71,16 +71,18 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     print(f"Number of SNR classes: {num_snr_classes}")
 
     # Create model based on model_type
-    if model_type in ["resnet18", "resnet34"]:
+    if model_type in ["resnet18", "resnet34", "resnet50"]:
         model = ConstellationResNet(
             num_classes=num_modulation_classes,
             snr_classes=num_snr_classes,
             input_channels=input_channels,
             dropout_prob=dropout,
             model_name=model_type,
-            snr_layer_config=snr_layer_config
+            snr_layer_config=snr_layer_config,
+            use_pretrained=use_pretrained
         )
-        print(f"Using model: {model_type}")
+        pretrained_status = "with ImageNet pretrained weights" if use_pretrained else "with random initialization"
+        print(f"Using model: {model_type} ({pretrained_status})")
     elif model_type in ["vit_b_16", "vit_b_32", "vit_h_14"]:
         # Extract patch size from model type
         if model_type == "vit_h_14":
@@ -186,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_decay', type=float, help='Weight decay for the optimizer', default=1e-3)
     parser.add_argument('--test_size', type=float, help='Test size for train/validation split', default=0.2)
     parser.add_argument('--patience', type=int, help='Number of epochs to wait before reducing LR', default=10)
-    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='swin_tiny', choices=['resnet18', 'resnet34', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
+    parser.add_argument('--model_type', type=str, help='Model architecture to use', default='swin_tiny', choices=['resnet18', 'resnet34', 'resnet50', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
     parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=False)
     parser.add_argument('--use_dilated_preprocessing', type=str2bool, help='Use dilated CNN preprocessing for global context (Swin only)', default=False)

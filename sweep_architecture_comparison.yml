@@ -1,43 +1,53 @@
-# W&B Sweep Configuration - Final Optimized ResNet34
-# Based on sweep analysis: ResNet34 + batch_size=512 + max_lr=5e-4 achieved 47.25%
-# Tighter parameter search around best configurations with longer training
+# W&B Sweep Configuration - Architecture Comparison with Optimized Parameters
+# Testing both ResNet34 and Swin with architecture-specific hyperparameters
+# Includes LR warmup options and longer training
 
 program: src/train_constellation.py
 method: bayes  # Continue Bayesian optimization for final tuning
 project: modulation-classification
 
-# Tighter parameters focused on top performing configurations
+# Parameters with some architecture-specific considerations
 parameters:
-  # Model - ResNet34 clearly dominates (47.25% vs 46.15% for ResNet18)
+  # Model architectures to compare
   model_type:
-    value: resnet34  # Fixed to best architecture
+    values: [resnet34, resnet50, swin_tiny, swin_small, vit_b_16]  # Full architecture comparison
   
-  # SNR layer - bottleneck_64 slightly better in best run (47.25%)
+  # SNR layer configurations - all options
   snr_layer_config:
-    values: [bottleneck_64, bottleneck_128]  # bottleneck_64 first
+    values: [bottleneck_64, bottleneck_128, standard, dual_layer]  # All 4 configurations
   
-  # Batch size - 512 optimal (used in 2/3 top runs)
+  # Batch size - smaller sizes to accommodate all models
   batch_size:
-    values: [512, 768]  # Focus on 512, test 768 as intermediate
+    values: [64, 128, 256]  # Smaller sizes for memory constraints, especially for transformers
   
   # Dropout - fixed to universal best
   dropout:
     value: 0.5
   
-  # Learning rates - tighter range around best performers
+  # Learning rates - wider range to accommodate both architectures
   base_lr:
-    values: [1e-5, 5e-5]  # Best runs used 1e-5
+    values: [1e-6, 1e-5, 5e-5]  # Lower options for Swin
   
   max_lr:
-    values: [5e-4, 1e-3]  # 5e-4 dominated top runs, test slightly higher
+    values: [1e-4, 5e-4, 1e-3]  # 1e-4 for Swin, 5e-4+ for ResNet
+  
+  # LR Warmup parameters (NEW)
+  use_warmup:
+    values: [true, false]  # Test with and without warmup
+  
+  warmup_epochs:
+    values: [5, 10]  # Number of epochs for warmup
+  
+  warmup_start_factor:
+    values: [0.1, 0.3]  # Start LR as fraction of base_lr
   
   # Weight decay - focus on top values
   weight_decay:
     values: [1e-5, 1e-4]  # Remove 1e-3 (caused crashes)
   
-  # Pretrained - true dominated top runs
+  # Pretrained weights
   use_pretrained:
-    value: true  # Fixed to best
+    values: [true, false]  # Swin benefits from pretraining
   
   # Extended training for better convergence
   epochs:
@@ -49,18 +59,21 @@ parameters:
   # Fixed SNR range
   snr_list:
     value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
+  
+  
+  
 
 # Sweep metadata
-name: "final_resnet34_optimization"
-description: "Final optimization sweep focused on ResNet34 with proven best hyperparameters. Batch size 512, max_lr around 5e-4, extended to 100 epochs for full convergence. Target: >47.25% accuracy."
+name: "architecture_comparison_quick_start"
+description: "Quick architecture comparison with ResNet34/50, Swin Tiny/Small, and ViT. Using smaller batch sizes (64-256) and aggressive early stopping (5-20 epochs) to quickly identify promising configurations. All SNR layer configs included."
 
-# Patient early termination for longer runs
+# More aggressive early termination for initial exploration
 early_terminate:
   type: hyperband
-  min_iter: 15     # Much longer minimum (was 8)
-  max_iter: 100    # Full training allowed
-  s: 3             # Even less aggressive
-  eta: 2           # Gentler halving
+  min_iter: 5      # Quick initial assessment
+  max_iter: 20     # Stop early to test more configurations
+  s: 2             # More aggressive pruning
+  eta: 3           # Faster halving
 
 # Track best validation accuracy
 metric:

@@ -7,14 +7,19 @@ from .task_specific_extractor import TaskSpecificFeatureExtractor
 
 
 class ConstellationResNet(nn.Module):
-    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="resnet18", snr_layer_config="standard"):
+    def __init__(self, num_classes=20, snr_classes=26, input_channels=1, dropout_prob=0.3, model_name="resnet18", snr_layer_config="standard", use_pretrained=True):
         super(ConstellationResNet, self).__init__()
 
         # Load a ResNet model from torchvision
+        weights = 'DEFAULT' if use_pretrained else None
         if model_name == "resnet18":
-            self.model = models.resnet18(weights='DEFAULT')
+            self.model = models.resnet18(weights=weights)
         elif model_name == "resnet34":
-            self.model = models.resnet34(weights='DEFAULT')
+            self.model = models.resnet34(weights=weights)
+        elif model_name == "resnet50":
+            self.model = models.resnet50(weights=weights)
+        else:
+            raise ValueError(f"Unsupported ResNet model: {model_name}")
         self.model_name = model_name
 
         # Modify the first convolutional layer to accept the specified number of input channels
