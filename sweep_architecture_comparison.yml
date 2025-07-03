@@ -31,12 +31,9 @@ parameters:
   max_lr:
     values: [1e-4, 5e-4, 1e-3]  # 1e-4 for Swin, 5e-4+ for ResNet
   
-  # LR Warmup parameters (NEW)
-  use_warmup:
-    values: [true, false]  # Test with and without warmup
-  
+  # LR Warmup parameters
   warmup_epochs:
-    values: [5, 10]  # Number of epochs for warmup
+    values: [0, 5, 10]  # 0 = no warmup, 5-10 for transformers
   
   warmup_start_factor:
     values: [0.1, 0.3]  # Start LR as fraction of base_lr

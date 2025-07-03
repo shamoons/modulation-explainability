@@ -36,7 +36,9 @@ def train(
     dropout=0.2,
     max_lr=None,
     step_size_up=5,
-    step_size_down=5
+    step_size_down=5,
+    warmup_epochs=0,
+    warmup_start_factor=0.1
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -62,6 +64,8 @@ def train(
         "patience": patience,
         "dropout": dropout,
         "batch_size": batch_size,
+        "warmup_epochs": warmup_epochs,
+        "warmup_start_factor": warmup_start_factor,
         "description": f"ENHANCED SNR BOTTLENECK + DISTANCE PENALTY - {model_type} with enhanced SNR head (64-dim bottleneck) and distance-weighted SNR loss. SNR head: features → Linear(512,64) → ReLU → Dropout → Linear(64,16). Distance penalty: alpha * (pred_class - true_class)^2 penalizes distant predictions. CyclicLR: base={base_lr if base_lr else '1e-6'}, max={max_lr if max_lr else '1e-4'}, triangular2 mode. Bounded SNR 0-30dB, SNR-preserving constellation generation. Testing architectural + loss function synergy."
     }
     
@@ -135,19 +139,55 @@ def train(
             if max_lr is None:
                 max_lr = 10 * base_lr if base_lr else 1e-4  # Default to 10x base_lr if not specified
             
-            # Create CyclicLR scheduler (no warmup)
-            scheduler = torch.optim.lr_scheduler.CyclicLR(
-                optimizer,
-                base_lr=actual_base_lr,
-                max_lr=max_lr,
-                step_size_up=step_size_up * len(train_loader),  # Convert epochs to iterations
-                step_size_down=step_size_down * len(train_loader),
-                mode='triangular2',  # Halves amplitude each cycle
-                gamma=1.0,
-                cycle_momentum=False  # Don't cycle momentum for Adam
-            )
-            
-            print(f"Using CyclicLR scheduler: base_lr={actual_base_lr}, max_lr={max_lr}, mode=triangular2")
+            # Create scheduler based on warmup configuration
+            if warmup_epochs > 0:
+                # Create warmup scheduler first, then chain with CyclicLR
+                warmup_steps = warmup_epochs * len(train_loader)
+                
+                # Create warmup scheduler
+                warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+                    optimizer,
+                    start_factor=warmup_start_factor,
+                    end_factor=1.0,
+                    total_iters=warmup_steps
+                )
+                
+                # Create CyclicLR scheduler for after warmup
+                cyclic_scheduler = torch.optim.lr_scheduler.CyclicLR(
+                    optimizer,
+                    base_lr=actual_base_lr,
+                    max_lr=max_lr,
+                    step_size_up=step_size_up * len(train_loader),
+                    step_size_down=step_size_down * len(train_loader),
+                    mode='triangular2',
+                    gamma=1.0,
+                    cycle_momentum=False
+                )
+                
+                # Chain the schedulers using SequentialLR
+                scheduler = torch.optim.lr_scheduler.SequentialLR(
+                    optimizer,
+                    schedulers=[warmup_scheduler, cyclic_scheduler],
+                    milestones=[warmup_steps]
+                )
+                
+                print(f"Using LR Warmup + CyclicLR scheduler:")
+                print(f"  - Warmup: {warmup_epochs} epochs (start_factor={warmup_start_factor})")
+                print(f"  - After warmup: CyclicLR with base_lr={actual_base_lr}, max_lr={max_lr}")
+            else:
+                # No warmup, use CyclicLR directly
+                scheduler = torch.optim.lr_scheduler.CyclicLR(
+                    optimizer,
+                    base_lr=actual_base_lr,
+                    max_lr=max_lr,
+                    step_size_up=step_size_up * len(train_loader),
+                    step_size_down=step_size_down * len(train_loader),
+                    mode='triangular2',
+                    gamma=1.0,
+                    cycle_momentum=False
+                )
+                
+                print(f"Using CyclicLR scheduler (no warmup): base_lr={actual_base_lr}, max_lr={max_lr}, mode=triangular2")
             
             print(f"Cycle length: {step_size_up + step_size_down} epochs ({(step_size_up + step_size_down) * len(train_loader)} iterations)")
             print(f"Note: LR will vary continuously throughout training (per-batch updates)")
@@ -291,7 +331,8 @@ def train(
         else:
             epochs_no_improve += 1
             print(f"No improvement in validation loss. Patience: {epochs_no_improve}/{early_stopping_patience}")
-            if epochs_no_improve >= early_stopping_patience:
+            # Only trigger early stopping after warmup period
+            if epoch >= warmup_epochs and epochs_no_improve >= early_stopping_patience:
                 early_stop = True
 
         fig_confusion_matrix_modulation = plot_confusion_matrix(

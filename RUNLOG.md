@@ -2,6 +2,14 @@
 
 Training Run Documentation for Modulation Classification Research
 
+## UPDATE (Jan 2025): Dilated Preprocessing Removed
+
+After extensive experimentation (runs 183, 168), dilated CNN preprocessing showed no performance benefit:
+- **polished-shadow-183**: 6.59% with dilated vs 19.84% without (epoch 1)
+- **noble-grass-168**: Initial promise but no sustained improvement
+- **Conclusion**: Adds 158K parameters and computational overhead without benefit
+- **Action**: Removed from codebase to simplify architecture
+
 ## Executive Summary - Key Findings
 
 ### Best Performing Run
@@ -22,6 +30,7 @@ Training Run Documentation for Modulation Classification Research
 - **Architecture sensitivity**: 64-dim bottleneck needs ultra-conservative LR
 - **Loss conflicts**: Complex losses create worse attractors than simple CE
 - **Best approach**: Simple architecture + backwards distance penalty
+- **Dilated preprocessing**: No benefit observed, adds complexity without improvement (REMOVED)
 
 ## Previous Run: zesty-firefly-192 (8yh1zp2k) - ENHANCED BOTTLENECK + DISTANCE PENALTY
 

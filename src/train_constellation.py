@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_dilated_preprocessing=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_layer_config="standard"):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1):
     # Load data
     print("Loading data...")
 
@@ -108,14 +108,12 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
             dropout_prob=dropout,
             model_variant=model_type,
             use_task_specific=use_task_specific,
-            use_dilated_preprocessing=use_dilated_preprocessing,
             use_pretrained=use_pretrained,
             snr_layer_config=snr_layer_config
         )
         task_specific_status = "with task-specific extraction" if use_task_specific else "without task-specific extraction"
-        dilated_status = "with dilated preprocessing" if use_dilated_preprocessing else "without dilated preprocessing"
         pretrained_status = "with ImageNet pretrained weights" if use_pretrained else "with random initialization"
-        print(f"Using model: {model_type} (Swin Transformer, {task_specific_status}, {dilated_status}, {pretrained_status})")
+        print(f"Using model: {model_type} (Swin Transformer, {task_specific_status}, {pretrained_status})")
     else:
         raise ValueError(f"Unsupported model type: {model_type}. Choose from: resnet18, resnet34, vit_b_16, vit_b_32, vit_h_14, swin_tiny, swin_small, swin_base")
 
@@ -173,7 +171,9 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         dropout=dropout,
         max_lr=max_lr,
         step_size_up=step_size_up,
-        step_size_down=step_size_down
+        step_size_down=step_size_down,
+        warmup_epochs=warmup_epochs,
+        warmup_start_factor=warmup_start_factor
     )
 
 
@@ -191,7 +191,6 @@ if __name__ == "__main__":
     parser.add_argument('--model_type', type=str, help='Model architecture to use', default='swin_tiny', choices=['resnet18', 'resnet34', 'resnet50', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'swin_tiny', 'swin_small', 'swin_base'])
     parser.add_argument('--dropout', type=float, help='Dropout rate for model regularization', default=0.3)
     parser.add_argument('--use_task_specific', type=str2bool, help='Use task-specific feature extraction (Swin only)', default=False)
-    parser.add_argument('--use_dilated_preprocessing', type=str2bool, help='Use dilated CNN preprocessing for global context (Swin only)', default=False)
     parser.add_argument('--use_pretrained', type=str2bool, help='Use ImageNet pretrained weights for Swin models (default: False)', default=False)
     
     # Cyclic learning rate scheduler options
@@ -201,6 +200,10 @@ if __name__ == "__main__":
     
     # SNR layer configuration options
     parser.add_argument('--snr_layer_config', type=str, help='SNR layer configuration', default='standard', choices=['standard', 'bottleneck_64', 'bottleneck_128', 'dual_layer'])
+    
+    # LR warmup options
+    parser.add_argument('--warmup_epochs', type=int, help='Number of epochs for LR warmup (0 = no warmup)', default=0)
+    parser.add_argument('--warmup_start_factor', type=float, help='Starting LR factor for warmup (e.g., 0.1 = start at 10% of base_lr)', default=0.1)
 
     args = parser.parse_args()
 
@@ -217,10 +220,11 @@ if __name__ == "__main__":
         model_type=args.model_type,
         dropout=args.dropout,
         use_task_specific=args.use_task_specific,
-        use_dilated_preprocessing=args.use_dilated_preprocessing,
         use_pretrained=args.use_pretrained,
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
         step_size_down=args.step_size_down,
-        snr_layer_config=args.snr_layer_config
+        snr_layer_config=args.snr_layer_config,
+        warmup_epochs=args.warmup_epochs,
+        warmup_start_factor=args.warmup_start_factor
     )
