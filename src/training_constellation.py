@@ -205,7 +205,7 @@ def train(
 
         # Training loop with tqdm progress bar
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False) as progress:
-            for inputs, modulation_labels, snr_labels in progress:
+            for batch_idx, (inputs, modulation_labels, snr_labels) in enumerate(progress):
                 inputs = inputs.to(device)
                 modulation_labels = modulation_labels.to(device)
                 snr_labels = snr_labels.to(device)
@@ -270,7 +270,8 @@ def train(
                 })
                 
                 # Step the scheduler (CyclicLR needs to be called every batch)
-                if scheduler is not None:
+                # Skip the first step to avoid the warning about stepping before optimizer.step()
+                if scheduler is not None and not (epoch == 0 and batch_idx == 0):
                     scheduler.step()
 
         train_modulation_accuracy = 100.0 * correct_modulation / total
