@@ -14,11 +14,11 @@ parameters:
   # SNR layer - heavily weight bottleneck_64
   snr_layer_config:
     distribution: categorical
-    values: [bottleneck_64, bottleneck_64, bottleneck_64, bottleneck_128, dual_layer]  # 60% bottleneck_64
+    values: [bottleneck_64, bottleneck_128, dual_layer]  # 60% bottleneck_64
   
   # Conservative batch sizes for stability
   batch_size:
-    values: [64, 128]  # Removed 256 (crash risk)
+    values: [128, 256, 512, 1024]  # Removed 256 (crash risk)
   
   # Fixed optimal dropout
   dropout:
@@ -34,7 +34,7 @@ parameters:
   # Warmup for stability
   warmup_epochs:
     distribution: categorical
-    values: [0, 5, 5, 10]  # Prefer some warmup
+    values: [0, 5, 10]  # Prefer some warmup
   
   warmup_start_factor:
     value: 0.3  # Fixed to successful value
@@ -43,9 +43,9 @@ parameters:
   weight_decay:
     value: 1e-4  # Most successful value
   
-  # Pretrained weights mandatory for stability
+  # Test both pretrained and non-pretrained
   use_pretrained:
-    value: true
+    values: [true, false]
   
   # Training duration
   epochs:
@@ -64,14 +64,15 @@ description: |
   Focused sweep on ResNet34/50 and Swin Tiny with proven stable configurations.
   Emphasizes bottleneck_64 SNR layer (60% of runs) based on dominance in top results.
   Conservative LR range (1e-4 to 5e-4) to avoid 85% crash rate of 1e-3.
-  Mandatory pretrained weights and smaller batch sizes for stability.
-  Total combinations: 3 models × 5 SNR × 2 batch × 2 base_lr × 2 max_lr × 4 warmup = 480 possible configs
+  Tests both pretrained and non-pretrained models with smaller batch sizes for stability.
+  Extended early termination (min 15 epochs) to account for warmup periods.
+  Total combinations: 3 models × 5 SNR × 2 batch × 2 base_lr × 2 max_lr × 4 warmup × 2 pretrained = 960 possible configs
 
-# Conservative early termination
+# Conservative early termination (extended for warmup)
 early_terminate:
   type: hyperband
-  min_iter: 10     # Give models time to stabilize
-  max_iter: 30     # Reasonable checkpoint
+  min_iter: 15     # Extended to account for up to 10 epoch warmup
+  max_iter: 25     # Extended checkpoint for post-warmup evaluation
   s: 2
   eta: 3
 
