@@ -1,0 +1,81 @@
+# W&B Sweep Configuration - Focused ResNet/Swin Comparison
+# Based on analysis showing ResNet stability and Swin potential
+# Emphasis on bottleneck_64 SNR layer and conservative hyperparameters
+
+program: src/train_constellation.py
+method: bayes
+project: modulation-classification
+
+parameters:
+  # Focus on top performers only
+  model_type:
+    values: [resnet34, resnet50, swin_tiny]  # Dropped swin_small (100% fail), vit (lower performance)
+  
+  # SNR layer - heavily weight bottleneck_64
+  snr_layer_config:
+    distribution: categorical
+    values: [bottleneck_64, bottleneck_64, bottleneck_64, bottleneck_128, dual_layer]  # 60% bottleneck_64
+  
+  # Conservative batch sizes for stability
+  batch_size:
+    values: [64, 128]  # Removed 256 (crash risk)
+  
+  # Fixed optimal dropout
+  dropout:
+    value: 0.5
+  
+  # Conservative learning rate ranges
+  base_lr:
+    values: [1e-5, 5e-5]  # Proven stable range
+  
+  max_lr:
+    values: [1e-4, 5e-4]  # Removed 1e-3 (85% crash rate)
+  
+  # Warmup for stability
+  warmup_epochs:
+    distribution: categorical
+    values: [0, 5, 5, 10]  # Prefer some warmup
+  
+  warmup_start_factor:
+    value: 0.3  # Fixed to successful value
+  
+  # Optimal weight decay
+  weight_decay:
+    value: 1e-4  # Most successful value
+  
+  # Pretrained weights mandatory for stability
+  use_pretrained:
+    value: true
+  
+  # Training duration
+  epochs:
+    value: 100
+  
+  patience:
+    value: 10
+  
+  # Fixed SNR range
+  snr_list:
+    value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
+
+# Sweep metadata
+name: "focused_resnet_swin_stable"
+description: |
+  Focused sweep on ResNet34/50 and Swin Tiny with proven stable configurations.
+  Emphasizes bottleneck_64 SNR layer (60% of runs) based on dominance in top results.
+  Conservative LR range (1e-4 to 5e-4) to avoid 85% crash rate of 1e-3.
+  Mandatory pretrained weights and smaller batch sizes for stability.
+  Total combinations: 3 models × 5 SNR × 2 batch × 2 base_lr × 2 max_lr × 4 warmup = 480 possible configs
+
+# Conservative early termination
+early_terminate:
+  type: hyperband
+  min_iter: 10     # Give models time to stabilize
+  max_iter: 30     # Reasonable checkpoint
+  s: 2
+  eta: 3
+
+# Track best validation accuracy
+metric:
+  name: val_combined_accuracy
+  goal: maximize

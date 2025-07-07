@@ -166,22 +166,42 @@ fused_features = torch.cat([features, snr_probs_detached], dim=1)
 
 ## Bayesian Hyperparameter Search Findings
 
-### Architecture Comparison (W&B Sweep ID: jcg8tnnq)
+### Architecture Comparison - Latest Sweep (W&B Sweep ID: 4yfw48ad)
 
-**Hyperparameter Importance Rankings**:
-1. **Architecture**: ResNet34 (correlation: 0.68) - dominant factor
-2. **Learning Rate**: max_lr=1e-4 (correlation: 0.478) - critical for stability
-3. **Other factors**: Lower correlations, suggesting architecture choice is paramount
+**Comprehensive Analysis**: 20 runs with partial results across 5 architectures.
 
-**Performance by Architecture**:
+**Performance Rankings (Best Achieved)**:
+1. **ResNet50**: 48.65% (76.2% mod, 66.02% SNR) - bottleneck_64, killed at epoch 10
+2. **ViT-B/16**: 40.93% (74.03% mod, 57.31% SNR) - dual_layer, only finished run (15 epochs)
+3. **Swin Tiny**: 32.56% (67.05% mod, 50.44% SNR) - bottleneck_64, crashed at epoch 6
+4. **Swin Small**: 24.85% (62.98% mod, 42.34% SNR) - bottleneck_64, still running
+5. **ResNet34**: 12.50% (54.42% mod, 27.26% SNR) - bottleneck_64, crashed at epoch 2
+
+**Architecture Stability Analysis**:
+- **ViT-B/16**: Most stable (avg 7.2 epochs), 1/5 finished, 32.8% mean performance
+- **ResNet50**: Mixed (avg 4.0 epochs), best single result but 3/4 crashed early
+- **Swin Tiny**: Moderate (avg 4.0 epochs), promising performance when it runs
+- **Swin Small**: Poor (avg 1.8 epochs), 4/5 crashed by epoch 2
+- **ResNet34**: Worst (2.0 epochs), all crashed immediately
+
+**Key Configuration Insights**:
+1. **SNR Layer**: bottleneck_64 dominated top results (3/5 best runs)
+2. **Learning Rate**: 1e-3 achieved best results but caused more crashes
+3. **Batch Size**: 256 correlated with both best performance and crashes
+4. **Pretrained**: Critical for stability (8/10 runs with pretrained=True)
+
+**Stability vs Performance Trade-off**:
+- High LR (1e-3) + Large batch (256) = Best performance but unstable
+- Conservative settings (lr≤1e-4, batch≤128) = Lower performance but stable
+- ViT shows best balance when properly configured
+
+### Previous Sweep Results (ID: jcg8tnnq) 
+
+**Performance by Architecture** (when stable):
 - **ResNet34**: 40-44% combined accuracy (consistent across configurations)
 - **ResNet18**: 35-39% combined accuracy (clear capacity limitation)
 - **Swin Tiny**: 46.48% (with SNR-preserving preprocessing, separate experiment)
-- **Swin Small**: Memory issues in sweep, requires careful batch size tuning
-- **ViT (projected)**: 25-35% - likely underperformance due to:
-  - Global attention overkill for local constellation patterns
-  - Memory constraints even with small batches
-  - Training instability documented in RUNLOG.md
+- **ViT**: Previously projected 25-35%, but achieved 40.78% with proper config
 
 ### Why ResNet Outperforms Transformers for Constellations
 
