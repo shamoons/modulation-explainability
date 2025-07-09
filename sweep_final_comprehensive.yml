@@ -1,0 +1,89 @@
+# W&B Sweep Configuration - Final Comprehensive Sweep
+# Tests best architectures with curriculum learning and order of magnitude LR ranges
+
+program: src/train_constellation.py
+method: bayes
+project: modulation-classification
+
+parameters:
+  # Top 3 architectures from analysis
+  model_type:
+    values: [resnet50, resnet34, vit_b_16]
+  
+  # SNR layer configurations - proven best performers
+  snr_layer_config:
+    values: [bottleneck_64, bottleneck_128, standard]
+  
+  # Test curriculum learning impact
+  use_curriculum:
+    values: [true, false]
+  
+  # Batch sizes - comprehensive range
+  batch_size:
+    values: [128, 256, 512, 1024]
+  
+  # Learning rates - order of magnitude testing (non-overlapping)
+  base_lr:
+    values: [1e-6, 1e-5]
+  
+  max_lr:
+    values: [1e-4, 1e-3]
+  
+  # Fixed optimal parameters
+  use_pretrained:
+    value: true
+  
+  dropout:
+    value: 0.5
+  
+  weight_decay:
+    value: 1e-4
+  
+  warmup_epochs:
+    value: 0
+  
+  epochs:
+    value: 100
+  
+  patience:
+    value: 10
+  
+  snr_list:
+    value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
+
+# Sweep metadata
+name: "final_comprehensive_lr_curriculum"
+description: |
+  Final comprehensive sweep based on analysis of 175 runs across 4 previous sweeps.
+  
+  Key findings integrated:
+  - ResNet50 achieved best result (48.65%) but with high crash rate at 1e-3
+  - bottleneck_64/128 significantly outperform standard SNR layer
+  - Pretrained weights essential for performance
+  - Curriculum learning newly implemented - testing impact on high SNR performance
+  
+  LR combinations (all non-overlapping):
+  - Ultra-conservative: base=1e-6, max=1e-4 (100x ratio)
+  - Conservative: base=1e-6, max=1e-3 (1000x ratio)  
+  - Moderate: base=1e-5, max=1e-4 (10x ratio)
+  - Balanced: base=1e-5, max=1e-3 (100x ratio)
+  
+  Total: 3 models × 3 SNR × 2 curriculum × 4 batch × 2 base_lr × 2 max_lr = 288 configs
+  
+  Expected outcomes:
+  - Identify optimal LR range for stability vs performance
+  - Test if curriculum learning improves high SNR F1 scores (currently <0.31)
+  - Find best architecture-batch size combination for production
+
+# Early termination - aggressive to quickly eliminate bad configs
+early_terminate:
+  type: hyperband
+  min_iter: 10    # Quick elimination of bad configs
+  max_iter: 30    # Enough to see post-convergence performance
+  s: 2
+  eta: 3
+
+# Track best validation accuracy
+metric:
+  name: val_combined_accuracy
+  goal: maximize
