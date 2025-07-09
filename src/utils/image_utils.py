@@ -194,7 +194,7 @@ def plot_confusion_matrix(true_labels, pred_labels, label_type, epoch, label_nam
     with open(json_path, 'w') as f:
         json.dump(metadata, f, indent=2)
 
-    return fig  # Return the figure object
+    return fig, cm  # Return the figure object and confusion matrix
 
 
 def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, output_dir=None):
@@ -252,4 +252,4 @@ def plot_f1_scores(true_labels, pred_labels, label_names, label_type, epoch, out
     with open(json_path, 'w') as f:
         json.dump(metadata, f, indent=2)
 
-    return fig  # Return the figure object
+    return fig, f1_scores  # Return the figure object and F1 scores array

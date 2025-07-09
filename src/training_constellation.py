@@ -38,7 +38,8 @@ def train(
     step_size_up=5,
     step_size_down=5,
     warmup_epochs=0,
-    warmup_start_factor=0.1
+    warmup_start_factor=0.1,
+    curriculum_scheduler=None
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -122,14 +123,29 @@ def train(
             print(f"Best model was from epoch {best_epoch} with validation loss: {best_val_loss:.4g}")
             break
         
-        # Shuffle train indices each epoch for better generalization
-        np.random.shuffle(train_idx)
-        train_sampler = SubsetRandomSampler(train_idx)
-
-        # Disable pin_memory for MPS
-        use_pin_memory = device.type == 'cuda'
-        train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
-        val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
+        # Update curriculum scheduler if enabled
+        if curriculum_scheduler is not None:
+            curriculum_scheduler.update_epoch(epoch)
+            # Print distribution stats
+            curriculum_scheduler.print_distribution(train_idx, val_idx, dataset)
+        
+        # Create data loaders with curriculum sampling if enabled
+        if curriculum_scheduler is not None:
+            from utils.curriculum_learning import create_curriculum_sampler
+            train_loader = create_curriculum_sampler(
+                dataset, train_idx, curriculum_scheduler, batch_size, shuffle=True
+            )
+            # Val loader doesn't use curriculum weighting
+            val_loader = create_curriculum_sampler(
+                dataset, val_idx, None, batch_size, shuffle=False
+            )
+        else:
+            # Standard sampling without curriculum
+            np.random.shuffle(train_idx)
+            train_sampler = SubsetRandomSampler(train_idx)
+            use_pin_memory = device.type == 'cuda'
+            train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
+            val_loader = DataLoader(dataset, batch_size=batch_size, sampler=val_sampler, num_workers=12, pin_memory=use_pin_memory, prefetch_factor=4)
         
         # Create scheduler on first epoch
         if epoch == 0:
@@ -336,7 +352,7 @@ def train(
             if epoch >= warmup_epochs and epochs_no_improve >= early_stopping_patience:
                 early_stop = True
 
-        fig_confusion_matrix_modulation = plot_confusion_matrix(
+        fig_confusion_matrix_modulation, cm_modulation = plot_confusion_matrix(
             all_true_modulation_labels,
             all_pred_modulation_labels,
             'Modulation',
@@ -344,21 +360,21 @@ def train(
             label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()]
         )
 
-        fig_confusion_matrix_snr = plot_confusion_matrix(
+        fig_confusion_matrix_snr, cm_snr = plot_confusion_matrix(
             all_true_snr_labels,
             all_pred_snr_labels,
             'SNR',
             epoch,
             label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
         )
-        fig_f1_scores_modulation = plot_f1_scores(
+        fig_f1_scores_modulation, f1_modulation = plot_f1_scores(
             all_true_modulation_labels,
             all_pred_modulation_labels,
             label_names=[label for label in val_loader.dataset.inverse_modulation_labels.values()],
             label_type='Modulation',
             epoch=epoch
         )
-        fig_f1_scores_snr = plot_f1_scores(
+        fig_f1_scores_snr, f1_snr = plot_f1_scores(
             all_true_snr_labels,
             all_pred_snr_labels,
             label_names=[str(label) for label in val_loader.dataset.inverse_snr_labels.values()],
@@ -390,6 +406,36 @@ def train(
             "f1_scores_snr": wandb.Image(fig_f1_scores_snr)
         }
         
+        # Add F1 scores per class to W&B
+        mod_labels = [label for label in val_loader.dataset.inverse_modulation_labels.values()]
+        snr_labels = [str(label) for label in val_loader.dataset.inverse_snr_labels.values()]
+        
+        for i, label in enumerate(mod_labels):
+            log_dict[f"val_f1_scores_modulation_per_class/{label}"] = f1_modulation[i]
+        
+        for i, label in enumerate(snr_labels):
+            log_dict[f"val_f1_scores_snr_per_class/{label}"] = f1_snr[i]
+        
+        # Log confusion matrices as tables
+        wandb.log({
+            "confusion_matrix_modulation_table": wandb.Table(
+                columns=["True"] + mod_labels,
+                data=[[mod_labels[i]] + list(cm_modulation[i]) for i in range(len(mod_labels))]
+            ),
+            "confusion_matrix_snr_table": wandb.Table(
+                columns=["True"] + snr_labels,
+                data=[[snr_labels[i]] + list(cm_snr[i]) for i in range(len(snr_labels))]
+            ),
+            "f1_scores_modulation_table": wandb.Table(
+                columns=["Class", "F1_Score"],
+                data=[[mod_labels[i], f1_modulation[i]] for i in range(len(mod_labels))]
+            ),
+            "f1_scores_snr_table": wandb.Table(
+                columns=["SNR", "F1_Score"],
+                data=[[snr_labels[i], f1_snr[i]] for i in range(len(snr_labels))]
+            )
+        })
+        
         # Add uncertainty weighting metrics if available
         if uncertainty_weighter is not None:
             log_dict.update({
@@ -400,6 +446,13 @@ def train(
             })
         
         wandb.log(log_dict)
+        
+        # Log curriculum distribution stats if enabled
+        if curriculum_scheduler is not None:
+            # Log training distribution stats
+            train_dist = curriculum_scheduler.get_distribution_stats(train_idx, dataset)
+            for key, value in train_dist.items():
+                wandb.log({f"curriculum/train_{key}": value})
     
     # Final evaluation on test set
     print("\n" + "="*50)

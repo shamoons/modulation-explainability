@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1, use_curriculum=False):
     # Load data
     print("Loading data...")
 
@@ -40,6 +40,9 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         snr_list = [int(s.strip()) for s in snr_list.split(',')]
     else:
         snr_list = None  # Load all SNRs
+    
+    # Store parsed SNR list for curriculum learning
+    parsed_snr_list = snr_list
 
     if mods_to_process is not None:
         mods_to_process = [mod.strip() for mod in mods_to_process.split(',')]
@@ -136,6 +139,18 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
     # Initialize analytical uncertainty weighting for multi-task learning
     from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
     uncertainty_weighter = AnalyticalUncertaintyWeightedLoss(num_tasks=2, temperature=1.5, device=device, min_weight=0.05)
+    
+    # Initialize curriculum learning if requested
+    curriculum_scheduler = None
+    if use_curriculum:
+        from utils.curriculum_learning import SNRCurriculumScheduler
+        curriculum_scheduler = SNRCurriculumScheduler(
+            snr_list=parsed_snr_list if parsed_snr_list else list(range(0, 31, 2)),
+            min_sample_rate=0.1,  # 10% sampling for SNRs outside window
+            window_size=3,  # Include 3 SNRs in sliding window
+            epochs_per_shift=1  # Shift window every epoch
+        )
+        print(f"Curriculum learning enabled (sliding window strategy)")
 
     # Initialize optimizer (include uncertainty weighter parameters)
     model_params = list(model.parameters()) + list(uncertainty_weighter.parameters())
@@ -204,6 +219,9 @@ if __name__ == "__main__":
     # LR warmup options
     parser.add_argument('--warmup_epochs', type=int, help='Number of epochs for LR warmup (0 = no warmup)', default=0)
     parser.add_argument('--warmup_start_factor', type=float, help='Starting LR factor for warmup (e.g., 0.1 = start at 10% of base_lr)', default=0.1)
+    
+    # Curriculum learning options
+    parser.add_argument('--use_curriculum', type=str2bool, help='Use curriculum learning for SNR (default: False)', default=False)
 
     args = parser.parse_args()
 
@@ -226,5 +244,6 @@ if __name__ == "__main__":
         step_size_down=args.step_size_down,
         snr_layer_config=args.snr_layer_config,
         warmup_epochs=args.warmup_epochs,
-        warmup_start_factor=args.warmup_start_factor
+        warmup_start_factor=args.warmup_start_factor,
+        use_curriculum=args.use_curriculum
     )

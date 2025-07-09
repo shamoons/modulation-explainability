@@ -1,0 +1,92 @@
+# W&B Sweep Configuration - Curriculum Learning Comparison
+# Tests the impact of curriculum learning on high SNR performance
+
+program: src/train_constellation.py
+method: bayes
+project: modulation-classification
+
+parameters:
+  # Focus on top performers only
+  model_type:
+    values: [resnet34, resnet50, swin_tiny]
+  
+  # Test curriculum learning
+  use_curriculum:
+    values: [true, false]
+  
+  # SNR layer - heavily weight bottleneck_64
+  snr_layer_config:
+    distribution: categorical
+    values: [bottleneck_64, bottleneck_128, dual_layer]
+  
+  # Conservative batch sizes for stability
+  batch_size:
+    values: [128, 256, 512]
+  
+  # Fixed optimal dropout
+  dropout:
+    value: 0.5
+  
+  # Conservative learning rate ranges
+  base_lr:
+    values: [1e-5, 5e-5]
+  
+  max_lr:
+    values: [1e-4, 5e-4]
+  
+  # Warmup for stability
+  warmup_epochs:
+    distribution: categorical
+    values: [0, 5, 10]
+  
+  warmup_start_factor:
+    value: 0.3
+  
+  # Optimal weight decay
+  weight_decay:
+    value: 1e-4
+  
+  # Test both pretrained and non-pretrained
+  use_pretrained:
+    values: [true, false]
+  
+  # Training duration
+  epochs:
+    value: 100
+  
+  patience:
+    value: 10
+  
+  # Fixed SNR range
+  snr_list:
+    value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
+
+# Sweep metadata
+name: "curriculum_learning_comparison"
+description: |
+  Comprehensive sweep comparing standard vs curriculum learning for AMC.
+  Tests sliding window curriculum (high-to-low SNR) to address poor F1 scores
+  at high SNRs (16-30 dB range shows F1<0.31).
+  
+  Curriculum strategy: Start with 30 dB (100%), gradually include lower SNRs.
+  Expected to improve high SNR performance by forcing model to learn subtle features first.
+  
+  Key comparisons:
+  - use_curriculum: true vs false (main variable of interest)
+  - Focus on F1 scores for SNR 24-30 dB range
+  - Conservative hyperparameters for stability
+  
+  Total combinations: 3 models × 2 curriculum × 3 SNR × 3 batch × 2 base_lr × 2 max_lr × 3 warmup × 2 pretrained = 1296 configs
+
+# Conservative early termination (extended for warmup)
+early_terminate:
+  type: hyperband
+  min_iter: 20     # Extended to account for up to 10 epoch warmup
+  max_iter: 40     # Extended checkpoint for post-warmup evaluation
+  s: 2
+  eta: 3
+
+# Track best validation accuracy
+metric:
+  name: val_combined_accuracy
+  goal: maximize
