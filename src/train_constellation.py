@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1, use_curriculum=False):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, cycles_per_training=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1, use_curriculum=False):
     # Load data
     print("Loading data...")
 
@@ -146,7 +146,7 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         from utils.curriculum_learning import SNRCurriculumScheduler
         curriculum_scheduler = SNRCurriculumScheduler(
             snr_list=parsed_snr_list if parsed_snr_list else list(range(0, 31, 2)),
-            min_sample_rate=0.1,  # 10% sampling for SNRs outside window
+            min_sample_rate=0.1,  # 10 percent sampling for SNRs outside window
             window_size=3,  # Include 3 SNRs in sliding window
             epochs_per_shift=1  # Shift window every epoch
         )
@@ -187,6 +187,7 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         max_lr=max_lr,
         step_size_up=step_size_up,
         step_size_down=step_size_down,
+        cycles_per_training=cycles_per_training,
         warmup_epochs=warmup_epochs,
         warmup_start_factor=warmup_start_factor
     )
@@ -212,13 +213,14 @@ if __name__ == "__main__":
     parser.add_argument('--max_lr', type=float, help='Maximum learning rate for cyclic scheduler (default: 1e-3)', default=1e-3)
     parser.add_argument('--step_size_up', type=int, help='Number of epochs for upward LR cycle', default=5)
     parser.add_argument('--step_size_down', type=int, help='Number of epochs for downward LR cycle', default=5)
+    parser.add_argument('--cycles_per_training', type=int, help='Number of complete LR cycles during training', default=5)
     
     # SNR layer configuration options
     parser.add_argument('--snr_layer_config', type=str, help='SNR layer configuration', default='standard', choices=['standard', 'bottleneck_64', 'bottleneck_128', 'dual_layer'])
     
     # LR warmup options
     parser.add_argument('--warmup_epochs', type=int, help='Number of epochs for LR warmup (0 = no warmup)', default=0)
-    parser.add_argument('--warmup_start_factor', type=float, help='Starting LR factor for warmup (e.g., 0.1 = start at 10% of base_lr)', default=0.1)
+    parser.add_argument('--warmup_start_factor', type=float, help='Starting LR factor for warmup (e.g., 0.1 = start at 10 percent of base_lr)', default=0.1)
     
     # Curriculum learning options
     parser.add_argument('--use_curriculum', type=str2bool, help='Use curriculum learning for SNR (default: False)', default=False)
@@ -242,6 +244,7 @@ if __name__ == "__main__":
         max_lr=args.max_lr,
         step_size_up=args.step_size_up,
         step_size_down=args.step_size_down,
+        cycles_per_training=args.cycles_per_training,
         snr_layer_config=args.snr_layer_config,
         warmup_epochs=args.warmup_epochs,
         warmup_start_factor=args.warmup_start_factor,

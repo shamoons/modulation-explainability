@@ -1,0 +1,50 @@
+program: src/train_constellation.py
+project: modulation-explainability
+entity: shamoons
+method: bayes
+metric:
+  goal: maximize
+  name: val_combined_accuracy
+early_terminate:
+  type: hyperband
+  s: 2
+  eta: 3
+  max_iter: 40
+
+parameters:
+  model_type:
+    value: resnet50
+  
+  batch_size:
+    value: 512
+  
+  base_lr:
+    value: 1e-6
+  
+  max_lr:
+    values: [7e-4, 1e-3]  # Slightly more conservative than 1e-3/2e-3
+  
+  snr_layer_config:
+    values: [standard, bottleneck_128]  # The two best performers
+  
+  # KEY CHANGE: More epochs to see full cycles
+  epochs:
+    value: 35  # Was 15, now 3.5 full cycles
+  
+  patience:
+    value: 25  # Increased to avoid early stopping
+  
+  # Test with and without warmup
+  warmup_epochs:
+    values: [0, 5]  # 5 epoch warmup might help stability
+  
+  # Fixed parameters based on best runs
+  use_curriculum:
+    value: false  # Hurt performance in last sweep
+  dropout:
+    value: 0.3
+  weight_decay:
+    value: 1e-5
+
+# Total configurations: 2 (max_lr) × 2 (snr_layer) × 2 (warmup) = 8 runs
+# Each run goes 35 epochs to see behavior after initial cycles

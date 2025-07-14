@@ -37,6 +37,7 @@ def train(
     max_lr=None,
     step_size_up=5,
     step_size_down=5,
+    cycles_per_training=5,
     warmup_epochs=0,
     warmup_start_factor=0.1,
     curriculum_scheduler=None
@@ -112,8 +113,23 @@ def train(
     # Track best epoch for final test evaluation
     best_epoch = 0
     
+    # Calculate cycle-aware patience
+    if cycles_per_training > 0:
+        # Use adaptive cycles based on total epochs
+        cycle_length = epochs / cycles_per_training
+        early_stopping_patience = max(int(cycle_length * 2), 10)  # At least 2 cycles, minimum 10
+        print(f"Using cycle-aware patience: {early_stopping_patience} epochs ({cycle_length:.1f} epochs per cycle)")
+        
+        # Override step_size_up and step_size_down for adaptive cycles
+        step_size_up = int(cycle_length / 2)
+        step_size_down = int(cycle_length / 2)
+        print(f"Adaptive cycle parameters: step_size_up={step_size_up}, step_size_down={step_size_down}")
+    else:
+        # Use provided patience and step_size values
+        early_stopping_patience = patience
+        print(f"Using manual patience: {early_stopping_patience} epochs")
+    
     # Early stopping variables
-    early_stopping_patience = 5  # Stop if no improvement for 5 epochs
     epochs_no_improve = 0
     early_stop = False
     

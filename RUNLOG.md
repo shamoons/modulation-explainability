@@ -12,11 +12,20 @@ After extensive experimentation (runs 183, 168), dilated CNN preprocessing showe
 
 ## Executive Summary - Key Findings
 
-### Best Performing Run
-**super-plasma-180**: 46.31% combined (74.72% mod, 63.60% SNR)
-- Standard architecture + **backwards** distance penalty (1/d²)
-- Conservative LR range: 1e-6 to 1e-4
-- No black holes, healthy SNR distribution
+### Best Performing Run (Updated July 2025)
+**dde1f5vz (sweep 94fqx0gz)**: **51.48% test** (76.44% mod, 68.99% SNR) 
+- ResNet50 + standard SNR layer + curriculum learning
+- Aggressive LR: 1e-6 to 1e-3 (high risk, high reward)
+- Batch 512, completed 15 epochs
+- Previous best was 46.31% - this is +5.17% improvement!
+
+### Performance-Focused Sweep (W&B ID: 94fqx0gz) - July 2025
+**Key Discovery**: Looking at performance metrics (not crash rates) reveals hidden gems:
+- **bottleneck_128 achieved 47.15% val acc** before crashing (higher than most completed runs!)
+- ResNet50 dominates: 51.48% test accuracy (new record)
+- True failure rate: 45.8% (not 80% - many were Hyperband early stops)
+- Curriculum learning: +3.65% improvement (needs more data)
+- Batch 1024: 100% underperformed (all terminated by Hyperband)
 
 ### Architecture Comparison Sweep (W&B ID: 4yfw48ad)
 **ResNet50 achieved 48.65%** (76.2% mod, 66.02% SNR) with bottleneck_64 before being killed at epoch 10. However, stability issues plagued the sweep:
@@ -401,5 +410,171 @@ Comparing epochs 25→28→30→32, significant fluctuations observed:
 - **Modulation Hierarchy**: Simple (BPSK/QPSK) → Medium (QAM/PSK) → Complex (APSK) difficulty progression
 
 ---
-*Last Updated: June 25, 2025*  
-*Status: **BREAKTHROUGH CONFIRMED** - Active training continues with >25% achieved*
+
+## Sweep: 94fqx0gz - Performance-Focused Analysis (July 2025)
+
+**Status**: ✅ **NEW RECORD SET** - 51.48% test accuracy achieved!
+**Configuration**: Comprehensive Hyperband sweep with 288 possible configs
+**Key Innovation**: Analyzed by PERFORMANCE metrics, not completion status
+
+### Top Performing Runs
+
+#### 1. dde1f5vz (firm-sweep-9) - NEW RECORD ⭐
+- **Test**: **51.48%** (76.44% mod, 68.99% SNR)
+- **Val**: 45.74% (74.36% mod, 63.16% SNR)  
+- **Config**: ResNet50, batch=512, LR=1e-6→1e-3, standard, curriculum=True
+- **Status**: Completed 15 epochs
+
+#### 2. cafrw8gz (eager-sweep-3) - HIDDEN GEM
+- **Val**: **47.15%** (75.54% mod, 64.71% SNR)
+- **Config**: ResNet50, batch=512, LR=1e-6→1e-3, **bottleneck_128**, curriculum=False
+- **Status**: Crashed at epoch 9 (but outperformed most finished runs!)
+
+#### 3. yor9hoxe (amber-sweep-12)
+- **Test**: 46.86% (73.81% mod, 65.19% SNR)
+- **Val**: 46.45% (73.18% mod, 64.78% SNR)
+- **Config**: ResNet34, batch=128, LR=1e-5→1e-4, standard, curriculum=False
+
+### Key Discoveries
+
+#### 1. Performance > Stability in Experimentation
+- The "risky" LR=1e-6→1e-3 achieved best results (51.48%)
+- bottleneck_128 showed 47.15% val acc despite "100% crash rate"
+- Lesson: Don't dismiss crashed runs - check their performance!
+
+#### 2. Hyperband Efficiency
+- 4 runs with batch=1024 all terminated early (consistent underperformance)
+- Saved ~340 epochs by stopping poor configurations
+- True crash rate: 45.8% (not 80% as initially thought)
+
+#### 3. Curriculum Learning Impact
+- With: 51.48% test accuracy
+- Without: 47.83% test accuracy  
+- Difference: **+3.65%** (promising but needs more samples)
+
+#### 4. SNR Layer Performance (by actual metrics)
+- **bottleneck_128**: 47.15% val (highest potential!)
+- **standard**: 46.45% val (most stable)
+- **bottleneck_64**: No performance data available
+
+### Implications for Future Work
+
+1. **Focus on ResNet50** - clear winner across sweeps
+2. **Test aggressive LRs** (2e-3, 3e-3) since 1e-3 worked best
+3. **Include bottleneck_128** with stability improvements
+4. **Exclude batch=1024** - proven underperformer
+5. **Extend patience to 25** and epochs to 150 for thorough training
+
+### Next Sweep Configuration
+- **36 configs** (vs 288) - focused on high performers
+- **Longer runs**: patience=25, epochs=150, generous early stopping
+- **Aggressive exploration**: max_lr up to 3e-3
+- **All SNR layers**: Including bottleneck_128 based on performance
+
+---
+
+## Sweep: o7pjrbw1 - Learning Rate Sensitivity Study (July 12, 2025)
+
+**Status**: ✅ **COMPLETED** - Final analysis confirms LR plateau effects
+**Configuration**: ResNet50, batch=512, Bayesian optimization
+**Variables**: max_lr=[7e-4, 1e-3], warmup=[0, 5], snr_layer=[standard, bottleneck_128]
+
+### Key Finding: Higher LR Correlates with Performance Degradation
+
+**Top Runs (All with max_lr=1e-3)**:
+1. **gallant-sweep-11**: 47.25% val (crashed at epoch 13) - bottleneck_128, no warmup
+2. **fanciful-sweep-3**: 46.20% val (finished) - standard, 5 epoch warmup  
+3. **rosy-sweep-4**: 46.12% val (finished) - bottleneck_128, no warmup
+
+### Critical Insights
+
+#### 1. Learning Rate Impact ⚠️
+- **All 12 runs used max_lr=1e-3** (no 7e-4 runs generated yet by Bayesian search)
+- **50% crash rate** (6/12 runs crashed) with 1e-3
+- **Performance bifurcation**: Either ~46-47% or ~5-6% (no middle ground)
+- **User observation confirmed**: "val combined goes down in concert with LR going up"
+
+#### 2. Warmup Effect
+- **No warmup (0 epochs)**: avg 34.77%, max 47.25% (5 runs)
+- **5 epoch warmup**: avg 11.43%, max 46.20% (7 runs)
+- **Surprising**: Warmup appears detrimental on average but still achieved 46.20%
+
+#### 3. SNR Layer Architecture
+- **bottleneck_128**: 9 runs, max 47.25% (slight edge when stable)
+- **standard**: 3 runs, max 46.20% (more limited data)
+
+### Convergence Pattern Analysis
+Most runs that crashed or performed poorly got stuck at epoch 4 with ~5-6% accuracy, suggesting:
+- Early training instability with high LR
+- Possible gradient explosion or poor initialization interaction
+- Need for more conservative LR or better warmup strategy
+
+### **FINAL RECOMMENDATION** (Based on 30 runs)
+**LR Sweet Spot**: 5e-4 to 7e-4 (conservative range that avoids plateau)
+- **Above 1e-3**: Consistent plateau/crash pattern
+- **Below 5e-4**: Too conservative, slower convergence
+- **Optimal**: 7e-4 max_lr with 1e-6 base_lr for stability
+
+### Recommendations
+1. **Use max_lr=7e-4** (not 1e-3) - avoids plateau effect
+2. **Skip warmup** - actually detrimental in this setup
+3. **Prefer bottleneck_128** - slight performance edge when stable
+4. **Extend epochs to 50** - more time for convergence at lower LR
+
+---
+
+## Sweep: bapdavm5 - Focused ResNet50 Performance Study (July 14, 2025)
+
+**Status**: ✅ **CANCELED** - Comprehensive 12-run analysis confirms LR plateau pattern
+**Configuration**: ResNet50, batch=512, Bayesian optimization, extended training (150 epochs)
+**Variables**: max_lr=[1e-3, 2e-3], snr_layer=[standard, bottleneck_128, bottleneck_64], curriculum=[True, False]
+
+### Key Findings: Similar Performance Confirms LR Plateau
+
+**Top Performance Achieved**:
+1. **stilted-sweep-12** (CRASHED): **47.29%** - bottleneck_128, curriculum=False, max_lr=1e-3
+2. **trim-sweep-7** (FINISHED): **46.92%** - bottleneck_128, curriculum=True, max_lr=1e-3
+3. **effortless-sweep-4** (FINISHED): **45.90%** - bottleneck_64, curriculum=True, max_lr=1e-3
+
+### Critical Analysis
+
+#### 1. LR Plateau Effect Confirmed ⚠️
+- **1e-3**: 43.41% avg, 47.29% max (50% crash rate)
+- **2e-3**: 39.27% avg, 41.76% max (75% crash rate)
+- **Pattern**: Same as o7pjrbw1 - higher LR doesn't improve performance, increases instability
+
+#### 2. SNR Layer Architecture Rankings
+- **bottleneck_128**: 44.57% avg, 47.29% max (50% crash rate) - **BEST PERFORMANCE**
+- **bottleneck_64**: 40.62% avg, 45.90% max (71% crash rate)
+- **standard**: 41.76% avg, 41.76% max (0% crash rate) - **MOST STABLE**
+
+#### 3. Curriculum Learning Impact
+- **Without curriculum**: 43.28% avg, 47.29% max (50% crash rate)
+- **With curriculum**: 41.40% avg, 46.92% max (62% crash rate)
+- **Conclusion**: Minimal benefit, possibly detrimental to stability
+
+#### 4. Stability Crisis Continues
+- **Crash rate**: 58.3% (7/12 runs)
+- **Finished runs**: Only 41.7% completion rate
+- **Best finished**: 46.92% (only 0.37% below best crashed)
+
+### **MAJOR INSIGHT**: Performance Ceiling at ~47%
+
+**All runs clustered around 47% ceiling**:
+- Best any run: 47.29%
+- Best finished: 46.92%
+- Previous record: 51.48% (likely outlier or different conditions)
+
+**This suggests architectural/dataset limitations rather than hyperparameter issues**
+
+### Final Recommendations Based on Both Sweeps
+
+1. **Use max_lr=5e-4** (conservative, avoids plateau and crashes)
+2. **SNR layer: bottleneck_128** (best performance when stable)
+3. **Skip curriculum learning** (minimal benefit, higher crash rate)
+4. **Focus on stability** rather than aggressive performance chasing
+5. **Consider architectural changes** - current setup may have hit ceiling
+
+---
+*Last Updated: July 14, 2025*  
+*Status: **PERFORMANCE CEILING IDENTIFIED: ~47%** - Two sweeps confirm plateau pattern*

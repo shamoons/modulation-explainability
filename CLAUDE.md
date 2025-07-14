@@ -42,8 +42,14 @@ H = H / H.max()  # Per-image normalization
 
 ## Commands
 ```bash
-# Train (default: SNR regression)
+# Train (default: SNR regression with cycle-aware patience)
 uv run python src/train_constellation.py --model_type swin_tiny --batch_size 256 --epochs 100
+
+# Train with custom cycles (advanced)
+uv run python src/train_constellation.py --model_type resnet50 --batch_size 512 --epochs 150 --cycles_per_training 5 --max_lr 7e-4
+
+# Train with manual step sizes (legacy)
+uv run python src/train_constellation.py --model_type resnet50 --cycles_per_training 0 --step_size_up 10 --step_size_down 10 --patience 25
 
 # Generate constellations
 uv run python src/generate_snr_preserving_constellations.py --h5_dir data/split_hdf5 --output_dir constellation_diagrams

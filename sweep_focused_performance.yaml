@@ -1,0 +1,95 @@
+# Focused Performance Sweep - Based on 94fqx0gz Analysis
+# 12 configurations targeting >51.48% test accuracy
+
+name: focused_resnet50_performance
+method: bayes
+metric:
+  goal: maximize
+  name: val_combined_accuracy
+
+# Generous early stopping for long runs
+early_terminate:
+  type: hyperband
+  max_iter: 60      # Doubled from previous
+  min_iter: 20      # Doubled from previous
+  eta: 3
+  s: 2
+
+parameters:
+  # Fixed to best performer
+  model_type:
+    value: resnet50
+  
+  # Maximum batch size that fits
+  batch_size:
+    value: 512
+  
+  # Fixed base LR from best run
+  base_lr:
+    value: 1e-6
+  
+  # Test higher LRs since 1e-3 worked best
+  max_lr:
+    values:
+      - 1e-3         # Achieved 51.48%
+      - 2e-3         # Explore higher
+  
+  # All SNR configurations based on performance
+  snr_layer_config:
+    values:
+      - standard         # Achieved 51.48%
+      - bottleneck_128   # Showed 47.15% val acc
+      - bottleneck_64    # Untested potential
+  
+  # Curriculum learning impact
+  use_curriculum:
+    values:
+      - true         # Used in best run (51.48%)
+      - false        # Baseline comparison
+  
+  # Extended training parameters
+  epochs:
+    value: 150       # 50% more than previous
+  
+  patience:
+    value: 25        # 2.5x increase
+  
+  # Proven parameters
+  warmup_epochs:
+    value: 0         # No benefit observed
+  
+  use_pretrained:
+    value: true      # Critical for performance
+  
+  dropout:
+    value: 0.5       # Standard value
+  
+  weight_decay:
+    value: 1e-4      # Standard value
+  
+  # Fixed SNR range
+  snr_list:
+    value: "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"
+
+# Program configuration
+program: src/train_constellation.py
+project: modulation-classification
+
+description: |
+  Focused 12-config sweep based on 94fqx0gz performance analysis.
+  
+  Key findings integrated:
+  - ResNet50 achieved 51.48% test accuracy (new record)
+  - bottleneck_128 showed 47.15% val acc despite crashes
+  - Aggressive LR (1e-3) yields best results
+  - Curriculum learning shows +3.65% benefit
+  - Batch 512 is maximum that fits in memory
+  
+  Changes from previous:
+  - Single model (ResNet50) and batch size (512)
+  - Testing max_lr up to 2e-3
+  - Including all SNR layer configs based on performance
+  - Extended patience (25) and epochs (150)
+  - Generous early stopping (min=20, max=60)
+  
+  Goal: Beat 51.48% test accuracy with stable training
