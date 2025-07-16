@@ -27,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, cycles_per_training=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1, use_curriculum=False):
+def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, epochs=50, base_lr=1e-4, weight_decay=1e-5, test_size=0.2, patience=10, model_type="resnet18", dropout=0.2, use_task_specific=False, use_pretrained=True, max_lr=None, step_size_up=5, step_size_down=5, cycles_per_training=5, snr_layer_config="standard", warmup_epochs=0, warmup_start_factor=0.1, use_curriculum=False, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1):
     # Load data
     print("Loading data...")
 
@@ -189,7 +189,10 @@ def main(checkpoint=None, batch_size=32, snr_list=None, mods_to_process=None, ep
         step_size_down=step_size_down,
         cycles_per_training=cycles_per_training,
         warmup_epochs=warmup_epochs,
-        warmup_start_factor=warmup_start_factor
+        warmup_start_factor=warmup_start_factor,
+        train_ratio=train_ratio,
+        val_ratio=val_ratio,
+        test_ratio=test_ratio
     )
 
 
@@ -222,6 +225,11 @@ if __name__ == "__main__":
     parser.add_argument('--warmup_epochs', type=int, help='Number of epochs for LR warmup (0 = no warmup)', default=0)
     parser.add_argument('--warmup_start_factor', type=float, help='Starting LR factor for warmup (e.g., 0.1 = start at 10 percent of base_lr)', default=0.1)
     
+    # Data split ratios
+    parser.add_argument('--train_ratio', type=float, help='Training set ratio (default: 0.8)', default=0.8)
+    parser.add_argument('--val_ratio', type=float, help='Validation set ratio (default: 0.1)', default=0.1)
+    parser.add_argument('--test_ratio', type=float, help='Test set ratio (default: 0.1)', default=0.1)
+    
     # Curriculum learning options
     parser.add_argument('--use_curriculum', type=str2bool, help='Use curriculum learning for SNR (default: False)', default=False)
 
@@ -248,5 +256,8 @@ if __name__ == "__main__":
         snr_layer_config=args.snr_layer_config,
         warmup_epochs=args.warmup_epochs,
         warmup_start_factor=args.warmup_start_factor,
-        use_curriculum=args.use_curriculum
+        use_curriculum=args.use_curriculum,
+        train_ratio=args.train_ratio,
+        val_ratio=args.val_ratio,
+        test_ratio=args.test_ratio
     )

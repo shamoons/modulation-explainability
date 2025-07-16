@@ -40,7 +40,10 @@ def train(
     cycles_per_training=5,
     warmup_epochs=0,
     warmup_start_factor=0.1,
-    curriculum_scheduler=None
+    curriculum_scheduler=None,
+    train_ratio=0.8,
+    val_ratio=0.1,
+    test_ratio=0.1
 ):
     """
     Train the model and save the best one based on validation loss.
@@ -84,8 +87,14 @@ def train(
     scaler = GradScaler('cuda') if device.type == 'cuda' else None
 
     # Create stratified train/val/test split (done once, not per epoch)
-    # Use default 80/10/10 split from create_stratified_split function
-    train_idx, val_idx, test_idx = create_stratified_split(dataset, random_state=42)
+    # Use provided train/val/test ratios
+    train_idx, val_idx, test_idx = create_stratified_split(
+        dataset, 
+        train_ratio=train_ratio,
+        val_ratio=val_ratio,
+        test_ratio=test_ratio,
+        random_state=42
+    )
     
     # Verify stratification (optional - can be disabled for speed)
     verify_stratification(dataset, train_idx, val_idx, test_idx)
