@@ -36,10 +36,14 @@ import wandb
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 # Import training modules
-from train_constellation import (
-    ConstellationDataset, create_data_loaders, 
-    build_model, MultiTaskLoss
-)
+from loaders.constellation_loader import ConstellationDataset
+from models.constellation_model import ConstellationResNet
+from models.vision_transformer_model import ConstellationVisionTransformer
+from models.swin_transformer_model import ConstellationSwinTransformer
+from utils.data_splits import create_stratified_split
+from losses.uncertainty_weighted_loss import AnalyticalUncertaintyWeightedLoss
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 
 # Configuration
 CANONICAL_RUN_ID = "lmp0536i"
@@ -48,15 +52,14 @@ RESULTS_DIR = Path("papers/ELSP_Paper/results")
 CHECKPOINT_DIR = RESULTS_DIR / "checkpoints"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Dataset configuration
+# Dataset configuration (digital modulations only)
 MODULATION_CLASSES = [
-    '32PSK', '16APSK', '32QAM', 'FM', 'GMSK', '32APSK', 'OQPSK', '8ASK',
-    'BPSK', '8PSK', 'AM-SSB-SC', '4ASK', '16PSK', '64APSK', '128QAM',
-    '128APSK', 'AM-DSB-SC', 'AM-SSB-WC', '64QAM', 'QPSK', '256QAM',
-    '16QAM', 'AM-DSB-WC', 'OOK', '8PAM'
+    '32PSK', '16APSK', '32QAM', '32APSK', 'OQPSK', '8ASK',
+    'BPSK', '8PSK', '4ASK', '16PSK', '64APSK', '128QAM',
+    '128APSK', '64QAM', 'QPSK', '256QAM', '16QAM', '8PAM'
 ]
 
-SNR_LEVELS = list(range(-20, 31, 2))  # -20 to 30 dB, step 2
+SNR_LEVELS = list(range(0, 31, 2))  # 0 to 30 dB, step 2 (16 levels)
 NUM_MODULATIONS = len(MODULATION_CLASSES)
 NUM_SNR_LEVELS = len(SNR_LEVELS)
 
@@ -83,7 +86,7 @@ def download_canonical_checkpoint():
     
     try:
         # Get the specific run
-        run = api.run(f"shamoon-siddiqui/modulation-explainability/{CANONICAL_RUN_ID}")
+        run = api.run(f"shamoons/modulation-explainability/{CANONICAL_RUN_ID}")
         
         # Try to find checkpoint file
         checkpoint_file = None
@@ -151,12 +154,12 @@ def load_model_and_checkpoint(checkpoint_path):
     # Load checkpoint to get configuration
     checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
     
-    # Build model (assuming ResNet50 + bottleneck_128 from canonical run)
-    model = build_model(
-        model_type="resnet50",
+    # Build ResNet50 model (canonical run configuration)
+    model = ConstellationResNet(
         num_modulation_classes=NUM_MODULATIONS,
         num_snr_classes=NUM_SNR_LEVELS,
-        snr_layer_type="bottleneck_128",
+        architecture="resnet50",
+        snr_layer_config="bottleneck_128",
         pretrained=True,
         dropout_rate=0.5
     )
@@ -177,18 +180,49 @@ def create_test_dataloader():
     data_dir = "constellation_diagrams"
     batch_size = 512
     
-    # Create data loaders (will automatically handle test split)
-    train_loader, val_loader, test_loader = create_data_loaders(
-        data_dir=data_dir,
-        batch_size=batch_size,
-        num_workers=4,
-        train_split=0.8,
-        val_split=0.1,
-        test_split=0.1,
-        shuffle_train=True
+    # Create dataset (exclude analog modulations, use 0-30 dB SNR range)
+    excluded_modulations = ['AM-SSB-SC', 'AM-DSB-SC', 'AM-SSB-WC', 'AM-DSB-WC', 'FM', 'GMSK', 'OOK']
+    
+    # Create dataset
+    dataset = ConstellationDataset(
+        root_dir=data_dir,
+        snr_list=list(range(0, 31, 2)),  # 0-30 dB, step 2 (16 levels)
+        mods_to_process=None  # Load all, then filter
     )
     
-    print(f"Test set size: {len(test_loader.dataset)} samples")
+    # Filter out analog modulations
+    filtered_indices = []
+    for i, (_, mod_label, snr_label) in enumerate(dataset):
+        mod_name = list(dataset.modulation_labels.keys())[list(dataset.modulation_labels.values()).index(mod_label)]
+        if mod_name not in excluded_modulations:
+            filtered_indices.append(i)
+    
+    print(f"Total samples: {len(dataset)}")
+    print(f"Filtered samples (digital only): {len(filtered_indices)}")
+    
+    # Create stratified split
+    train_indices, val_indices, test_indices = create_stratified_split(
+        dataset,
+        train_ratio=0.8,
+        val_ratio=0.1,
+        test_ratio=0.1,
+        random_state=42
+    )
+    
+    # Filter test indices to only include digital modulations
+    test_indices = [idx for idx in test_indices if idx in filtered_indices]
+    
+    print(f"Test set size: {len(test_indices)} samples")
+    
+    # Create test dataloader
+    test_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        sampler=SubsetRandomSampler(test_indices),
+        num_workers=4,
+        pin_memory=True
+    )
+    
     return test_loader
 
 def evaluate_model(model, test_loader):
