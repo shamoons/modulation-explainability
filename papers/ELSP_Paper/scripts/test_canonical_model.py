@@ -4,7 +4,7 @@ Test script for evaluating the canonical model (run lmp0536i epoch 14) on test s
 This script implements Phase 3A of the ELSP paper TODO.
 
 Usage:
-    uv run python papers/ELSP_Paper/scripts/test_canonical_model.py
+    uv run python papers/ELSP_Paper/scripts/test_canonical_model.py [--checkpoint PATH]
 
 Expected outputs:
     - results/performance_metrics/test_set_results.json
@@ -31,6 +31,7 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import LabelEncoder
 import wandb
+import argparse
 
 # Add src directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
@@ -77,15 +78,73 @@ def setup_directories():
     for dir_path in directories:
         dir_path.mkdir(parents=True, exist_ok=True)
 
-def download_canonical_checkpoint():
-    """Download the canonical model checkpoint from W&B."""
-    print(f"Downloading canonical checkpoint from run {CANONICAL_RUN_ID} epoch {CANONICAL_EPOCH}")
+def get_canonical_checkpoint(checkpoint_path=None):
+    """Find and copy the canonical model checkpoint."""
+    print(f"Looking for canonical checkpoint from run {CANONICAL_RUN_ID} epoch {CANONICAL_EPOCH}")
     
-    # Initialize W&B API
-    api = wandb.Api()
+    # If checkpoint path provided as parameter, use it
+    if checkpoint_path:
+        checkpoint_path = Path(checkpoint_path)
+        if checkpoint_path.exists():
+            print(f"Using provided checkpoint: {checkpoint_path}")
+            
+            # Copy to results directory
+            target_path = CHECKPOINT_DIR / "canonical_model_epoch_14.pth"
+            
+            import shutil
+            shutil.copy2(checkpoint_path, target_path)
+            
+            # Save metadata
+            metadata = {
+                "run_id": CANONICAL_RUN_ID,
+                "epoch": CANONICAL_EPOCH,
+                "source": "provided_path",
+                "original_path": str(checkpoint_path),
+                "copy_timestamp": datetime.now().isoformat(),
+                "original_filename": checkpoint_path.name
+            }
+            
+            with open(CHECKPOINT_DIR / "checkpoint_metadata.json", 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            print(f"Checkpoint copied to: {target_path}")
+            return target_path
+        else:
+            raise FileNotFoundError(f"Provided checkpoint path does not exist: {checkpoint_path}")
     
+    # Look for local checkpoint in default location
+    local_checkpoint_name = f"best_model_resnet50_epoch_{CANONICAL_EPOCH}.pth"
+    local_checkpoint_path = Path("checkpoints") / local_checkpoint_name
+    
+    if local_checkpoint_path.exists():
+        print(f"Found local checkpoint: {local_checkpoint_path}")
+        
+        # Copy to results directory
+        target_path = CHECKPOINT_DIR / "canonical_model_epoch_14.pth"
+        
+        import shutil
+        shutil.copy2(local_checkpoint_path, target_path)
+        
+        # Save metadata
+        metadata = {
+            "run_id": CANONICAL_RUN_ID,
+            "epoch": CANONICAL_EPOCH,
+            "source": "local_checkpoint",
+            "original_path": str(local_checkpoint_path),
+            "copy_timestamp": datetime.now().isoformat(),
+            "original_filename": local_checkpoint_name
+        }
+        
+        with open(CHECKPOINT_DIR / "checkpoint_metadata.json", 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print(f"Checkpoint copied to: {target_path}")
+        return target_path
+    
+    # If local checkpoint not found, try W&B as fallback
+    print("Local checkpoint not found, attempting W&B download...")
     try:
-        # Get the specific run
+        api = wandb.Api()
         run = api.run(f"shamoons/modulation-explainability/{CANONICAL_RUN_ID}")
         
         # Try to find checkpoint file
@@ -125,6 +184,7 @@ def download_canonical_checkpoint():
         metadata = {
             "run_id": CANONICAL_RUN_ID,
             "epoch": CANONICAL_EPOCH,
+            "source": "wandb_download",
             "download_timestamp": datetime.now().isoformat(),
             "original_filename": checkpoint_file.name,
             "run_config": dict(run.config),
@@ -134,18 +194,12 @@ def download_canonical_checkpoint():
         with open(CHECKPOINT_DIR / "checkpoint_metadata.json", 'w') as f:
             json.dump(metadata, f, indent=2)
         
-        print(f"Checkpoint saved to: {checkpoint_path}")
+        print(f"Checkpoint downloaded to: {checkpoint_path}")
         return checkpoint_path
         
     except Exception as e:
         print(f"Error downloading checkpoint: {e}")
-        # Check if checkpoint already exists locally
-        local_checkpoint = CHECKPOINT_DIR / "canonical_model_epoch_14.pth"
-        if local_checkpoint.exists():
-            print(f"Using existing local checkpoint: {local_checkpoint}")
-            return local_checkpoint
-        else:
-            raise
+        raise FileNotFoundError(f"Could not find checkpoint locally or in W&B. Local path tried: {local_checkpoint_path}")
 
 def load_model_and_checkpoint(checkpoint_path):
     """Load the model architecture and checkpoint."""
@@ -469,6 +523,16 @@ def save_test_results(results, mod_f1_data, snr_f1_data):
 
 def main():
     """Main function to run the canonical model test."""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Test canonical model on test set")
+    parser.add_argument(
+        "--checkpoint", 
+        type=str, 
+        help="Path to checkpoint file (default: checkpoints/best_model_resnet50_epoch_14.pth)"
+    )
+    
+    args = parser.parse_args()
+    
     print("Starting canonical model test evaluation...")
     print(f"Target run: {CANONICAL_RUN_ID} epoch {CANONICAL_EPOCH}")
     print(f"Results directory: {RESULTS_DIR}")
@@ -476,8 +540,8 @@ def main():
     # Setup
     setup_directories()
     
-    # Download checkpoint
-    checkpoint_path = download_canonical_checkpoint()
+    # Get checkpoint
+    checkpoint_path = get_canonical_checkpoint(args.checkpoint)
     
     # Load model
     model, checkpoint = load_model_and_checkpoint(checkpoint_path)
