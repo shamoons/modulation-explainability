@@ -13,3 +13,6 @@ f1_scores/
 test/
 perturbed_constellations/
 scratch/
+
+# Don't ignore ELSP paper results - we want to track these
+!papers/ELSP_Paper/results/
