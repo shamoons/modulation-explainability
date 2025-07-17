@@ -216,8 +216,15 @@ def load_model_and_checkpoint(checkpoint_path):
         use_pretrained=True                 # From training: --use_pretrained True
     )
     
-    # Load state dict
-    model.load_state_dict(checkpoint['model_state_dict'])
+    # Load state dict - the checkpoint IS the state dict directly
+    try:
+        model.load_state_dict(checkpoint)
+        print("Loaded state dict directly from checkpoint")
+    except Exception as e:
+        print(f"Error loading state dict: {e}")
+        print(f"Available keys: {list(checkpoint.keys())}")
+        raise
+    
     model.to(DEVICE)
     model.eval()
     
@@ -230,7 +237,7 @@ def create_test_dataloader():
     
     # Use the same configuration as training
     data_dir = "constellation_diagrams"
-    batch_size = 512
+    batch_size = 256  # Reduced for faster evaluation
     
     # Match training configuration exactly
     image_type = 'grayscale'  # Training used grayscale
