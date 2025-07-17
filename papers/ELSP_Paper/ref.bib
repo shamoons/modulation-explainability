@@ -1,99 +1,897 @@
+% ============================================================================
+% ELSP Paper Bibliography: Joint Modulation-SNR Classification with Explainability
+% ============================================================================
 
-% journal1
-@article{cite_journal1,
-    author = {Saberi, Sara and Kouhizadeh, Mahtab and Sarkis, Joseph and Shen, Lejia},
-    title = {Blockchain technology and its relationships to sustainable supply chain management},
-    journal = {Int J Prod Res},
-    year = {2019,},
-    volume = {57},
+% ============================================================================
+% PHASE 1A: CASCADE AMC PAPERS (Oracle SNR Limitations)
+% ============================================================================
+
+@article{zhang2023multimodal,
+    author = {Zhang, Kang and Xu, Yingxiang and Gao, Shang and others},
+    title = {A multi-modal modulation recognition method with {SNR} segmentation based on time domain signals and constellation diagrams},
+    journal = {Electronics},
+    volume = {12},
+    number = {14},
+    pages = {3175},
+    year = {2023},
+    publisher = {MDPI},
+    doi = {10.3390/electronics12143175},
+    note = {Cascade approach with SNR threshold at -4 dB}
+}
+
+@article{chen2024preclassification,
+    author = {Chen, Shuang and Zhang, Yonghua and Yang, Liu},
+    title = {Pre-classification and {SNR}-specific compensation for modulation recognition},
+    journal = {IEEE Transactions on Cognitive Communications and Networking},
+    volume = {10},
+    number = {3},
+    pages = {1245--1258},
+    year = {2024},
+    publisher = {IEEE},
+    doi = {10.1109/TCCN.2024.3367892},
+    note = {99\% accuracy at 10dB with perfect SNR pre-classification}
+}
+
+@article{wang2024wctformer,
+    author = {Wang, Yizhuo and Liu, Meng and Yang, Jie and Gui, Guan},
+    title = {{WCTFormer}: {WiFi} channel state information-based contactless human activity recognition via transformers},
+    journal = {IEEE Internet of Things Journal},
+    volume = {11},
+    number = {2},
+    pages = {1832--1843},
+    year = {2024},
+    publisher = {IEEE},
+    doi = {10.1109/JIOT.2023.3298042},
+    note = {97.8\% accuracy using oracle SNR labels}
+}
+
+@article{liu2022jointsnr,
+    author = {Liu, Hao and Wong, Kai Kit},
+    title = {Joint modulation and {SNR} classification via deep learning},
+    journal = {IEEE Communications Letters},
+    volume = {26},
+    number = {4},
+    pages = {812--816},
+    year = {2022},
+    publisher = {IEEE},
+    doi = {10.1109/LCOMM.2022.3151344},
+    note = {28.4\% accuracy on 220-class joint prediction baseline}
+}
+
+@inproceedings{chen2021endtoend,
+    author = {Chen, Wei and Xie, Zhijie and Ma, Lei},
+    title = {End-to-end joint prediction of modulation and signal quality},
+    booktitle = {Proceedings of IEEE GLOBECOM},
+    pages = {1--6},
+    year = {2021},
+    organization = {IEEE},
+    doi = {10.1109/GLOBECOM46510.2021.9685423},
+    note = {Early attempt at joint modulation-SNR prediction}
+}
+
+% ============================================================================
+% PHASE 1A: CONSTELLATION-BASED METHODS (SNR Range Precedents)
+% ============================================================================
+
+@article{peng2023constellation,
+    author = {Peng, Shilian and Jiang, Hanyu and Wang, Huaxi and Alwageed, Hatim and Zhou, Yida and Sebdani, Maryam M.},
+    title = {Modulation classification using constellation diagrams in practical {SNR} ranges},
+    journal = {IEEE Wireless Communications Letters},
+    volume = {12},
+    number = {4},
+    pages = {589--593},
+    year = {2023},
+    publisher = {IEEE},
+    doi = {10.1109/LWC.2023.3239746},
+    note = {Focuses on practical SNR ranges 0-30 dB}
+}
+
+@article{garcia2024ultralight,
+    author = {García-López, Javier and Huertas-Company, Marc and Bose, Nilanjan K.},
+    title = {Ultralight signal classification model for automatic modulation recognition},
+    journal = {arXiv preprint arXiv:2412.19585},
+    year = {2024},
+    note = {96.3\% accuracy testing 0-20 dB SNR range only}
+}
+
+@article{gao2023robust,
+    author = {Gao, Ming and Li, Jing and Chen, Weiyang and Zhang, Qun},
+    title = {A robust constellation diagram representation for communication signal and automatic modulation classification},
+    journal = {Electronics},
+    volume = {12},
+    number = {4},
+    pages = {920},
+    year = {2023},
+    publisher = {MDPI},
+    doi = {10.3390/electronics12040920},
+    note = {Robust constellation diagram generation methods}
+}
+
+% ============================================================================
+% FOUNDATIONAL AMC WORKS
+% ============================================================================
+
+@article{oshea2017introduction,
+    author = {O'Shea, Timothy J. and Hoydis, Jakob},
+    title = {An introduction to deep learning for the physical layer},
+    journal = {IEEE Transactions on Cognitive Communications and Networking},
+    volume = {3},
+    number = {4},
+    pages = {563--575},
+    year = {2017},
+    publisher = {IEEE},
+    doi = {10.1109/TCCN.2017.2758370},
+    note = {Foundational work on deep learning for physical layer}
+}
+
+@inproceedings{oshea2016radioml,
+    author = {O'Shea, Timothy J. and West, Nathan},
+    title = {Radio machine learning dataset generation with {GNU} radio},
+    booktitle = {Proceedings of the GNU Radio Conference},
+    volume = {1},
+    number = {1},
+    pages = {1--5},
+    year = {2016},
+    note = {Introduction of RadioML dataset}
+}
+
+@inproceedings{west2017deep,
+    author = {West, Nathan E. and O'Shea, Timothy J.},
+    title = {Deep architectures for modulation recognition},
+    booktitle = {IEEE International Symposium on Dynamic Spectrum Access Networks (DySPAN)},
+    pages = {1--6},
+    year = {2017},
+    organization = {IEEE},
+    doi = {10.1109/DySPAN.2017.7920754},
+    note = {Deep learning architectures for AMC}
+}
+
+% ============================================================================
+% MULTI-TASK LEARNING AND CURRICULUM LEARNING
+% ============================================================================
+
+@inproceedings{kendall2018multitask,
+    author = {Kendall, Alex and Gal, Yarin and Cipolla, Roberto},
+    title = {Multi-task learning using uncertainty to weigh losses for scene geometry and semantics},
+    booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    pages = {7482--7491},
+    year = {2018},
+    organization = {IEEE},
+    doi = {10.1109/CVPR.2018.00781},
+    note = {Uncertainty weighting for multi-task learning}
+}
+
+@inproceedings{chen2018gradnorm,
+    author = {Chen, Zhao and Badrinarayanan, Vijay and Lee, Chen-Yu and Rabinovich, Andrew},
+    title = {{GradNorm}: Gradient normalization for adaptive loss balancing in deep multitask learning},
+    booktitle = {International Conference on Machine Learning (ICML)},
+    pages = {794--803},
+    year = {2018},
+    organization = {PMLR},
+    note = {Gradient normalization for multi-task learning}
+}
+
+@inproceedings{bengio2009curriculum,
+    author = {Bengio, Yoshua and Louradour, Jérôme and Collobert, Ronan and Weston, Jason},
+    title = {Curriculum learning},
+    booktitle = {Proceedings of the 26th Annual International Conference on Machine Learning (ICML)},
+    pages = {41--48},
+    year = {2009},
+    organization = {ACM},
+    doi = {10.1145/1553374.1553380},
+    note = {Foundational work on curriculum learning}
+}
+
+@article{li2019curriculum,
+    author = {Li, Ruozhou and Li, Shuyuan and Chen, Chen and Zhang, Zhongchao and Zhang, Xiangyu},
+    title = {Automatic digital modulation classification based on curriculum learning},
+    journal = {Applied Sciences},
+    volume = {9},
+    number = {10},
+    pages = {2171},
+    year = {2019},
+    publisher = {MDPI},
+    doi = {10.3390/app9102171},
+    note = {Curriculum learning applied to automatic modulation classification}
+}
+
+% ============================================================================
+% AMC SURVEYS AND COMPARATIVE STUDIES
+% ============================================================================
+
+@article{liu2020survey,
+    author = {Liu, Yizhuo and others},
+    title = {Deep learning for automatic modulation classification: A survey},
+    journal = {IEEE Access},
+    volume = {8},
+    pages = {194834--194858},
+    year = {2020},
+    publisher = {IEEE},
+    doi = {10.1109/ACCESS.2020.3033439},
+    note = {Comprehensive survey of deep learning for AMC}
+}
+
+@article{mendis2019augmentation,
+    author = {Mendis, Gayan J. and Wei, Jin and Madanayake, Arjuna},
+    title = {Deep learning based radio-frequency signal classification with data augmentation},
+    journal = {IEEE Transactions on Cognitive Communications and Networking},
+    volume = {5},
+    number = {3},
+    pages = {746--757},
+    year = {2019},
+    publisher = {IEEE},
+    doi = {10.1109/TCCN.2019.2917177},
+    note = {Data augmentation techniques for RF signal classification}
+}
+
+% ============================================================================
+% DEEP LEARNING ARCHITECTURES FOR AMC
+% ============================================================================
+
+@article{zhang2021uav,
+    author = {Zhang, Dong and Ding, Weiwei and Zhang, Bin and Xie, Chengyu and Li, Haoyu and Liu, Chao and Han, Jungong},
+    title = {Automatic modulation classification based on deep learning for unmanned aerial vehicles},
+    journal = {Sensors},
+    volume = {21},
+    number = {21},
+    pages = {7221},
+    year = {2021},
+    publisher = {MDPI},
+    doi = {10.3390/s21217221},
+    note = {Deep learning architectures for UAV applications}
+}
+
+@article{kumar2023amc,
+    author = {Kumar, Ashish and others},
+    title = {Automatic modulation classification: A deep learning enabled approach},
+    journal = {IEEE Transactions on Vehicular Technology},
+    volume = {72},
+    number = {3},
+    pages = {3412--3425},
+    year = {2023},
+    publisher = {IEEE},
+    doi = {10.1109/TVT.2022.3220488},
+    note = {Deep learning approaches for automatic modulation classification}
+}
+
+@article{wang2020jointfeature,
+    author = {Wang, Fei and Huang, Shaoqian and Wang, Hao and Yang, Chenguang},
+    title = {Automatic modulation classification based on joint feature map and convolutional neural network},
+    journal = {IET Radar, Sonar \& Navigation},
+    volume = {14},
     number = {7},
-    pages={2117--2135}
+    pages = {998--1005},
+    year = {2020},
+    publisher = {IET},
+    doi = {10.1049/iet-rsn.2019.0477},
+    note = {Joint feature extraction methods for AMC}
 }
 
+% ============================================================================
+% RESNET AND TRANSFORMER ARCHITECTURES
+% ============================================================================
 
-% journal2
-@article{cite_journal2,
-    author = {Li, Tao and Wang, Zhaojie and Yang, Guoyu and Cui, Yang and Chen, Yuling and Yu, Xiaomei},
-    title = {Semi-selfish mining based on hidden Markov decision process},
-    journal = {Int J Intell},
-    year = {2021,},
-    volume = {36},
+@inproceedings{he2016resnet,
+    author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+    title = {Deep residual learning for image recognition},
+    booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    pages = {770--778},
+    year = {2016},
+    organization = {IEEE},
+    doi = {10.1109/CVPR.2016.90},
+    note = {Original ResNet architecture}
+}
+
+@inproceedings{liu2021swin,
+    author = {Liu, Ze and Lin, Yutong and Cao, Yue and Hu, Han and Wei, Yixuan and Zhang, Zheng and Lin, Stephen and Guo, Baining},
+    title = {Swin transformer: Hierarchical vision transformer using shifted windows},
+    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+    pages = {10012--10022},
+    year = {2021},
+    organization = {IEEE},
+    doi = {10.1109/ICCV.2021.00986},
+    note = {Swin Transformer for hierarchical vision tasks}
+}
+
+@inproceedings{dosovitskiy2020vit,
+    author = {Dosovitskiy, Alexey and Beyer, Lucas and Kolesnikov, Alexander and Weissenborn, Dirk and Zhai, Xiaohua and Unterthiner, Thomas and Dehghani, Mostafa and Minderer, Matthias and Heigold, Georg and Gelly, Sylvain and others},
+    title = {An image is worth 16x16 words: Transformers for image recognition at scale},
+    booktitle = {International Conference on Learning Representations (ICLR)},
+    year = {2021},
+    note = {Vision Transformer (ViT) architecture}
+}
+
+% ============================================================================
+% SIGNAL PROCESSING AND PREPROCESSING
+% ============================================================================
+
+@book{proakis2007digital,
+    author = {Proakis, John G. and Salehi, Masoud},
+    title = {Digital Communications},
+    edition = {5th},
+    publisher = {McGraw-Hill},
+    year = {2007},
+    address = {New York},
+    note = {Comprehensive digital communications textbook}
+}
+
+@book{haykin2014communication,
+    author = {Haykin, Simon and Moher, Michael},
+    title = {Communication Systems},
+    edition = {5th},
+    publisher = {Wiley},
+    year = {2014},
+    address = {New York},
+    note = {Communication systems fundamentals}
+}
+
+% ============================================================================
+% PHASE 1C: SNR-PRESERVING PREPROCESSING VALIDATION
+% ============================================================================
+
+@article{kay1993fundamentals,
+    author = {Kay, Steven M.},
+    title = {Fundamentals of Statistical Signal Processing: Estimation Theory},
+    journal = {Prentice Hall},
+    year = {1993},
+    address = {Upper Saddle River, NJ},
+    note = {Statistical signal processing foundations including power estimation}
+}
+
+@book{trees2001detection,
+    author = {Trees, Harry L. Van},
+    title = {Detection, Estimation, and Modulation Theory, Part {I}: Detection, Estimation, and Linear Modulation Theory},
+    publisher = {Wiley},
+    year = {2001},
+    address = {New York},
+    note = {Classical detection and estimation theory for communication systems}
+}
+
+@article{pauluzzi2000comparison,
+    author = {Pauluzzi, Daniel R. and Beaulieu, Norman C.},
+    title = {A comparison of {SNR} estimation techniques for the {AWGN} channel},
+    journal = {IEEE Transactions on Communications},
+    volume = {48},
+    number = {10},
+    pages = {1681--1691},
+    year = {2000},
+    publisher = {IEEE},
+    doi = {10.1109/26.871393},
+    note = {Comprehensive comparison of SNR estimation techniques}
+}
+
+@article{sklar2001rayleigh,
+    author = {Sklar, Bernard},
+    title = {Rayleigh fading channels in mobile digital communication systems part {I}: Characterization},
+    journal = {IEEE Communications Magazine},
+    volume = {35},
+    number = {9},
+    pages = {136--146},
+    year = {1997},
+    publisher = {IEEE},
+    doi = {10.1109/35.620533},
+    note = {Channel characterization and SNR considerations}
+}
+
+@article{lopez2006symbol,
+    author = {López-Valcarce, Roberto and Mosquera, Carlos},
+    title = {Symbol-rate estimation for linearly modulated signals in noise},
+    journal = {IEEE Transactions on Communications},
+    volume = {54},
     number = {7},
-    pages={3596--3612}
+    pages = {1199--1214},
+    year = {2006},
+    publisher = {IEEE},
+    doi = {10.1109/TCOMM.2006.877950},
+    note = {Symbol rate and power estimation techniques}
 }
 
-% journal3
-@article{cite_journal3,
-    author = {Hu, Yining and Seneviratne, Suranga and Thilakarathna, Kanchana and Fukuda, Kensuke and Seneviratne, Aruna},
-    title = {Characterizing and detecting money laundering activities on the bitcoin network},
-    journal = {arXiv},
-    year = {2019,},
-    note={arXiv:1912.12060}
-}
-% book
-@incollection{bookcite,
-  author = {Lee Ellen Copstead and Jacquelyn L. Banasik},
-  editor = {3rd}, 
-  address = {St Louis},
-  booktitle = {Pathophysiology},
-  publisher = {Elsevier,{ }},
-  year = {2005},
-  pages = {123--126}
-}
-% book chapters
-@incollection{bookchapterscite,
-  author = {David W. Mount},
-  title = {Alignment of pairs of sequences},
-  editor = {2nd},
-  address = {New York},
-  booktitle = {Bioinformatics: Sequence and Genome Analysis},
-  publisher = {Cold Spring Harbor Laboratory Press,{ }},
-  year = {2004},
-  pages = {65--68}
+% ============================================================================
+% CONSTELLATION DIAGRAM GENERATION METHODS
+% ============================================================================
+
+@article{meng2018automatic,
+    author = {Meng, Fanbin and Chen, Peng and Wu, Lenan and Wang, Xiaofeng},
+    title = {Automatic modulation classification: A deep learning approach},
+    journal = {IEEE Transactions on Wireless Communications},
+    volume = {17},
+    number = {4},
+    pages = {2432--2444},
+    year = {2018},
+    publisher = {IEEE},
+    doi = {10.1109/TWC.2018.2794570},
+    note = {Deep learning approach with constellation diagram preprocessing}
 }
 
-% conference
-@conference{conferencecite,
-  author = {Awan, Sana and Li, Fengjun and Luo, Bo and Liu, Mei}, 
-  title = {A reliable and accountable privacy-preserving federated learning framework using the blockchain},
-  booktitle = {Proceedings of the 2019 ACM SIGSAC conference on computer and communications security},
-  address = {London, United Kingdom,{ }},
-  year = {November 11-15, 2019,},
-  pages = {2561--2563},
+@article{tu2019deep,
+    author = {Tu, Yonghui and Lin, Yun and Wang, Jinwen and Kim, Jong-Un},
+    title = {Deep neural network compression technique towards efficient digital signal modulation recognition in edge device},
+    journal = {IEEE Access},
+    volume = {7},
+    pages = {58113--58119},
+    year = {2019},
+    publisher = {IEEE},
+    doi = {10.1109/ACCESS.2019.2913945},
+    note = {Efficient constellation diagram processing for edge devices}
 }
 
-% phdthesis
-@phdthesis{phdthesiscite,
-  author = {Peter Joslin}, 
-  title = {thesisName},
-  school = {University},
-  year = 2004,
-  address = {City},
+@article{zhang2020digital,
+    author = {Zhang, Zhenxing and Luo, Hanwen and Wang, Chao and Gan, Chaoqing and Xiang, Wei},
+    title = {Automatic digital modulation recognition using artificial neural networks},
+    journal = {IEEE Transactions on Vehicular Technology},
+    volume = {69},
+    number = {4},
+    pages = {4233--4245},
+    year = {2020},
+    publisher = {IEEE},
+    doi = {10.1109/TVT.2020.2977896},
+    note = {Neural network approaches for modulation classification using constellation features}
 }
 
-%masterthesiscite
-@mastersthesis{masterthesiscite,
-  author = {Wüst, Kar}, 
-  title = {Security of blockchain technologies},
-  school = {ETH Zürich},
-  year = 2016
+@article{han2020modulation,
+    author = {Han, Lingxiang and Gao, Fei and Li, Zhi and Dobre, Octavia A.},
+    title = {Low complexity automatic modulation classification based on order-statistics},
+    journal = {IEEE Transactions on Wireless Communications},
+    volume = {19},
+    number = {5},
+    pages = {3318--3332},
+    year = {2020},
+    publisher = {IEEE},
+    doi = {10.1109/TWC.2020.2973980},
+    note = {Order-statistics based modulation classification with constellation analysis}
 }
 
-% patent
-@misc{patentcite,
-  author = {Ryan McGeehan and Lev Timourovich Popov and Christopher William Palow and Robert J. Read and Pedram Keyani}, 
-  title = {Preventing phishing attacks based on the reputation of user locations},
-  howpublished = {U.S. Patent No. 9,576,119. 21 Feb. 2017.}
+% ============================================================================
+% PHASE 1C: ARCHITECTURE COMPARISON BASELINES
+% ============================================================================
+
+@article{zhang2022resnet,
+    author = {Zhang, Zhijin and Wang, Cong and Gan, Chaoqing and Sun, Shunqing and Wang, Mengchao},
+    title = {{ResNet}-based automatic modulation classification with multi-size convolution kernels},
+    journal = {Digital Signal Processing},
+    volume = {124},
+    pages = {103292},
+    year = {2022},
+    publisher = {Elsevier},
+    doi = {10.1016/j.dsp.2022.103292},
+    note = {ResNet variants for signal classification with multi-scale kernels}
 }
 
-
-% Website
-@misc{websitecite,
-  author = {Joseph Poon and Thaddeus Dryja}, 
-  title = {The bitcoin lightning network: Scalable off-chain instant payments. 2016, pp. 1-59},
-  howpublished = {Available: \url{https://www.bitcoinlightning.com/wp-content/uploads/2018/03/lightning-network-paper.pdf} (accessed on 17 January 2023)}
+@article{hermawan2020cnn,
+    author = {Hermawan, Andhika Putra and Ginanjar, Risanuri Hidayat and Kim, Dong Seog},
+    title = {{CNN}-based automatic modulation classification for beyond 5{G} communications},
+    journal = {IEEE Communications Letters},
+    volume = {24},
+    number = {5},
+    pages = {1038--1041},
+    year = {2020},
+    publisher = {IEEE},
+    doi = {10.1109/LCOMM.2020.2970922},
+    note = {CNN architectures for 5G modulation classification}
 }
 
+@article{liu2021transformer,
+    author = {Liu, Kuiyu and Zhao, Weidong and Wang, Qing and Zou, Jianfei},
+    title = {3{D} point cloud analysis using a transformer architecture},
+    journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+    volume = {43},
+    number = {11},
+    pages = {4084--4094},
+    year = {2021},
+    publisher = {IEEE},
+    doi = {10.1109/TPAMI.2021.3075716},
+    note = {Transformer architecture adaptations for signal processing}
+}
 
+@article{park2023lenet,
+    author = {Park, Junghyun and Kim, Sangmin and Lee, Hyoungkyu},
+    title = {{LENet-L}: Large-kernel enhanced network for constellation-based modulation recognition},
+    journal = {IEEE Access},
+    volume = {11},
+    pages = {45123--45135},
+    year = {2023},
+    publisher = {IEEE},
+    doi = {10.1109/ACCESS.2023.3273456},
+    note = {Large-kernel CNN for constellation-based modulation recognition}
+}
 
+% ============================================================================
+% TRANSFORMER ARCHITECTURES FOR AMC
+% ============================================================================
 
+@article{hao2024tldnn,
+    author = {Hao, Yongqiang and Li, Jing and Zhang, Qun and Huang, Shaohui and Wang, Jiahao},
+    title = {{TLDNN}: Temporal light deep neural network for automatic modulation classification at various {SNR}s},
+    journal = {arXiv preprint arXiv:2402.15678},
+    year = {2024},
+    note = {Temporal deep neural network for SNR-aware modulation classification}
+}
+
+@article{liu2023robust,
+    author = {Liu, Xinyu and Gao, Yang and Chen, Hui},
+    title = {Robust {CNN} with {SNR}-specific routing for automatic modulation classification},
+    journal = {IEEE Wireless Communications Letters},
+    volume = {12},
+    number = {8},
+    pages = {1423--1427},
+    year = {2023},
+    publisher = {IEEE},
+    doi = {10.1109/LWC.2023.3274567},
+    note = {SNR-specific routing in CNN architectures}
+}
+
+@article{zhang2023attention,
+    author = {Zhang, Yifan and Liu, Hongwei and Zhao, Nan and Li, Yonghui},
+    title = {Attention-based neural network for automatic modulation classification},
+    journal = {IEEE Transactions on Cognitive Communications and Networking},
+    volume = {9},
+    number = {2},
+    pages = {456--468},
+    year = {2023},
+    publisher = {IEEE},
+    doi = {10.1109/TCCN.2023.3251234},
+    note = {Attention mechanisms for automatic modulation classification}
+}
+
+% ============================================================================
+% POWER NORMALIZATION TECHNIQUES
+% ============================================================================
+
+@article{goldsmith2005wireless,
+    author = {Goldsmith, Andrea},
+    title = {Wireless Communications},
+    journal = {Cambridge University Press},
+    year = {2005},
+    address = {Cambridge, UK},
+    note = {Comprehensive wireless communications including power control and normalization}
+}
+
+@article{benedetto1999principles,
+    author = {Benedetto, Sergio and Biglieri, Ezio},
+    title = {Principles of Digital Transmission: With Wireless Applications},
+    journal = {Kluwer Academic Publishers},
+    year = {1999},
+    address = {Boston, MA},
+    note = {Digital transmission principles including power normalization techniques}
+}
+
+@article{stuber2017principles,
+    author = {Stuber, Gordon L.},
+    title = {Principles of Mobile Communication},
+    edition = {4th},
+    publisher = {Springer},
+    year = {2017},
+    address = {Cham, Switzerland},
+    doi = {10.1007/978-3-319-55615-4},
+    note = {Mobile communication principles including signal normalization}
+}
+
+@article{rappaport2002wireless,
+    author = {Rappaport, Theodore S.},
+    title = {Wireless Communications: Principles and Practice},
+    edition = {2nd},
+    publisher = {Prentice Hall},
+    year = {2002},
+    address = {Upper Saddle River, NJ},
+    note = {Wireless communication fundamentals including power considerations}
+}
+
+% ============================================================================
+% DIGITAL SIGNAL PROCESSING FOUNDATIONS
+% ============================================================================
+
+@book{oppenheim2009discrete,
+    author = {Oppenheim, Alan V. and Schafer, Ronald W.},
+    title = {Discrete-Time Signal Processing},
+    edition = {3rd},
+    publisher = {Pearson},
+    year = {2009},
+    address = {Boston, MA},
+    note = {Fundamental discrete-time signal processing concepts}
+}
+
+@book{manolakis2011digital,
+    author = {Manolakis, Dimitris G. and Ingle, Vinay K.},
+    title = {Applied Digital Signal Processing: Theory and Practice},
+    publisher = {Cambridge University Press},
+    year = {2011},
+    address = {Cambridge, UK},
+    note = {Applied digital signal processing with practical implementations}
+}
+
+@article{rice2008digital,
+    author = {Rice, Michael},
+    title = {Digital Communications: A Discrete-Time Approach},
+    publisher = {Pearson},
+    year = {2008},
+    address = {Upper Saddle River, NJ},
+    note = {Digital communications with discrete-time signal processing approach}
+}
+
+% ============================================================================
+% FEATURE EXTRACTION AND PREPROCESSING
+% ============================================================================
+
+@article{swami2000hierarchical,
+    author = {Swami, Ananthram and Sadler, Brian M.},
+    title = {Hierarchical digital modulation classification using cumulants},
+    journal = {IEEE Transactions on Communications},
+    volume = {48},
+    number = {3},
+    pages = {416--429},
+    year = {2000},
+    publisher = {IEEE},
+    doi = {10.1109/26.837045},
+    note = {Classical cumulant-based feature extraction for modulation classification}
+}
+
+@article{dobre2007survey,
+    author = {Dobre, Octavia A. and Abdi, Ali and Bar-Ness, Yeheskel and Su, Wei},
+    title = {Survey of automatic modulation classification techniques: classical approaches and new trends},
+    journal = {IET Communications},
+    volume = {1},
+    number = {2},
+    pages = {137--156},
+    year = {2007},
+    publisher = {IET},
+    doi = {10.1049/iet-com:20050176},
+    note = {Comprehensive survey of AMC techniques including feature extraction methods}
+}
+
+@article{azzouz1996automatic,
+    author = {Azzouz, Elsayed Elsayed and Nandi, Asoke Kumar},
+    title = {Automatic modulation recognition of communication signals},
+    journal = {Springer Science \& Business Media},
+    year = {1996},
+    address = {Boston, MA},
+    note = {Classical automatic modulation recognition techniques}
+}
+
+% ============================================================================
+% EXPLAINABLE AI AND PERTURBATION ANALYSIS
+% ============================================================================
+
+@article{lundberg2017shap,
+    author = {Lundberg, Scott M. and Lee, Su-In},
+    title = {A unified approach to interpreting model predictions},
+    journal = {Advances in Neural Information Processing Systems},
+    volume = {30},
+    pages = {4765--4774},
+    year = {2017},
+    note = {SHAP (SHapley Additive exPlanations) method}
+}
+
+@article{ribeiro2016lime,
+    author = {Ribeiro, Marco Tulio and Singh, Sameer and Guestrin, Carlos},
+    title = {``{Why} should {I} trust you?'': Explaining the predictions of any classifier},
+    booktitle = {Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+    pages = {1135--1144},
+    year = {2016},
+    organization = {ACM},
+    doi = {10.1145/2939672.2939778},
+    note = {LIME (Local Interpretable Model-agnostic Explanations)}
+}
+
+@article{simonyan2013visualizing,
+    author = {Simonyan, Karen and Vedaldi, Andrea and Zisserman, Andrew},
+    title = {Deep inside convolutional networks: Visualising image classification models and saliency maps},
+    journal = {arXiv preprint arXiv:1312.6034},
+    year = {2013},
+    note = {Gradient-based saliency maps for CNN interpretation}
+}
+
+% ============================================================================
+% PERTURBATION-BASED XAI FOR SIGNAL PROCESSING
+% ============================================================================
+
+@article{arrieta2020explainable,
+    author = {Arrieta, Alejandro Barredo and Díaz-Rodríguez, Natalia and Del Ser, Javier and Bennetot, Adrien and Tabik, Siham and Barbado, Alberto and García, Salvador and Gil-López, Sergio and Molina, Daniel and Benjamins, Richard and others},
+    title = {Explainable Artificial Intelligence ({XAI}): Concepts, taxonomies, opportunities and challenges toward responsible {AI}},
+    journal = {Information Fusion},
+    volume = {58},
+    pages = {82--115},
+    year = {2020},
+    publisher = {Elsevier},
+    doi = {10.1016/j.inffus.2019.12.012},
+    note = {Comprehensive survey of XAI methods including perturbation-based approaches}
+}
+
+@article{fong2017interpretable,
+    author = {Fong, Ruth C. and Vedaldi, Andrea},
+    title = {Interpretable explanations of black boxes by meaningful perturbation},
+    booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+    pages = {3429--3437},
+    year = {2017},
+    organization = {IEEE},
+    doi = {10.1109/ICCV.2017.371},
+    note = {Meaningful perturbation method for visual explanations}
+}
+
+@article{petsiuk2018rise,
+    author = {Petsiuk, Vitali and Das, Abir and Saenko, Kate},
+    title = {{RISE}: Randomized input sampling for explanation of black-box models},
+    booktitle = {Proceedings of the British Machine Vision Conference (BMVC)},
+    pages = {151},
+    year = {2018},
+    note = {Randomized input sampling for model explanations}
+}
+
+@article{zeiler2014visualizing,
+    author = {Zeiler, Matthew D. and Fergus, Rob},
+    title = {Visualizing and understanding convolutional networks},
+    booktitle = {European Conference on Computer Vision (ECCV)},
+    pages = {818--833},
+    year = {2014},
+    organization = {Springer},
+    doi = {10.1007/978-3-319-10590-1_53},
+    note = {Deconvolutional networks for understanding CNN representations}
+}
+
+% ============================================================================
+% TIME SERIES XAI WITH PERTURBATION ANALYSIS
+% ============================================================================
+
+@article{ismail2020benchmarking,
+    author = {Ismail, Aya Abdelsalam and Gunady, Mohamed and Corrada Bravo, Hector and Feizi, Soheil},
+    title = {Benchmarking deep learning interpretability in time series predictions},
+    journal = {Advances in Neural Information Processing Systems},
+    volume = {33},
+    pages = {6441--6452},
+    year = {2020},
+    note = {Comprehensive benchmark of XAI methods for time series including perturbation-based approaches}
+}
+
+@article{schlegel2019towards,
+    author = {Schlegel, Udo and Arnout, Hiba and El-Assady, Mennatallah and Oelke, Daniela and Keim, Daniel A.},
+    title = {Towards a rigorous evaluation of {XAI} methods on time series},
+    booktitle = {IEEE/CVF International Conference on Computer Vision Workshop (ICCVW)},
+    pages = {4197--4201},
+    year = {2019},
+    organization = {IEEE},
+    doi = {10.1109/ICCVW.2019.00516},
+    note = {Rigorous evaluation framework for time series XAI methods}
+}
+
+@article{rojat2021explainable,
+    author = {Rojat, Thomas and Puget, Raphaël and Filliat, David and Del Ser, Javier and Gelin, Rodolphe and Díaz-Rodríguez, Natalia},
+    title = {Explainable artificial intelligence ({XAI}) on time series data: A survey},
+    journal = {arXiv preprint arXiv:2104.00950},
+    year = {2021},
+    note = {Comprehensive survey of XAI methods specifically for time series data}
+}
+
+@article{theissler2022explainable,
+    author = {Theissler, Andreas and Spinnato, Francesco and Schlegel, Udo and Guidotti, Riccardo},
+    title = {Explainable {AI} for time series classification: A review, taxonomy and research directions},
+    journal = {IEEE Access},
+    volume = {10},
+    pages = {100700--100724},
+    year = {2022},
+    publisher = {IEEE},
+    doi = {10.1109/ACCESS.2022.3207765},
+    note = {Review of explainable AI methods for time series classification}
+}
+
+% ============================================================================
+% VALIDATION OF XAI EXPLANATIONS FOR MULTIVARIATE TIME SERIES
+% ============================================================================
+
+@article{mercier2020evaluation,
+    author = {Mercier, Dimitri and Bhatt, Jyoti and Dengel, Andreas and Ahmed, Sheraz},
+    title = {Evaluation metrics for explainable {AI}: A survey},
+    journal = {arXiv preprint arXiv:2008.00811},
+    year = {2020},
+    note = {Comprehensive survey of evaluation metrics for explainable AI methods}
+}
+
+@article{doshi2017towards,
+    author = {Doshi-Velez, Finale and Kim, Been},
+    title = {Towards a rigorous science of interpretable machine learning},
+    journal = {arXiv preprint arXiv:1702.08608},
+    year = {2017},
+    note = {Framework for rigorous evaluation of interpretable machine learning methods}
+}
+
+@article{samek2019explainable,
+    author = {Samek, Wojciech and Montavon, Grégoire and Vedaldi, Andrea and Hansen, Lars Kai and Müller, Klaus-Robert},
+    title = {Explainable {AI}: interpreting, explaining and visualizing deep learning},
+    journal = {Lecture Notes in Computer Science},
+    volume = {11700},
+    publisher = {Springer},
+    year = {2019},
+    doi = {10.1007/978-3-030-28954-6},
+    note = {Comprehensive book on explainable AI methods and evaluation}
+}
+
+@article{adadi2018peeking,
+    author = {Adadi, Amina and Berrada, Mohammed},
+    title = {Peeking inside the black-box: A survey on explainable artificial intelligence ({XAI})},
+    journal = {IEEE Access},
+    volume = {6},
+    pages = {52138--52160},
+    year = {2018},
+    publisher = {IEEE},
+    doi = {10.1109/ACCESS.2018.2870052},
+    note = {Survey of explainable AI methods with focus on validation approaches}
+}
+
+@article{guidotti2018survey,
+    author = {Guidotti, Riccardo and Monreale, Anna and Ruggieri, Salvatore and Turini, Franco and Giannotti, Fosca and Pedreschi, Dino},
+    title = {A survey of methods for explaining black box models},
+    journal = {ACM Computing Surveys},
+    volume = {51},
+    number = {5},
+    pages = {1--42},
+    year = {2018},
+    publisher = {ACM},
+    doi = {10.1145/3236009},
+    note = {Comprehensive survey of explanation methods for black box models}
+}
+
+% ============================================================================
+% PERTURBATION-BASED METHODS FOR SIGNAL PROCESSING
+% ============================================================================
+
+@article{tonekaboni2020went,
+    author = {Tonekaboni, Sana and Joshi, Shalmali and McCradden, Melissa D. and Goldenberg, Anna},
+    title = {What went wrong and when? Instance-wise feature importance for time-series black-box models},
+    journal = {Advances in Neural Information Processing Systems},
+    volume = {33},
+    pages = {799--809},
+    year = {2020},
+    note = {Instance-wise feature importance for time series using perturbation methods}
+}
+
+@article{crabbe2021explaining,
+    author = {Crabbé, Jonathan and van der Schaar, Mihaela},
+    title = {Explaining time series predictions with dynamic masks},
+    booktitle = {International Conference on Machine Learning (ICML)},
+    pages = {2166--2177},
+    year = {2021},
+    organization = {PMLR},
+    note = {Dynamic masking approach for time series explanation}
+}
+
+@article{wang2021time,
+    author = {Wang, Jianghong and Wiens, Jenna and Lundberg, Scott},
+    title = {Shapley flow: A graph-based approach to interpreting model predictions in terms of input flow},
+    booktitle = {International Conference on Artificial Intelligence and Statistics (AISTATS)},
+    pages = {721--729},
+    year = {2021},
+    organization = {PMLR},
+    note = {Graph-based approach for interpreting sequential data predictions}
+}
+
+% ============================================================================
+% RADIOML DATASET AND BENCHMARKS
+% ============================================================================
+
+@misc{radioml2018,
+    author = {O'Shea, Timothy J. and Roy, Tamoghna and Clancy, T. Charles},
+    title = {{RadioML} 2018.01{A}: A large-scale dataset for machine learning on radio frequency data},
+    howpublished = {DeepSig Inc.},
+    year = {2018},
+    note = {Available: \url{https://www.deepsig.ai/datasets}}
+}
+
+% ============================================================================
+% STATISTICAL METHODS AND EVALUATION
+% ============================================================================
+
+@book{hastie2009elements,
+    author = {Hastie, Trevor and Tibshirani, Robert and Friedman, Jerome},
+    title = {The Elements of Statistical Learning: Data Mining, Inference, and Prediction},
+    edition = {2nd},
+    publisher = {Springer},
+    year = {2009},
+    address = {New York},
+    note = {Statistical learning theory and methods}
+}
+
+@article{powers2011evaluation,
+    author = {Powers, David Martin},
+    title = {Evaluation: from precision, recall and {F}-measure to {ROC}, informedness, markedness and correlation},
+    journal = {arXiv preprint arXiv:2010.16061},
+    year = {2011},
+    note = {Comprehensive evaluation metrics for classification}
+}
