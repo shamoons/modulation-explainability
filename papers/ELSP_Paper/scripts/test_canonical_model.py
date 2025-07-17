@@ -53,15 +53,11 @@ RESULTS_DIR = Path("papers/ELSP_Paper/results")
 CHECKPOINT_DIR = RESULTS_DIR / "checkpoints"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Dataset configuration (digital modulations only)
-MODULATION_CLASSES = [
-    '32PSK', '16APSK', '32QAM', '32APSK', 'OQPSK', '8ASK',
-    'BPSK', '8PSK', '4ASK', '16PSK', '64APSK', '128QAM',
-    '128APSK', '64QAM', 'QPSK', '256QAM', '16QAM', '8PAM'
-]
-
-SNR_LEVELS = list(range(0, 31, 2))  # 0 to 30 dB, step 2 (16 levels)
-NUM_MODULATIONS = len(MODULATION_CLASSES)
+# Dataset configuration (will be updated after dataset loading)
+# These are placeholders - actual values will be determined from the dataset
+MODULATION_CLASSES = []
+SNR_LEVELS = [0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30]  # From training
+NUM_MODULATIONS = 0  # Will be set after dataset loading
 NUM_SNR_LEVELS = len(SNR_LEVELS)
 
 def setup_directories():
@@ -209,13 +205,15 @@ def load_model_and_checkpoint(checkpoint_path):
     checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
     
     # Build ResNet50 model (canonical run configuration)
+    # Based on training command: resnet50, bottleneck_128, pretrained=True, dropout=0.5
     model = ConstellationResNet(
-        num_modulation_classes=NUM_MODULATIONS,
-        num_snr_classes=NUM_SNR_LEVELS,
-        architecture="resnet50",
-        snr_layer_config="bottleneck_128",
-        pretrained=True,
-        dropout_rate=0.5
+        num_classes=NUM_MODULATIONS,          # Modulation classes
+        snr_classes=NUM_SNR_LEVELS,          # SNR classes  
+        input_channels=1,                    # 1-channel grayscale constellation diagrams
+        dropout_prob=0.5,                   # From training: --dropout 0.5
+        model_name="resnet50",              # From training: --model_type resnet50
+        snr_layer_config="bottleneck_128",  # From training: --snr_layer_config bottleneck_128
+        use_pretrained=True                 # From training: --use_pretrained True
     )
     
     # Load state dict
@@ -234,27 +232,43 @@ def create_test_dataloader():
     data_dir = "constellation_diagrams"
     batch_size = 512
     
-    # Create dataset (exclude analog modulations, use 0-30 dB SNR range)
-    excluded_modulations = ['AM-SSB-SC', 'AM-DSB-SC', 'AM-SSB-WC', 'AM-DSB-WC', 'FM', 'GMSK', 'OOK']
+    # Match training configuration exactly
+    image_type = 'grayscale'  # Training used grayscale
+    snr_list = [0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30]  # Exact SNR list from training
     
-    # Create dataset
+    # Analog modulations excluded in training
+    analog_mods = ['AM-DSB-SC', 'AM-DSB-WC', 'AM-SSB-SC', 'AM-SSB-WC', 'FM', 'GMSK', 'OOK']
+    
+    # Get all available modulations from constellation directory
+    import os
+    all_mods = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+    mods_to_process = [mod for mod in all_mods if mod not in analog_mods]
+    
+    print(f"Using digital modulations only: {sorted(mods_to_process)}")
+    print(f"Excluded analog modulations: {sorted(analog_mods)}")
+    print(f"SNR range: {snr_list}")
+    
+    # Create dataset with exact training configuration
     dataset = ConstellationDataset(
         root_dir=data_dir,
-        snr_list=list(range(0, 31, 2)),  # 0-30 dB, step 2 (16 levels)
-        mods_to_process=None  # Load all, then filter
+        image_type=image_type,     # grayscale (1 channel)
+        snr_list=snr_list,         # 0-30 dB, step 2 (16 levels)
+        mods_to_process=mods_to_process  # Digital modulations only
     )
     
-    # Filter out analog modulations
-    filtered_indices = []
-    for i, (_, mod_label, snr_label) in enumerate(dataset):
-        mod_name = list(dataset.modulation_labels.keys())[list(dataset.modulation_labels.values()).index(mod_label)]
-        if mod_name not in excluded_modulations:
-            filtered_indices.append(i)
+    print(f"Dataset loaded: {len(dataset)} samples")
+    print(f"Modulation classes: {len(dataset.modulation_labels)}")
+    print(f"SNR classes: {len(dataset.snr_labels)}")
     
-    print(f"Total samples: {len(dataset)}")
-    print(f"Filtered samples (digital only): {len(filtered_indices)}")
+    # Update global constants based on actual dataset
+    global MODULATION_CLASSES, NUM_MODULATIONS
+    MODULATION_CLASSES = list(dataset.modulation_labels.keys())
+    NUM_MODULATIONS = len(MODULATION_CLASSES)
     
-    # Create stratified split
+    print(f"Updated modulation classes: {MODULATION_CLASSES}")
+    print(f"Total classes: {NUM_MODULATIONS} modulations × {NUM_SNR_LEVELS} SNR levels = {NUM_MODULATIONS * NUM_SNR_LEVELS}")
+    
+    # Create stratified split (same as training)
     train_indices, val_indices, test_indices = create_stratified_split(
         dataset,
         train_ratio=0.8,
@@ -262,9 +276,6 @@ def create_test_dataloader():
         test_ratio=0.1,
         random_state=42
     )
-    
-    # Filter test indices to only include digital modulations
-    test_indices = [idx for idx in test_indices if idx in filtered_indices]
     
     print(f"Test set size: {len(test_indices)} samples")
     
@@ -277,7 +288,7 @@ def create_test_dataloader():
         pin_memory=True
     )
     
-    return test_loader
+    return test_loader, dataset
 
 def evaluate_model(model, test_loader):
     """Evaluate model on test set and collect predictions."""
@@ -540,14 +551,14 @@ def main():
     # Setup
     setup_directories()
     
+    # Create test dataloader (this updates global constants)
+    test_loader, dataset = create_test_dataloader()
+    
     # Get checkpoint
     checkpoint_path = get_canonical_checkpoint(args.checkpoint)
     
-    # Load model
+    # Load model (now that we have the correct class counts)
     model, checkpoint = load_model_and_checkpoint(checkpoint_path)
-    
-    # Create test dataloader
-    test_loader = create_test_dataloader()
     
     # Evaluate model
     results = evaluate_model(model, test_loader)
