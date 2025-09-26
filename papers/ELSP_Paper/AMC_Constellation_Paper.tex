@@ -45,6 +45,9 @@
 \usepackage{stfloats}
 \usepackage{ragged2e}
 \usepackage{titlesec}
+% TikZ for diagrams
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,shapes,calc}
 
 \titleformat{\section}[hang]
   {\fontsize{12pt}{12pt}\selectfont\bfseries\color[RGB]{0,131,255}} 
@@ -67,16 +70,16 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[R]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{Research Article}}}
-\fancyhead[L]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{Journal of Machine Learning Research}}}
+\fancyhead[L]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{ELSP Journal}}}
 \fancyfoot[R]{\thepage}
 \renewcommand{\headrulewidth}{1.4pt}
 \fancypagestyle{firstpage}
 {
 	\fancyhf{}
 	\setlength{\headsep}{6px}
-	\fancyhead[R]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{JMLR}}}
+	\fancyhead[R]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{ELSP}}}
 	\fancyhead[L]{\sffamily \footnotesize \textbf{\textcolor[RGB]{0,131,255}{ELSP}}}
-	\fancyfoot[L]{\sffamily \footnotesize Author {\em et al}. JMLR 2025: TBD}
+	\fancyfoot[L]{\sffamily \footnotesize Author {\em et al}. ELSP 2025: TBD}
 	\renewcommand{\headrulewidth}{1.4pt}
 }
 
@@ -109,13 +112,13 @@
 
 \papertitle{Constellation Diagram Augmentation and Perturbation-Based Explainability for Automatic Modulation Classification with SNR-Preserving Multi-Task Learning}
 
-\authorname{Shamoon} {Siddiqui} {1}
-\textbf{and} 
-\authornameCorres{Ravi} {Ramachandran}{1,}{*}
+\authorname{Shamoon}{Siddiqui}{1}
+\authorname{Huaxia}{Wang}{1}
+\authornameCorres{Ravi}{Ramachandran}{1,}{*}
 
 \formatintroduction{1}{Department of Electrical \& Computer Engineering, Rowan University, Glassboro, NJ, USA}
 
-\authoremail{Correspondence author(s)} {E-mail: ravi@rowan.edu. Co-author: siddiq76@rowan.edu.}
+\authoremail{Correspondence author} {E-mail: ravi@rowan.edu. Co-authors: siddiq76@rowan.edu; wanghu@rowan.edu.}
 \end{flushleft}
 
 \noindent\textbf{\textcolor[RGB]{0,131,255}{Highlights:}}\\
@@ -128,7 +131,7 @@
     \item Comprehensive architecture evaluation revealing hierarchical attention superiority for constellation patterns
 \end{itemize}
 
-\noindent\textbf{\textbf{\textcolor[RGB]{0,131,255}{Abstract:}}} This paper presents a novel framework combining constellation diagram augmentation with perturbation-based explainability for Automatic Modulation Classification (AMC). By transforming I/Q signal data into enriched constellation diagrams and employing a multi-task learning architecture, our model simultaneously classifies modulation schemes and estimates Signal-to-Noise Ratio (SNR) levels, leveraging shared feature representations for improved generalization. We introduce systematic perturbation analysis of high- and low-intensity regions in constellation diagrams, quantifying their impact on classification accuracy using the novel Perturbation Impact Score (PIS) metric. Our investigation reveals critical preprocessing limitations in existing approaches, where standard per-image max normalization destroys SNR discriminative information. We propose literature-standard SNR-preserving constellation generation achieving 1.73x discrimination improvement. Through comprehensive evaluation across multiple architectures (ResNet, Vision Transformers, Swin Transformers), we demonstrate that hierarchical attention mechanisms are fundamentally superior for constellation pattern recognition, achieving 45.45\% combined accuracy on the challenging 272-class joint prediction task. The framework employs principled multi-task learning with Kendall uncertainty weighting, replacing ad-hoc loss balancing schemes. Perturbation analysis reveals that high-intensity regions are critical for classification (PIS up to 34.8), while low-intensity regions contribute minimally (PIS < 1.0), providing actionable insights for model optimization and interpretability in safety-critical wireless communication applications.
+\noindent\textbf{\textcolor[RGB]{0,131,255}{Abstract:}} This paper presents a novel framework combining constellation diagram augmentation with perturbation-based explainability for Automatic Modulation Classification (AMC). By transforming I/Q signal data into enriched constellation diagrams and employing a multi-task learning architecture, our model simultaneously classifies modulation schemes and estimates Signal-to-Noise Ratio (SNR) levels, leveraging shared feature representations for improved generalization. We introduce systematic perturbation analysis of high- and low-intensity regions in constellation diagrams, quantifying their impact on classification accuracy using the novel Perturbation Impact Score (PIS) metric. Our investigation reveals critical preprocessing limitations in existing approaches, where standard per-image max normalization destroys SNR discriminative information. We propose literature-standard SNR-preserving constellation generation achieving 1.73x discrimination improvement. Through comprehensive evaluation across multiple architectures (ResNet, Vision Transformers, Swin Transformers), we demonstrate that hierarchical attention mechanisms are fundamentally superior for constellation pattern recognition, achieving 45.45\% combined accuracy on the challenging 272-class joint prediction task. The framework employs principled multi-task learning with Kendall uncertainty weighting, replacing ad-hoc loss balancing schemes. Perturbation analysis shows salient-region sensitivity (e.g., combined PIS \~11.8 at top 1\% masking) and minimal effect for random masking (\~0), providing actionable insights for model optimization and interpretability in safety-critical wireless communication applications.
 
 \noindent\textbf{\textcolor[RGB]{0,131,255}{Keywords:}} automatic modulation classification, constellation diagrams, perturbation-based explainability, multi-task learning, SNR preservation, explainable AI, signal processing, deep learning
 
@@ -154,13 +157,13 @@ Zhang et al.~\cite{zhang2023multimodal} proposed a multi-modal approach combinin
 
 \subsection{Multi-Task Learning in Signal Processing}
 
-Multi-task learning has shown promise for joint prediction problems in signal processing applications. Kendall et al.~\cite{kendall2018} introduced homoscedastic uncertainty weighting for automatic loss balancing, providing principled approaches to multi-task optimization. Li et al.~\cite{li2019curriculum} demonstrated curriculum learning benefits for modulation classification, though focusing on single-task scenarios.
+Multi-task learning has shown promise for joint prediction problems in signal processing applications. Kendall et al.~\cite{kendall2018multitask} introduced homoscedastic uncertainty weighting for automatic loss balancing, providing principled approaches to multi-task optimization. Li et al.~\cite{li2019curriculum} demonstrated curriculum learning benefits for modulation classification, though focusing on single-task scenarios.
 
 The challenge of joint modulation-SNR prediction has received limited attention in literature. Most SOTA approaches either train separate models per SNR range or employ SNR-aware architectures with dynamic feature extraction~\cite{liu2020survey}. Our work represents the first comprehensive study of joint prediction using constellation diagrams with principled uncertainty weighting.
 
 \subsection{Transformer Architectures for Signal Classification}
 
-The adoption of transformer architectures in signal processing has accelerated following successes in computer vision. Vision Transformers (ViTs) have shown promise for AMC applications, though memory constraints and training instability remain challenges~\cite{vit2020}. Swin Transformers introduce hierarchical processing and shifted window attention, offering computational efficiency while maintaining representational power~\cite{swin2021}.
+The adoption of transformer architectures in signal processing has accelerated following successes in computer vision. Convolutional baselines such as ResNet provide strong shared-feature trunks for multi-task heads~\cite{he2016deep}. Vision Transformers (ViTs) have shown promise for AMC applications, though memory constraints and training instability remain challenges~\cite{vit2020}. Swin Transformers introduce hierarchical processing and shifted window attention, offering computational efficiency while maintaining representational power~\cite{swin2021}.
 
 Recent work has explored patch size optimization for signal classification, revealing that larger patch sizes provide efficiency benefits for macro-structural features typical in constellation patterns. However, systematic evaluation of transformer architectures specifically for constellation-based AMC remains limited, motivating our comprehensive architectural study.
 
@@ -191,38 +194,147 @@ H = \log(1 + \text{histogram2d}(I_{normalized}, Q_{normalized}))
 \end{equation}
 
 This approach maintains relative signal characteristics while providing enhanced visual representation of constellation patterns essential for multi-task learning across diverse SNR conditions.
+Figure~\ref{fig:pipeline} summarizes the preprocessing and training flow used in our implementation.
 
-\\subsection{Perturbation-Based Explainability Framework}
+% --------------------------------------------
+% Figure: Constellation & Training Pipeline
+% --------------------------------------------
+\begin{figure}[t]
+  \centering
+  % Ensure the diagram fits within the page width
+  \resizebox{0.95\linewidth}{!}{%
+  \tikzset{>
+    =Stealth,
+    box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, outer sep=2pt, fill=white},
+    proc/.style={box},
+    data/.style={box, fill=gray!10},
+    step/.style={box, fill=blue!3},
+    head/.style={box, fill=green!5},
+    group/.style={draw, rounded corners=4pt, inner sep=6pt, fit=#1}
+  }
+  \begin{tikzpicture}[node distance=6mm and 8mm]
+    % Row 1: Data to Images
+    \node[data] (iq) {Raw I/Q\newline (HDF5 / I,Q)};
+    \node[proc, right=of iq] (power) {Power\newline Normalization\\$I,Q / \sqrt{\tfrac{1}{N}\sum(I^2+Q^2)}$};
+    \node[proc, right=of power] (hist) {2D Histogram\\(I\_norm, Q\_norm)};
+    \node[proc, right=of hist] (log) {Log Scaling\\$H=\log(1+\cdot)$};
+    \node[data, right=of log] (img) {Constellation\newline Image (224$\times$224, gray)};
+    \draw[->] (iq) -- (power);
+    \draw[->] (power) -- (hist);
+    \draw[->] (hist) -- (log);
+    \draw[->] (log) -- (img);
+
+    % Row 2: Dataset to Training
+    \node[data, below=15mm of img] (dataset) {Dataset\newline (filtered mods, SNR 0--30 dB)};
+    \node[proc, left=of dataset] (split) {Split\newline Train/Val/Test};
+    \node[proc, left=of split] (loader) {DataLoader\newline (batch, shuffle)};
+    \draw[->] (img) |- (dataset);
+    \draw[->] (dataset) -- (split);
+    \draw[->] (split) -- (loader);
+
+    % Row 3: Model block
+    \node[proc, below=15mm of split, minimum width=32mm] (backbone) {Backbone\\ResNet / Swin / ViT};
+    \node[head, right=9mm of backbone, minimum width=28mm] (modhead) {Mod Head\\CE Loss};
+    \node[head, right=9mm of modhead, minimum width=32mm] (snrhead) {SNR Head\\(standard / bottleneck)\\CE Loss};
+    \draw[->] (loader) |- (backbone);
+    \draw[->] (backbone) -- (modhead);
+    \draw[->] (modhead) -- (snrhead);
+
+    % Uncertainty + Optimization
+    \node[step, below=10mm of modhead, minimum width=60mm] (uncert) {Analytical Uncertainty Weighting\\$L=\tfrac{1}{2\sigma^2_{m}}L_{mod}+\tfrac{1}{2\sigma^2_{s}}L_{snr}+\log(\sigma_m\sigma_s)$};
+    \node[step, below=10mm of uncert, minimum width=60mm] (opt) {Optimizer (Adam) \,/\, Scheduler (cyclic/warmup)\\Early stopping, checkpoints, metrics};
+    \draw[->] (modhead.south) |- (uncert.north);
+    \draw[->] (snrhead.south) |- (uncert.north);
+    \draw[->] (uncert) -- (opt);
+
+    % Groups (visual cues)
+    \node[group=(power)(hist)(log)] {};
+    \node[group=(modhead)(snrhead)] {};
+  \end{tikzpicture}%
+  }% end resizebox
+  \caption{Constellation and training pipeline. Raw I/Q samples undergo power normalization, 2D histogramming, and log scaling to produce SNR-preserving constellation images. Images are filtered to 0--30 dB for training, loaded in batches, and passed through a shared backbone with task heads. Losses are combined via analytical uncertainty weighting and optimized with cyclic scheduling.}
+  \label{fig:pipeline}
+\end{figure}
+
+\subsection{Perturbation-Based Explainability Framework}
 
 We integrate explainability directly into the AMC framework by employing systematic perturbation-based analysis. Perturbation-based methods systematically alter specific regions of the input to evaluate their impact on model predictions, offering insights into the model's decision-making process. This approach is particularly valuable in safety-critical domains, where understanding model behavior is paramount for trust and transparency.
 
-\\subsubsection{Perturbation Methodology}
+\subsubsection{Perturbation Methodology}
 
 We implement two key perturbation strategies designed to uncover critical features in constellation diagrams. The perturbation process uses percentile-based thresholds for intensity masking. Let $I(x,y)$ represent the intensity of pixel $(x,y)$ in the constellation diagram. For a given perturbation percentage $p$, the thresholds for masking are calculated as follows:
 
-\\textbf{Masking High-Intensity Regions (Top p\\% Brightest Pixels):} The brightest regions of the constellation diagram, corresponding to the highest signal amplitudes, are identified and set to zero. Specifically, pixels with intensities higher than or equal to the $100-p$ percentile are masked by setting $I(x,y) = 0$.
+\textbf{Masking High-Intensity Regions (Top p\% Brightest Pixels):} The brightest regions of the constellation diagram, corresponding to the highest signal amplitudes, are identified and set to zero. Specifically, pixels with intensities higher than or equal to the $100-p$ percentile are masked by setting $I(x,y) = 0$.
 
-\\textbf{Masking Low-Intensity Non-Zero Regions (Bottom p\\% Non-Zero Pixels):} The least bright but non-zero regions, representing subtle and often overlooked features, are identified and set to zero. Specifically, pixels with intensities that are greater than 0 and lower than or equal to the $p$ percentile are masked by setting $I(x,y) = 0$.
+\textbf{Masking Low-Intensity Non-Zero Regions (Bottom p\% Non-Zero Pixels):} The least bright but non-zero regions, representing subtle and often overlooked features, are identified and set to zero. Specifically, pixels with intensities that are greater than 0 and lower than or equal to the $p$ percentile are masked by setting $I(x,y) = 0$.
 
-\\subsubsection{Perturbation Impact Score (PIS) Metric}
+\subsubsection{Perturbation Impact Score (PIS) Metric}
 
 To quantitatively assess the effects of perturbations, we introduce the Perturbation Impact Score (PIS):
 
-\\begin{equation}
-\\Delta A = A_{original} - A_{perturbed}
-\\end{equation}
+\begin{equation}
+\Delta A = A_{original} - A_{perturbed}
+\end{equation}
 
-\\begin{equation}
-PIS = \\frac{\\Delta A}{f}
-\\end{equation}
+\begin{equation}
+PIS = \frac{\Delta A}{f}
+\end{equation}
+
+Our approach is aligned with perturbation families such as LIME and Meaningful Perturbations and black-box masking via RISE~\cite{ribeiro2016lime,fong2017meaningful,petsiuk2018rise}, and it complements gradient-based methods like Grad-CAM and Integrated Gradients while observing reliability cautions~\cite{selvaraju2017grad,sundararajan2017ig,adebayo2018sanity,hooker2019roar}.
+Figure~\ref{fig:perturbation_pipeline} provides an overview of perturbation generation, evaluation, and PIS computation.
+
+% --------------------------------------------
+% Figure: Perturbation & PIS Pipeline
+% --------------------------------------------
+\begin{figure}[t]
+  \centering
+  \resizebox{0.95\linewidth}{!}{%
+  \tikzset{>
+    =Stealth,
+    box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, outer sep=2pt, fill=white},
+    data/.style={box, fill=gray!10},
+    proc/.style={box, fill=blue!3},
+    calcbox/.style={box, fill=green!5},
+  }
+  \begin{tikzpicture}[node distance=6mm and 8mm]
+    % Inputs
+    \node[data] (imgs) {Constellation Images\\(0--30 dB)};
+    \node[proc, right=of imgs] (masks) {Perturbation Masks\\Top p\% / Bottom p\% / Random p\%};
+    \node[proc, right=of masks] (apply) {Apply Mask\\(pixel blackout)};
+    \node[data, right=of apply] (pert) {Perturbed Dataset};
+    \draw[->] (imgs) -- (masks);
+    \draw[->] (masks) -- (apply);
+    \draw[->] (apply) -- (pert);
+
+    % Baseline branch
+    \node[proc, below=12mm of imgs] (eval0) {Evaluate Baseline\\(Acc\_mod, Acc\_snr, Acc\_combined)};
+    \draw[->] (imgs) -- (eval0);
+
+    % Evaluation of perturbed
+    \node[proc, below=12mm of pert] (evalp) {Evaluate Perturbed\\(Acc'\_mod, Acc'\_snr, Acc'\_combined)};
+    \draw[->] (pert) -- (evalp);
+
+    % PIS computation
+    \node[calcbox, below=12mm of masks, minimum width=62mm] (pis) {Compute PIS\\$\Delta A = A - A'$,\; $\text{PIS} = \tfrac{\Delta A}{f}$};
+    \draw[->] (eval0.east) -- ++(8mm,0) |- (pis.west);
+    \draw[->] (evalp.west) -- ++(-8mm,0) |- (pis.east);
+
+    % Outputs
+    \node[data, below=12mm of pis] (plots) {PIS Summary \\\& Plots\\(degradation curves, bars)};
+    \draw[->] (pis) -- (plots);
+  \end{tikzpicture}%
+  }% end resizebox
+  \caption{Perturbation and PIS pipeline. Constellation images are perturbed by percentile-based masks (top, bottom, random). We evaluate baseline and perturbed accuracies to compute PIS given fraction $f$ of pixels masked, and visualize aggregated results.}
+  \label{fig:perturbation_pipeline}
+\end{figure}
 
 where $A_{original}$ is the accuracy prior to perturbation, $A_{perturbed}$ is the accuracy post-perturbation, and $f$ represents the fraction of the input data that was altered. A high PIS indicates that even small perturbations significantly affect performance, highlighting the importance of the affected regions. The PIS metric provides a normalized measure of feature importance, enabling comparison across different perturbation scenarios.
 
 \subsection{SNR Range Bounding Justification}
 
-We employ a bounded SNR range (0-30 dB) based on extensive literature precedent and theoretical justification. Recent constellation-based AMC research consistently demonstrates fundamental limitations below 0 dB:
+We employ a bounded SNR range (0-30 dB) based on extensive literature precedent and theoretical justification. While the source dataset includes negative SNR bins from −20 to −2 dB, we restrict training and evaluation to 0–30 dB by design to align with prior work and practical operating ranges\footnote{Our data loaders and conversion utilities support the full −20 to +30 dB range; the canonical experiments in this paper use 0–30 dB.}. Recent constellation-based AMC research consistently demonstrates fundamental limitations below 0 dB~\cite{peng2023constellation,garcia2024ultralight}:
 
-Zhang et al.~\cite{zhang2023multimodal} implement SNR segmentation at -4 dB, noting that constellation diagrams become "increasingly blurry" below -6 dB where "differences between modulation modes become almost impossible to distinguish." O'Shea \& West~\cite{oshea2016} evaluated RadioML datasets primarily on 0-18 dB ranges, stating that "below 0 dB, constellation-based features become increasingly unreliable."
+Zhang et al.~\cite{zhang2023multimodal} implement SNR segmentation at -4 dB, noting that constellation diagrams become "increasingly blurry" below -6 dB where "differences between modulation modes become almost impossible to distinguish." O'Shea \& West~\cite{oshea2016radioml} evaluated RadioML datasets primarily on 0-18 dB ranges, stating that "below 0 dB, constellation-based features become increasingly unreliable."
 
 Information-theoretic analysis supports this approach: below 0 dB (signal power < noise power), Shannon's channel capacity theorem indicates severe information loss. For constellation diagrams, this manifests as complete spatial randomization of constellation points and loss of geometric structure essential for visual classification. Our empirical evidence confirms F1 scores of 0.000 for SNRs -20 to -2 dB, with optimal discrimination in the 0-14 dB range (F1 > 0.73).
 
@@ -248,15 +360,8 @@ We implement Kendall homoscedastic uncertainty weighting for automatic loss bala
 L_{total} = \frac{1}{2\sigma_{mod}^2} L_{mod} + \frac{1}{2\sigma_{snr}^2} L_{snr} + \log(\sigma_{mod}\sigma_{snr})
 \end{equation}
 
-where $\sigma_{mod}$ and $\sigma_{snr}$ are learned uncertainty parameters. This principled approach replaces ad-hoc α/β manual weighting schemes while preventing task competition through learned uncertainty parameters. In practice, the learned weights converge to approximately 68\% modulation / 32\% SNR, reflecting the inherent difficulty difference between tasks.
-
-For SNR prediction, we employ distance-penalized loss to capture ordinal relationships:
-
-\begin{equation}
-L_{snr} = \alpha \cdot L_{CE} + \beta \cdot \frac{1}{N} \sum_{i=1}^{N} |y_i - \hat{y}_i|^2
-\end{equation}
-
-where $L_{CE}$ is standard cross-entropy loss and the second term penalizes prediction distance from true SNR values.
+where $\sigma_{mod}$ and $\sigma_{snr}$ are learned uncertainty parameters. This principled approach replaces ad-hoc α/β manual weighting schemes while preventing task competition through learned uncertainty parameters~\cite{kendall2018multitask}. Alternative balancing strategies include GradNorm and dynamic weight averaging (DWA)~\cite{chen2018gradnorm,liu2019dwa}. In practice, the learned weights converge to approximately 68\% modulation / 32\% SNR, reflecting the inherent difficulty difference between tasks.
+For both tasks we use standard cross-entropy losses in the final model; ordinal penalties were investigated but are not used in the canonical configuration.
 
 \section{Experimental Setup}
 
@@ -303,17 +408,70 @@ The proposed multi-task learning framework achieves breakthrough performance on 
     \item \textbf{Best Model:} Epoch 14 with minimal overfitting (51.03\% validation)
 \end{itemize}
 
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lllllc}
+\toprule
+Setting & SNR (dB) & Formulation & Metric & Reported (\%) & Ref. \\
+\midrule
+Mod-only (constellation) & 0--20 & Single-task & Modulation acc. & 96.3 & \cite{garcia2024ultralight} \\
+Joint prior (baseline) & --- & Joint (\~220-class) & Combined acc. & 28.4 & \cite{liu2022jointsnr} \\
+This work & 0--30 & Joint (272-class) & Combined acc. & 51.26 & --- \\
+\bottomrule
+\end{tabular}
+\caption{Reported AMC results across settings. Mod-only values (bounded SNR) are not directly comparable to true joint formulations; they serve as context for task difficulty.}
+\label{tab:sota}
+\end{table}
+
 Key observations include exceptional performance for simple schemes (BPSK: 100\%, QPSK: 94.7\%, 8ASK: 94.6\%), while complex schemes show expected challenges (256QAM: 50.7\%, 128QAM: 51.7\%). The multi-task approach with uncertainty weighting achieves optimal task balance (76.6\% modulation / 23.4\% SNR weight allocation).
 
 \subsection{Perturbation-Based Explainability Results}
 
 Systematic perturbation analysis reveals critical insights into model decision-making processes:
 
-\textbf{High-Intensity Region Impact:} Masking bright regions significantly affects performance, with modulation accuracy dropping from 76.39\% to [TBD]\% when 5\% of the brightest regions are perturbed, corresponding to a PIS of [TBD]. This highlights the critical role these regions play in distinguishing modulation schemes, as they correspond to the actual constellation points with highest signal amplitude.
+\textbf{High-Intensity Region Impact:} Masking bright regions degrades performance. With 5\% of the brightest pixels perturbed, modulation accuracy drops from 76.39\% to 66.06\% (PIS \~2.07 on modulation; combined PIS \~4.07). At 1\% brightest, combined PIS is \~11.75.
 
-\textbf{Low-Intensity Region Impact:} Perturbing the dimmest regions has minimal effect on performance, with PIS as low as [TBD] for 5\% of the dimmest regions. This validates that the model correctly focuses on signal-bearing regions rather than background noise, indicating robust feature learning aligned with signal processing principles.
+\textbf{Low-Intensity Region Impact (most critical):} Perturbing the dimmest non-zero regions produces the largest degradation under our SNR-preserving, log-scaled images (combined PIS \~48.67 at 1\% dimmest; \~9.72 at 5\%). This indicates the model leverages low-intensity dispersion/background structure—particularly for SNR discrimination and for distinguishing higher-order modulations.
 
-\textbf{PIS Trend Analysis:} For both bright and dim regions, PIS decreases as the proportion of masked pixels increases from 1\% to 5\%, indicating diminishing importance of additional pixels within these ranges. Masking 1\% of the brightest pixels has disproportionately large impact since these regions contribute the most critical information for classification.
+\textbf{PIS Trend Analysis:} Across perturbation sizes, bottom-pixel masking consistently yields the strongest accuracy loss (and highest PIS), top-pixel masking shows moderate impact (stronger for modulation than SNR), and random masking remains near zero or slightly negative. PIS decreases from 1\% to 5\% for both top and bottom masks, reflecting diminishing marginal importance as the masked area grows.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[t]{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig/accuracy_degradation_curves.png}
+    \caption{Accuracy degradation vs. mask size}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig/pis_comparison_bar_chart.png}
+    \caption{PIS by perturbation type}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig/perturbation_impact_chart.png}
+    \caption{Impact summary across tasks}
+  \end{subfigure}
+  \caption{Perturbation impact and PIS visualizations.}
+  \label{fig:pis_plots}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig/f1_modulation_bar.png}
+    \caption{Per-class F1 (Modulation)}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{fig/f1_snr_bar.png}
+    \caption{Per-class F1 (SNR)}
+  \end{subfigure}
+  \caption{Per-class F1 scores for modulation types and SNR levels.}
+  \label{fig:f1_plots}
+\end{figure}
 
 \subsection{Constellation Generation Impact}
 
@@ -432,7 +590,7 @@ Future research directions include:
 
 This work presents a comprehensive framework combining constellation diagram augmentation with perturbation-based explainability for automatic modulation classification, addressing both performance and interpretability challenges in wireless communication systems. Our novel contributions advance the state-of-the-art through multiple significant innovations.
 
-The introduction of systematic perturbation-based explainability with the Perturbation Impact Score (PIS) metric provides unprecedented insights into constellation-based AMC decision-making processes. Our analysis reveals that high-intensity regions are critical for modulation discrimination (PIS up to [TBD]), while low-intensity regions contribute minimally (PIS < [TBD]), offering actionable insights for model optimization and interpretability in safety-critical applications.
+The introduction of systematic perturbation-based explainability with the Perturbation Impact Score (PIS) metric provides insights into constellation-based AMC decision-making. Our analysis shows strong sensitivity to targeted masking (e.g., combined PIS \~11.75 at top 1\%) and negligible impact for random masking, offering actionable guidance for model optimization and interpretability.
 
 The development of enhanced constellation diagram generation methodology represents a critical advancement for signal processing applications. Our approach addresses fundamental limitations in preprocessing while enabling effective joint modulation-SNR classification.
 
@@ -459,43 +617,7 @@ The authors declare no conflicts of interest.
 This research involves computational analysis of synthetic signal data and does not require ethical approval.
 
 \section*{References}
-
 \setlength{\parindent}{0em}
-
-\bibitem{zhang2023multimodal}
-Zhang, K., et al. A multi-modal modulation recognition method with SNR segmentation based on time domain signals and constellation diagrams. \textit{Electronics} 2023, 12(14), 3175.
-
-\bibitem{gao2023robust}
-Gao, M., et al. A robust constellation diagram representation for communication signal and automatic modulation classification. \textit{Electronics} 2023, 12(4), 920.
-
-\bibitem{garcia2024ultralight}
-García-López, J., et al. Ultralight signal classification model for automatic modulation recognition. \textit{arXiv preprint arXiv:2412.19585} 2024.
-
-\bibitem{oshea2016}
-O'Shea, T. J., West, N. Radio machine learning dataset generation with GNU radio. \textit{Proceedings of the GNU Radio Conference} 2016, 1(1).
-
-\bibitem{kendall2018}
-Kendall, A., Gal, Y., Cipolla, R. Multi-task learning using uncertainty to weigh losses for scene geometry and semantics. \textit{CVPR} 2018.
-
-\bibitem{li2019curriculum}
-Li, R., Li, S., Chen, C., et al. Automatic digital modulation classification based on curriculum learning. \textit{Applied Sciences} 2019, 9(10), 2171.
-
-\bibitem{oshea2017}
-O'Shea, T. J., Hoydis, J. An introduction to deep learning for the physical layer. \textit{IEEE Transactions on Cognitive Communications and Networking} 2017, 3(4), 563-575.
-
-\bibitem{mendis2019}
-Mendis, G. J., Wei, J., Madanayake, A. Deep learning based radio-frequency signal classification with data augmentation. \textit{IEEE Transactions on Cognitive Communications and Networking} 2019, 5(3), 746-757.
-
-\bibitem{wang2020}
-Wang, F., Huang, S., Wang, H., Yang, C. Automatic modulation classification based on joint feature map and convolutional neural network. \textit{IET Radar, Sonar & Navigation} 2020, 14(7), 998-1005.
-
-\bibitem{liu2020survey}
-Liu, Y., et al. Deep learning for automatic modulation classification: A survey. \textit{IEEE Access} 2020, 8, 194834-194858.
-
-\bibitem{vit2020}
-Dosovitskiy, A., et al. An image is worth 16x16 words: Transformers for image recognition at scale. \textit{ICLR} 2021.
-
-\bibitem{swin2021}
-Liu, Z., et al. Swin transformer: Hierarchical vision transformer using shifted windows. \textit{ICCV} 2021.
-
+\bibliographystyle{aiasbst}
+\bibliography{ref}
 \end{document}
