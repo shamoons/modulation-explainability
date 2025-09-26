@@ -16,3 +16,5 @@ scratch/
 
 # Don't ignore ELSP paper results - we want to track these
 !papers/ELSP_Paper/results/
+
+perturbed_constellations_old/

@@ -44,16 +44,23 @@ def create_perturbations(image_array, percents, include_random=False, random_see
     has_non_zero = non_zero_pixels.size > 0
     
     # Cache percentile calculations
-    top_thresholds = {p: np.percentile(image_array, 100-p) for p in percents}
+    # For top perturbations, only consider non-zero pixels (constellation points)
+    # This ensures we're masking the brightest constellation points, not background
+    top_thresholds = {p: np.percentile(non_zero_pixels, 100-p) if has_non_zero else 0 
+                      for p in percents}
     bottom_thresholds = {p: np.percentile(non_zero_pixels, p) if has_non_zero else 0 
                         for p in percents}
     
     for percent in percents:
-        # Top X% perturbation
-        mask_top = image_array >= top_thresholds[percent]
-        top_perturbed = image_array.copy()
-        top_perturbed[mask_top] = 0
-        perturbations[f'top{percent}_blackout'] = top_perturbed
+        # Top X% perturbation - mask the brightest X% of constellation points
+        if has_non_zero:
+            mask_top = image_array >= top_thresholds[percent]
+            top_perturbed = image_array.copy()
+            top_perturbed[mask_top] = 0
+            perturbations[f'top{percent}_blackout'] = top_perturbed
+        else:
+            # Handle edge case: no non-zero pixels
+            perturbations[f'top{percent}_blackout'] = image_array.copy()
         
         # Bottom X% perturbation  
         if has_non_zero:
@@ -160,7 +167,7 @@ def main():
         description='Optimized perturbation of constellation images with parallel processing.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--percents', type=int, nargs='+', default=[1, 5, 10], 
+    parser.add_argument('--percents', type=int, nargs='+', default=[1, 2, 3, 4, 5], 
                        help='Percentages of pixels to blackout for explainability analysis')
     parser.add_argument('--random', action='store_true', default=True,
                        help='Include random perturbations as baseline comparison')

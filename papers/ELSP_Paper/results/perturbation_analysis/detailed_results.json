@@ -1,0 +1,109 @@
+{
+  "timestamp": "2025-08-29T14:53:45.922530",
+  "configuration": {
+    "checkpoint_path": "checkpoints/best_model_resnet50_epoch_14.pth",
+    "perturbation_configs": [
+      {
+        "type": "top1_blackout",
+        "percent": 1,
+        "description": "1% brightest pixels"
+      },
+      {
+        "type": "top2_blackout",
+        "percent": 2,
+        "description": "2% brightest pixels"
+      },
+      {
+        "type": "top3_blackout",
+        "percent": 3,
+        "description": "3% brightest pixels"
+      },
+      {
+        "type": "top4_blackout",
+        "percent": 4,
+        "description": "4% brightest pixels"
+      },
+      {
+        "type": "top5_blackout",
+        "percent": 5,
+        "description": "5% brightest pixels"
+      },
+      {
+        "type": "bottom1_blackout",
+        "percent": 1,
+        "description": "1% dimmest non-zero pixels"
+      },
+      {
+        "type": "bottom2_blackout",
+        "percent": 2,
+        "description": "2% dimmest non-zero pixels"
+      },
+      {
+        "type": "bottom3_blackout",
+        "percent": 3,
+        "description": "3% dimmest non-zero pixels"
+      },
+      {
+        "type": "bottom4_blackout",
+        "percent": 4,
+        "description": "4% dimmest non-zero pixels"
+      },
+      {
+        "type": "bottom5_blackout",
+        "percent": 5,
+        "description": "5% dimmest non-zero pixels"
+      },
+      {
+        "type": "random1_blackout",
+        "percent": 1,
+        "description": "1% random pixels"
+      },
+      {
+        "type": "random2_blackout",
+        "percent": 2,
+        "description": "2% random pixels"
+      },
+      {
+        "type": "random3_blackout",
+        "percent": 3,
+        "description": "3% random pixels"
+      },
+      {
+        "type": "random4_blackout",
+        "percent": 4,
+        "description": "4% random pixels"
+      },
+      {
+        "type": "random5_blackout",
+        "percent": 5,
+        "description": "5% random pixels"
+      }
+    ],
+    "snr_levels": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28,
+      30
+    ]
+  },
+  "baseline_results": {
+    "accuracies": {
+      "combined": 0.5125659713495854,
+      "modulation": 0.763903349728934,
+      "snr": 0.6870893620076832
+    },
+    "predictions": {
+      "modulation": [
+        
