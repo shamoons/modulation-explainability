@@ -36,6 +36,11 @@
 - Commits: imperative, concise (e.g., `Fix checkpoint loading for direct state dict format`, `Implement cycle-aware patience`).
 - PRs: purpose, linked issues, repro commands, and sample outputs (plots under `confusion_matrices/`, `f1_scores/`); note data requirements and compatibility.
 
+### Maintainer Approval Before Commit
+- Before committing or pushing, propose the exact commit message (subject + body) to the maintainer for approval.
+- Include a short summary of changed paths (e.g., via `git status --porcelain`) and rationale.
+- Only proceed with `git commit`/`git push` after explicit maintainer confirmation.
+
 ## Security & Config
 - Keep secrets (e.g., `WANDB_API_KEY`) out of VCS; use `.env`/env vars.
 - GPU usage must be gated by `torch.cuda.is_available()`; provide CPU fallbacks.
