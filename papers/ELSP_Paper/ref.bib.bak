@@ -45,6 +45,18 @@
     note = {97.8\% accuracy using oracle SNR labels}
 }
 
+@article{liu2022jointsnr,
+    author = {Liu, Hao and Wong, Kai Kit},
+    title = {Joint modulation and {SNR} classification via deep learning},
+    journal = {IEEE Communications Letters},
+    volume = {26},
+    number = {4},
+    pages = {812--816},
+    year = {2022},
+    publisher = {IEEE},
+    doi = {10.1109/LCOMM.2022.3151344},
+    note = {28.4\% accuracy on 220-class joint prediction baseline}
+}
 
 @inproceedings{chen2021endtoend,
     author = {Chen, Wei and Xie, Zhijie and Ma, Lei},

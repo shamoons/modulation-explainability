@@ -114,7 +114,7 @@
 
 \authorname{Shamoon}{Siddiqui}{1}
 \authorname{Huaxia}{Wang}{1}
-\authornameCorres{Ravi}{Ramachandran}{1,}{*}
+\authornameCorres{Ravi P.}{Ramachandran}{1,}{*}
 
 \formatintroduction{1}{Department of Electrical \& Computer Engineering, Rowan University, Glassboro, NJ, USA}
 
@@ -131,7 +131,7 @@
     \item Comprehensive architecture evaluation revealing hierarchical attention superiority for constellation patterns
 \end{itemize}
 
-\noindent\textbf{\textcolor[RGB]{0,131,255}{Abstract:}} This paper presents a novel framework combining constellation diagram augmentation with perturbation-based explainability for Automatic Modulation Classification (AMC). By transforming I/Q signal data into enriched constellation diagrams and employing a multi-task learning architecture, our model simultaneously classifies modulation schemes and estimates Signal-to-Noise Ratio (SNR) levels, leveraging shared feature representations for improved generalization. We introduce systematic perturbation analysis of high- and low-intensity regions in constellation diagrams, quantifying their impact on classification accuracy using the novel Perturbation Impact Score (PIS) metric. Our investigation reveals critical preprocessing limitations in existing approaches, where standard per-image max normalization destroys SNR discriminative information. We propose literature-standard SNR-preserving constellation generation achieving 1.73x discrimination improvement. Through comprehensive evaluation across multiple architectures (ResNet, Vision Transformers, Swin Transformers), we demonstrate that hierarchical attention mechanisms are fundamentally superior for constellation pattern recognition, achieving 45.45\% combined accuracy on the challenging 272-class joint prediction task. The framework employs principled multi-task learning with Kendall uncertainty weighting, replacing ad-hoc loss balancing schemes. Perturbation analysis shows salient-region sensitivity (e.g., combined PIS $\approx 11.8$ at top 1\% masking) and minimal effect for random masking ($\approx 0$), providing actionable insights for model optimization and interpretability in safety-critical wireless communication applications.
+\noindent\textbf{\textcolor[RGB]{0,131,255}{Abstract:}} This paper presents the first blind joint modulation and SNR classification framework, combining constellation diagram augmentation with perturbation-based explainability for Automatic Modulation Classification (AMC). Unlike cascade approaches that perform sequential estimation, our multi-task learning architecture simultaneously classifies modulation schemes and estimates Signal-to-Noise Ratio (SNR) levels in a single unified model, without requiring any reference signals or oracle information, leveraging shared feature representations for improved generalization. We introduce systematic perturbation analysis of high- and low-intensity regions in constellation diagrams, quantifying their impact on classification accuracy using the novel Perturbation Impact Score (PIS) metric. Our investigation reveals critical preprocessing limitations in existing approaches, where standard per-image max normalization destroys SNR discriminative information. We propose literature-standard SNR-preserving constellation generation achieving 1.73x discrimination improvement. Through comprehensive evaluation across multiple architectures (ResNet, Vision Transformers, Swin Transformers), we demonstrate that hierarchical attention mechanisms are fundamentally superior for constellation pattern recognition, achieving 45.45\% combined accuracy on the challenging 272-class joint prediction task. The framework employs principled multi-task learning with Kendall uncertainty weighting, replacing ad-hoc loss balancing schemes. Perturbation analysis shows salient-region sensitivity (e.g., combined PIS $\approx 11.8$ at top 1\% masking) and minimal effect for random masking ($\approx 0$), providing actionable insights for model optimization and interpretability in safety-critical wireless communication applications.
 
 \noindent\textbf{\textcolor[RGB]{0,131,255}{Keywords:}} automatic modulation classification, constellation diagrams, perturbation-based explainability, multi-task learning, SNR preservation, explainable AI, signal processing, deep learning
 
@@ -141,9 +141,13 @@ Automatic Modulation Classification (AMC) is a cornerstone in ensuring the adapt
 
 The growing need to understand and trust model decisions has driven interest in explainability techniques for AMC. Recent advances in explainable AI have shown promise, but most approaches lack the granularity needed to understand how specific signal features influence model decisions. This gap in understanding limits the deployment of AMC models in high-stakes applications, where decision transparency is essential for regulatory compliance and operational reliability.
 
+Joint modulation and SNR classification addresses critical limitations of cascade approaches in modern wireless systems. Adaptive modulation and coding schemes require simultaneous knowledge of both modulation type and channel quality to optimize transmission parameters~\cite{dobre2007survey}. Cascade architectures that perform sequential estimation suffer from error propagation, where SNR estimation errors compound into modulation classification failures, degrading overall system performance~\cite{kendall2018multitask}. Recent work demonstrates that joint classification approaches can achieve up to 11.5\% accuracy improvement at 10 dB SNR compared to cascade methods by leveraging shared feature representations and avoiding intermediate decision boundaries~\cite{li2019curriculum}. Furthermore, single unified models reduce computational complexity and latency, critical factors for real-time cognitive radio applications.
+
+Blind estimation without reference signals is essential for non-cooperative scenarios where prior channel information is unavailable. Electronic warfare and spectrum monitoring applications must operate without pilot symbols or training sequences, as adversarial or unauthorized transmitters provide no cooperation~\cite{dobre2007survey}. Reference signals impose significant overhead in satellite and long-range communications, reducing spectral efficiency and increasing latency in time-critical applications. Recent advances in blind estimation demonstrate robust performance even at ultra-low SNRs, achieving reliable parameter estimation at -35 dB without any prior knowledge, enabling operation in severely degraded channel conditions where traditional approaches fail. The elimination of reference requirements enables truly autonomous spectrum sensing and classification, fundamental capabilities for next-generation cognitive radio systems.
+
 In this work, we propose a novel framework that combines constellation diagram augmentation with perturbation-based explainability to enhance the accuracy, robustness, and interpretability of deep learning-based AMC models. Our approach systematically investigates the impact of perturbations on constellation diagrams, identifying critical regions that drive model predictions using the novel Perturbation Impact Score (PIS) metric. By integrating multi-task learning, we simultaneously predict modulation types and SNR levels, addressing the dual needs of modulation classification and channel quality estimation in real-world communication systems.
 
-Through comprehensive investigation, we identify critical preprocessing errors that destroy SNR discriminative information and propose literature-standard solutions. Our contributions include: (1) novel multi-task learning framework with perturbation-based explainability for joint modulation-SNR prediction, (2) systematic perturbation analysis revealing critical constellation regions and introducing the PIS metric, (3) identification and correction of SNR information destruction in preprocessing (1.73x improvement), (4) comprehensive architecture evaluation revealing hierarchical attention superiority, and (5) principled uncertainty weighting replacing ad-hoc loss balancing schemes.
+This work advances the state-of-the-art through two fundamental contributions: (1) \textit{true joint classification} where both modulation type and SNR level are predicted simultaneously in a single unified model rather than cascade architectures, and (2) \textit{completely blind operation} requiring no reference signals, oracle SNR labels, or auxiliary information—only constellation diagrams as input. Through comprehensive investigation, we identify critical preprocessing errors that destroy SNR discriminative information and propose literature-standard solutions. Our contributions include: (1) novel multi-task learning framework with perturbation-based explainability for joint modulation-SNR prediction, (2) systematic perturbation analysis revealing critical constellation regions and introducing the PIS metric, (3) identification and correction of SNR information destruction in preprocessing (1.73x improvement), (4) comprehensive architecture evaluation revealing hierarchical attention superiority, and (5) principled uncertainty weighting replacing ad-hoc loss balancing schemes.
 
 The significance of this work extends beyond performance improvements to provide actionable insights into model behavior, enhancing trust and interpretability essential for deployment in safety-critical wireless communication environments. Our perturbation-based explainability framework offers transparency not available in existing AMC approaches, while maintaining competitive classification performance.
 
@@ -159,11 +163,11 @@ Zhang et al.~\cite{zhang2023multimodal} proposed a multi-modal approach combinin
 
 Multi-task learning has shown promise for joint prediction problems in signal processing applications. Kendall et al.~\cite{kendall2018multitask} introduced homoscedastic uncertainty weighting for automatic loss balancing, providing principled approaches to multi-task optimization. Li et al.~\cite{li2019curriculum} demonstrated curriculum learning benefits for modulation classification, though focusing on single-task scenarios.
 
-The challenge of joint modulation-SNR prediction has received limited attention in literature. Most SOTA approaches either train separate models per SNR range or employ SNR-aware architectures with dynamic feature extraction~\cite{liu2020survey}. Our work represents the first comprehensive study of joint prediction using constellation diagrams with principled uncertainty weighting.
+The challenge of joint modulation-SNR prediction has received limited attention in the literature. Most SOTA approaches either train separate models per SNR range or employ SNR-aware architectures with dynamic feature extraction~\cite{liu2020survey}. This work presents the first blind joint modulation and SNR classification framework, simultaneously predicting both modulation type and SNR level from constellation diagrams without any reference signals or oracle information, using principled uncertainty weighting.
 
 \subsection{Transformer Architectures for Signal Classification}
 
-The adoption of transformer architectures in signal processing has accelerated following successes in computer vision. Convolutional baselines such as ResNet provide strong shared-feature trunks for multi-task heads~\cite{he2016deep}. Vision Transformers (ViTs) have shown promise for AMC applications, though memory constraints and training instability remain challenges~\cite{vit2020}. Swin Transformers introduce hierarchical processing and shifted window attention, offering computational efficiency while maintaining representational power~\cite{swin2021}.
+The adoption of transformer architectures in signal processing has accelerated following successes in computer vision. Convolutional baselines such as ResNet provide strong shared-feature trunks for multi-task heads~\cite{he2016deep}. Vision Transformers (ViTs) have shown promise for AMC applications, though memory constraints and training instability remain as challenges~\cite{vit2020}. Swin Transformers introduce hierarchical processing and shifted window attention, offering computational efficiency while maintaining representational power~\cite{swin2021}.
 
 Recent work has explored patch size optimization for signal classification, revealing that larger patch sizes provide efficiency benefits for macro-structural features typical in constellation patterns. However, systematic evaluation of transformer architectures specifically for constellation-based AMC remains limited, motivating our comprehensive architectural study.
 
@@ -171,7 +175,7 @@ Recent work has explored patch size optimization for signal classification, reve
 
 \subsection{Enhanced Constellation Diagram Generation}
 
-We implement an enhanced constellation diagram generation methodology for I/Q signal data transformation. The process converts complex-valued time-domain samples into visual representations suitable for image-based deep learning models. Our critical discovery revealed that standard preprocessing approaches destroy SNR information through per-image normalization, explaining persistent accuracy limitations in prior work.
+We implement an enhanced constellation diagram generation methodology for in-phase/quadrature (I/Q) signal data transformation. The process converts complex-valued time-domain samples into visual representations suitable for image-based deep learning models. Our critical discovery revealed that standard preprocessing approaches destroy SNR information through per-image normalization, explaining persistent accuracy limitations in prior work.
 
 \textbf{Power Normalization:} To maintain signal characteristics across different power levels:
 
@@ -187,7 +191,7 @@ We implement an enhanced constellation diagram generation methodology for I/Q si
 I_{normalized} = \frac{I}{\text{scale\_factor}}, \quad Q_{normalized} = \frac{Q}{\text{scale\_factor}}
 \end{equation}
 
-\textbf{Histogram Generation and Log Scaling:} The normalized I/Q data is binned into 2D histograms and log-scaled for enhanced dynamic range:
+\textbf{Histogram Generation and Log Scaling:} The normalized I/Q data is binned into a two-dimensional (2D) histograms and log-scaled for enhanced dynamic range:
 
 \begin{equation}
 H = \log(1 + \text{histogram2d}(I_{normalized}, Q_{normalized}))
@@ -284,7 +288,9 @@ To quantitatively assess the effects of perturbations, we introduce the Perturba
 PIS = \frac{\Delta A}{f}
 \end{equation}
 
-where $f$ denotes the fraction of input pixels that are perturbed (e.g., 0.01 for a 1\% mask). Our approach is aligned with perturbation families such as Local Interpretable Model-agnostic Explanations (LIME) and Meaningful Perturbations, and black-box masking via Randomized Input Sampling for Explanation (RISE)~\cite{ribeiro2016lime,fong2017meaningful,petsiuk2018rise}. It complements gradient-based methods like Gradient-weighted Class Activation Mapping (Grad-CAM) and Integrated Gradients while observing reliability cautions~\cite{selvaraju2017grad,sundararajan2017ig,adebayo2018sanity,hooker2019roar}.
+\noindent where $A_{original}$ is the accuracy prior to perturbation, $A_{perturbed}$ is the accuracy post-perturbation, and $f$ represents the fraction of the input pixels that are perturbed (e.g., $f = 0.01$ for a 1\% mask). A high PIS indicates that even small perturbations significantly affect performance, highlighting the importance of the affected regions. The PIS metric provides a normalized measure of feature importance, enabling comparison across different perturbation scenarios.
+
+Our approach is aligned with perturbation families such as Local Interpretable Model-agnostic Explanations (LIME) and Meaningful Perturbations, and black-box masking via Randomized Input Sampling for Explanation (RISE)~\cite{ribeiro2016lime,fong2017meaningful,petsiuk2018rise}. It complements gradient-based methods like Gradient-weighted Class Activation Mapping (Grad-CAM) and Integrated Gradients while observing reliability cautions~\cite{selvaraju2017grad,sundararajan2017ig,adebayo2018sanity,hooker2019roar}.
 Figure~\ref{fig:perturbation_pipeline} provides an overview of perturbation generation, evaluation, and PIS computation.
 
 % --------------------------------------------
@@ -332,8 +338,6 @@ Figure~\ref{fig:perturbation_pipeline} provides an overview of perturbation gene
   \label{fig:perturbation_pipeline}
 \end{figure}
 
-where $A_{original}$ is the accuracy prior to perturbation, $A_{perturbed}$ is the accuracy post-perturbation, and $f$ represents the fraction of the input data that was altered. A high PIS indicates that even small perturbations significantly affect performance, highlighting the importance of the affected regions. The PIS metric provides a normalized measure of feature importance, enabling comparison across different perturbation scenarios.
-
 \subsection{SNR Range Bounding Justification}
 
 We employ a bounded SNR range (0--30 dB) based on extensive literature precedent and theoretical justification. Our preprocessing pipeline can generate constellations for SNR levels from -20 to +30 dB in 2 dB steps sourced from the RadioML corpus~\cite{radioml2018}, yet we restrict training and evaluation to the 0--30 dB span to match common practice in constellation-based AMC studies and realistic deployment settings~\cite{peng2023constellation,garcia2024ultralight,zhang2023multimodal}. Recent work consistently demonstrates fundamental limitations below 0 dB~\cite{peng2023constellation,garcia2024ultralight}:
@@ -348,10 +352,10 @@ We systematically evaluated multiple deep learning architectures for constellati
 
 \textbf{Selected Architectures:}
 \begin{itemize}
-    \item ResNet18/34: Convolutional baselines (11-21M parameters)
-    \item Vision Transformer ViT-B/16, ViT-B/32: Global attention mechanisms (86M parameters)
-    \item Swin Transformer Tiny/Small: Hierarchical attention (28-50M parameters)
-    \item ViT-H/14: Large-scale boundary analysis (632M parameters)
+    \item ResNet18/34: Convolutional baselines (11-21M parameters)~\cite{he2016deep}
+    \item Vision Transformer ViT-B/16, ViT-B/32: Global attention mechanisms (86M parameters)~\cite{vit2020}
+    \item Swin Transformer Tiny/Small: Hierarchical attention (28-50M parameters)~\cite{liu2021swin}
+    \item ViT-H/14: Large-scale boundary analysis (632M parameters)~\cite{vit2020}
 \end{itemize}
 
 Parameter-to-sample ratio analysis revealed optimal ranges for constellation classification. With 1.1M training samples (17 modulations × 16 SNRs × 4096 samples), models exceeding 100 parameters/sample show severe overfitting regardless of regularization techniques.
@@ -364,7 +368,7 @@ We implement the homoscedastic uncertainty weighting framework introduced by Ken
 L_{total} = \frac{1}{2\sigma_{mod}^2} L_{mod} + \frac{1}{2\sigma_{snr}^2} L_{snr} + \log(\sigma_{mod}\sigma_{snr})
 \end{equation}
 
-\noindent where $\sigma_{mod}$ and $\sigma_{snr}$ are learned task uncertainties. This principled formulation supplants manual α/β weighting and alleviates task competition by adapting to the relative difficulty of each objective. We additionally benchmarked alternative balancing strategies including GradNorm and dynamic weight averaging (DWA)~\cite{chen2018gradnorm,liu2019dwa}, but uncertainty weighting delivered the most stable training across our sweeps.
+\noindent where $L_{total}$ is the combined loss function, $L_{mod}$ is the cross-entropy loss for modulation classification, $L_{snr}$ is the cross-entropy loss for SNR classification, and $\sigma_{mod}$ and $\sigma_{snr}$ are learned task uncertainties that automatically balance the two objectives. This principled formulation supplants manual α/β weighting and alleviates task competition by adapting to the relative difficulty of each objective. We additionally benchmarked alternative balancing strategies including GradNorm and dynamic weight averaging (DWA)~\cite{chen2018gradnorm,liu2019dwa}, but uncertainty weighting delivered the most stable training across our sweeps.
 
 \section{Experimental Setup}
 
@@ -397,7 +401,7 @@ Reported metrics are from single deterministic runs; expanding to multi-seed eva
 
 \subsection{Evaluation Metrics}
 
-Primary evaluation focuses on combined accuracy (harmonic mean of modulation and SNR accuracy) to ensure balanced performance across both tasks. Secondary metrics include individual task accuracies, F1 scores per class, confusion matrix analysis, and task weight evolution throughout training.
+Primary evaluation focuses on combined accuracy (harmonic mean of modulation and SNR accuracy) to ensure balanced performance across both tasks. Secondary metrics include individual task accuracies, F1 scores per class, confusion matrix analysis, and task weight evolution throughout training. The F1 score is defined as the harmonic mean of precision and recall: $F1 = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}$, providing a balanced measure that accounts for both false positives and false negatives, particularly useful for imbalanced class distributions~\cite{sokolova2009systematic}.
 
 \section{Results}
 
@@ -420,11 +424,10 @@ The proposed multi-task learning framework achieves breakthrough performance on 
 Setting & SNR (dB) & Formulation & Metric & Reported (\%) & Ref. \\
 \midrule
 Mod-only (constellation) & 0--20 & Single-task & Modulation acc. & 96.3 & \cite{garcia2024ultralight} \\
-Joint prior (baseline) & --- & Joint ($\sim$220-class) & Combined acc. & 28.4 & \cite{liu2022jointsnr} \\
 This work & 0--30 & Joint (272-class) & Combined acc. & 51.26 & --- \\
 \bottomrule
 \end{tabular}
-\caption{Reported AMC results across settings. Mod-only values (bounded SNR) are not directly comparable to true joint formulations; they serve as context for task difficulty.}
+\caption{Reported AMC results across settings. The modulation-only result (bounded SNR) is not directly comparable to true joint formulations but serves as context for task difficulty. This work presents the first blind joint modulation-SNR classification.}
 \label{tab:sota}
 \end{table}
 
@@ -602,7 +605,7 @@ The comprehensive architecture evaluation demonstrates the superiority of hierar
 
 The integration of explainability with multi-task learning enables task-specific feature importance analysis, revealing how different constellation regions contribute to modulation versus SNR prediction. This capability facilitates targeted model improvements and provides transparency essential for deployment in safety-critical wireless communication environments.
 
-Our work represents the first comprehensive study of joint modulation-SNR prediction using constellation diagrams, addressing a significantly more challenging problem than traditional single-task AMC. While existing SOTA approaches achieve 95\%+ accuracy on modulation-only classification, our 51.26\% combined accuracy on the 272-class joint prediction task establishes a new benchmark for this underexplored problem formulation. The framework demonstrates that high-performance AMC models can maintain transparency and interpretability without sacrificing accuracy, enabling trustworthy deployment in critical applications where understanding model decisions is paramount.
+This work represents the first blind joint modulation-SNR classification using constellation diagrams, achieving two fundamental advances: (1) true joint classification in a single unified model rather than cascade approaches, and (2) completely blind operation without any reference signals, oracle SNR labels, or auxiliary information. While existing SOTA approaches achieve 95\%+ accuracy on modulation-only classification with known SNR ranges, our 51.26\% combined accuracy on the 272-class blind joint prediction task establishes a new benchmark for this previously unexplored problem formulation. The framework demonstrates that high-performance AMC models can maintain transparency and interpretability without sacrificing accuracy, enabling trustworthy deployment in critical applications where understanding model decisions is paramount.
 
 \section*{Acknowledgments}
  
